@@ -1,0 +1,9 @@
+# Xcode
+*.xcodeproj/
+xcuserdata/
+DerivedData/
+build/
+.build/
+*.xcresult
+.DS_Store
+# generated at build time; project.yml is the source of truth
