@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # Install and launch the last build on the simulator, then screenshot it.
-# Usage: scripts/run.sh [--seed] [--reset] [--shot path.png]
+# Usage: scripts/run.sh [--seed] [--reset] [--look metal|swiftui] [--shot path.png]
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 ARGS=(); SHOT=""
 while [ $# -gt 0 ]; do case "$1" in
-  --seed) ARGS+=(-seed);; --reset) ARGS+=(-reset);; --shot) SHOT="$2"; shift;; *) echo "unknown $1" >&2; exit 2;; esac; shift; done
+  --seed) ARGS+=(-seed);; --reset) ARGS+=(-reset);; --look) ARGS+=(-look "$2"); shift;;
+  --shot) SHOT="$2"; shift;; *) echo "unknown $1" >&2; exit 2;; esac; shift; done
 SIM="$(scripts/sim.sh)"
-APP=build/Build/Products/Debug-iphonesimulator/Stub.app
+APP="${STUB_DERIVED_DATA:-$HOME/Library/Developer/Xcode/DerivedData/Stub-scripts}/Build/Products/Debug-iphonesimulator/Stub.app"
 xcrun simctl terminate "$SIM" com.designedbybruno.stub 2>/dev/null || true
 xcrun simctl install "$SIM" "$APP"
 xcrun simctl launch "$SIM" com.designedbybruno.stub "${ARGS[@]}" >/dev/null
