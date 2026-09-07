@@ -21,8 +21,8 @@ struct HeuristicParser: StubParsing {
                 draft.screenedAt = date
                 claimed.insert(i)
             }
-            if draft.seat.isEmpty, let seat = Self.match(#"(?i)\bSEAT\s*[:#]?\s*([A-Z]{1,2}\s?-?\d{1,3})\b"#, in: line) {
-                draft.seat = seat.replacingOccurrences(of: " ", with: "").replacingOccurrences(of: "-", with: "")
+            if draft.seat.isEmpty, let seat = Self.seat(in: line) {
+                draft.seat = seat
                 claimed.insert(i)
             }
             if draft.screen.isEmpty, let screen = Self.match(#"(?i)\b(?:SCREEN|SCR|CINEMA|AUDITORIUM|AUD|HALL|THEATRE|THEATER)\s*[:#]?\s*(\d{1,2})\b"#, in: line) {
@@ -87,14 +87,30 @@ struct HeuristicParser: StubParsing {
         return String(line[r])
     }
 
+    /// "SEAT H12", "Seat: H-12", "Row H Seat 12", "ROW H, SEAT 12". Always normalised to "H12".
+    static func seat(in line: String) -> String? {
+        if let row = match(#"(?i)\bROW\s*[:#]?\s*([A-Z]{1,2})\b[\s,.\-]*SEAT\s*[:#]?\s*(\d{1,3})\b"#, in: line),
+           let number = match(#"(?i)\bROW\s*[:#]?\s*[A-Z]{1,2}\b[\s,.\-]*SEAT\s*[:#]?\s*(\d{1,3})\b"#, in: line) {
+            return row.uppercased() + number
+        }
+        if let seat = match(#"(?i)\bSEAT\s*[:#]?\s*([A-Z]{1,2}\s?-?\d{1,3})\b"#, in: line) {
+            return seat.replacingOccurrences(of: " ", with: "").replacingOccurrences(of: "-", with: "").uppercased()
+        }
+        return nil
+    }
+
     static func price(in line: String) -> (amount: Decimal, currency: String)? {
-        guard let raw = match(#"(?:\$|NZ\$|AU\$|US\$|£|€)\s?(\d{1,3}(?:[.,]\d{2}))\b"#, in: line)
+        guard let raw = match(#"(?:\$|NZ\$|AU\$|US\$|£|€|EUR|GBP|USD|AUD|NZD)\s?(\d{1,3}(?:[.,]\d{2}))\b"#, in: line)
+                ?? match(#"\b(\d{1,3}(?:[.,]\d{2}))\s?(?:€|\b(?:EUR|GBP|USD|AUD|NZD)\b)"#, in: line)
                 ?? match(#"(?i)\b(?:PRICE|TOTAL|AMOUNT|PAID)\s*[:$]?\s*(\d{1,3}(?:[.,]\d{2}))\b"#, in: line)
         else { return nil }
         let amount = Decimal(string: raw.replacingOccurrences(of: ",", with: ".")) ?? 0
+        let upper = line.uppercased()
         let currency: String
-        if line.contains("£") { currency = "GBP" }
-        else if line.contains("€") { currency = "EUR" }
+        if line.contains("£") || upper.contains("GBP") { currency = "GBP" }
+        else if line.contains("€") || upper.contains("EUR") { currency = "EUR" }
+        else if upper.contains("USD") { currency = "USD" }
+        else if upper.contains("AUD") { currency = "AUD" }
         else if line.uppercased().contains("US$") { currency = "USD" }
         else if line.uppercased().contains("AU$") { currency = "AUD" }
         else { currency = "NZD" }
@@ -107,9 +123,18 @@ struct HeuristicParser: StubParsing {
         "dd/MM/yyyy HH:mm", "dd/MM/yyyy h:mma", "dd/MM/yyyy", "dd/MM/yy HH:mm", "dd/MM/yy",
         "dd-MM-yyyy HH:mm", "dd-MM-yyyy", "yyyy-MM-dd HH:mm", "yyyy-MM-dd",
         "d MMM yy HH:mm", "d MMM yy", "MMM d, yyyy h:mm a", "MMM d, yyyy",
+        "dd.MM.yyyy HH:mm", "dd.MM.yyyy",
     ]
 
-    static func date(in line: String) -> Date? {
+    /// Stubs that leave the year off. The year is filled in from `now`, and a date that lands in the future
+    /// is taken to be last year's: nobody keeps a stub for a film they have not seen yet.
+    static let yearlessFormats: [String] = [
+        "EEE d MMM h:mma", "EEE d MMM HH:mm", "EEE d MMM",
+        "d MMM h:mma", "d MMM HH:mm", "d MMM",
+        "EEE MMM d h:mma", "MMM d h:mma", "MMM d HH:mm", "MMM d",
+    ]
+
+    static func date(in line: String, now: Date = .now) -> Date? {
         let cleaned = line
             .replacingOccurrences(of: #"(?i)\b(DATE|TIME|SESSION|SHOWING|SHOWTIME)\s*[:]?"#, with: "", options: .regularExpression)
             .replacingOccurrences(of: #"(?<=\d)(ST|ND|RD|TH|st|nd|rd|th)\b"#, with: "", options: .regularExpression)
@@ -121,7 +146,18 @@ struct HeuristicParser: StubParsing {
         formatter.locale = Locale(identifier: "en_NZ")
         formatter.timeZone = .current
         formatter.isLenient = false
-        for format in dateFormats {
+        if let d = first(of: dateFormats, in: cleaned, using: formatter) { return d }
+
+        formatter.defaultDate = now
+        guard let guessed = first(of: yearlessFormats, in: cleaned, using: formatter) else { return nil }
+        if guessed > now.addingTimeInterval(24 * 60 * 60) {
+            return Calendar.current.date(byAdding: .year, value: -1, to: guessed)
+        }
+        return guessed
+    }
+
+    private static func first(of formats: [String], in cleaned: String, using formatter: DateFormatter) -> Date? {
+        for format in formats {
             formatter.dateFormat = format
             if let d = formatter.date(from: cleaned) { return d }
             // Try the date as a substring by trimming trailing tokens.
