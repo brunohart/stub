@@ -3,8 +3,17 @@ import SwiftUI
 /// One stub on the table. Tilted until touched; touching it makes it sit up straight.
 struct StubCard: View {
     let stub: Stub
-    @State private var pressed = false
+    @State private var touched = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// A finger, or the Debug driver standing in for one.
+    private var pressed: Bool {
+        #if DEBUG
+        return touched || DebugDrive.shared.pressedID == stub.id
+        #else
+        return touched
+        #endif
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -20,15 +29,19 @@ struct StubCard: View {
                 }
                 if let cinema = stub.cinema {
                     Text(cinema).font(Type.words(12)).foregroundStyle(Ink.grey)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
             .padding(.horizontal, 2)
         }
+        // Touch-down: the stub sits up straight and lifts a little, overshooting once (Motion.stamp).
+        // Reduce Motion: it never tilts, so there is nothing to straighten; the lift is critically damped.
         .rotationEffect(.degrees(pressed || reduceMotion ? 0 : stub.tilt))
         .scaleEffect(pressed ? 1.02 : 1)
-        .animation(Motion.stamp, value: pressed)
+        .animation(Motion.press(reduceMotion: reduceMotion), value: pressed)
         .contentShape(Rectangle())
-        .onLongPressGesture(minimumDuration: .infinity, pressing: { pressed = $0 }, perform: {})
+        .onLongPressGesture(minimumDuration: .infinity, pressing: { touched = $0 }, perform: {})
         .sensoryFeedback(.impact(weight: .light), trigger: pressed) { _, new in new }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(stub.title), \(stub.displayDate ?? ""), \(stub.cinema ?? "")")

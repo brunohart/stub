@@ -24,9 +24,20 @@ extension Color {
     }
 }
 
-/// Spring constants, tuned by feel. One overshoot, then settle. Like a stamp pressed too hard.
+/// Spring constants, tuned by feel. One family, three feelings. Nothing here loops.
 enum Motion {
-    static let stamp = Animation.spring(response: 0.42, dampingFraction: 0.62)
+    /// Touch-down and release. Under-damped enough to overshoot once (about a fifth of the travel past the
+    /// target, the second swing is under a hundredth) and settle: a stamp pressed too hard, bouncing back.
+    static let stamp = Animation.spring(response: 0.34, dampingFraction: 0.55)
+    /// The print lifting and settling, the stub sitting up straight, the plate sliding into register.
     static let settle = Animation.spring(response: 0.55, dampingFraction: 0.8)
+    /// Objects placed on the table.
     static let place = Animation.spring(response: 0.6, dampingFraction: 0.72)
+    /// One inhale. The blank stub on the empty drawer breathes once when it appears, then holds still.
+    static let breath = Animation.spring(response: 0.9, dampingFraction: 0.7)
+    /// Reduce Motion: critically damped, no overshoot. Callers also drop the rotation.
+    static let plain = Animation.spring(response: 0.26, dampingFraction: 1)
+
+    /// The press spring for this user: the stamp, or the plain settle when Reduce Motion is on.
+    static func press(reduceMotion: Bool) -> Animation { reduceMotion ? plain : stamp }
 }
