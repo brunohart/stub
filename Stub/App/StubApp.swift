@@ -21,6 +21,10 @@ struct StubApp: App {
                 .task {
                     #if DEBUG
                     FontAudit.run()
+                    #endif
+                    // One small question, once, so the import screen's status line is what happened.
+                    if #available(iOS 26.0, *) { await ModelProbe.run() }
+                    #if DEBUG
                     if DebugSeed.requested { await DebugSeed.run(in: container) }
                     #endif
                 }
