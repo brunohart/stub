@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Install and launch the last build on the simulator, then screenshot it.
-# Usage: scripts/run.sh [--seed] [--reset] [--look metal|swiftui] [--shot path.png]
+# Usage: scripts/run.sh [--seed] [--reset] [--drive] [--look metal|swiftui] [--shot path.png]
+# --drive: after the seed, press, open, hold and close on a timer (see DebugDrive) so the run can be filmed.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 ARGS=(); SHOT=""
 while [ $# -gt 0 ]; do case "$1" in
-  --seed) ARGS+=(-seed);; --reset) ARGS+=(-reset);; --look) ARGS+=(-look "$2"); shift;;
+  --seed) ARGS+=(-seed);; --reset) ARGS+=(-reset);; --drive) ARGS+=(-drive);; --look) ARGS+=(-look "$2"); shift;;
   --shot) SHOT="$2"; shift;; *) echo "unknown $1" >&2; exit 2;; esac; shift; done
 SIM="$(scripts/sim.sh)"
 APP="${STUB_DERIVED_DATA:-$HOME/Library/Developer/Xcode/DerivedData/Stub-scripts}/Build/Products/Debug-iphonesimulator/Stub.app"
