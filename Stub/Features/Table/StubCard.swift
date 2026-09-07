@@ -37,8 +37,11 @@ struct StubCard: View {
     @ViewBuilder
     private var plate: some View {
         if let data = stub.imageData, let ui = UIImage(data: data) {
+            // The plate is the ticket's own shape, so a cropped stub reads as a stub. A photograph that
+            // could not be cropped is still bounded: no taller than it is wide, no flatter than 2.6:1.
+            let aspect = min(max(ui.size.width / max(ui.size.height, 1), 1), 2.6)
             Color.clear
-                .frame(height: 150)
+                .aspectRatio(aspect, contentMode: .fit)
                 .overlay(Image(uiImage: ui).resizable().scaledToFill())
                 .clipped()
                 .silkscreened(strength: pressed ? 0.15 : 1, seed: stub.tilt)

@@ -134,7 +134,11 @@ struct ImportView: View {
                 withAnimation(Motion.settle) { self.stage = stage }
             }
             reading = result.reading
-            withAnimation(Motion.place) { draft = result.draft }
+            withAnimation(Motion.place) {
+                draft = result.draft
+                // Show the ticket, not the table it was lying on.
+                if result.cropped { image = UIImage(cgImage: result.plate) }
+            }
         } catch {
             stage = .done
             failure = "No printed text found. Type it in instead."
@@ -193,6 +197,7 @@ struct StageLine: View {
     }
     private var label: String {
         switch stage {
+        case .cropping: return "Finding the stub…"
         case .reading: return "Reading the print…"
         case .understanding(let parser):
             return parser == "foundation-models" ? "Asking the on-device model…" : "Working it out…"
