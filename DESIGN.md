@@ -1,6 +1,6 @@
 # Design
 
-One intent, then rules. The intent decides how the constraints are used; the constraints come from `~/designedbybruno/digital-design-taste.md`.
+One intent, then rules. The intent decides how the constraints are used; the constraints come from `~/Documents/designedbybruno/digital-design-taste.md`.
 
 ## The intent
 

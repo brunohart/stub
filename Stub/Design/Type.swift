@@ -38,16 +38,28 @@ struct DisplayTitle: View {
     }
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            Text(text)
-                .font(Type.display(size)).tracking(Type.displayTracking(size))
-                .foregroundStyle(Ink.orange.opacity(amount))
-                .offset(x: offset.width, y: offset.height)
-                .blendMode(.multiply)
-                .accessibilityHidden(true)
+        if LookEngine.current.isMetal {
+            // One layer, two plates: the shader samples the text's own alpha shifted by `offset`
+            // and lays orange under it wherever the ink is not.
             Text(text)
                 .font(Type.display(size)).tracking(Type.displayTracking(size))
                 .foregroundStyle(Ink.ink)
+                .layerEffect(
+                    ShaderLibrary.misregister(.float2(offset), .color(Ink.orange), .float(amount)),
+                    maxSampleOffset: CGSize(width: abs(offset.width) + 1, height: abs(offset.height) + 1)
+                )
+        } else {
+            ZStack(alignment: .topLeading) {
+                Text(text)
+                    .font(Type.display(size)).tracking(Type.displayTracking(size))
+                    .foregroundStyle(Ink.orange.opacity(amount))
+                    .offset(x: offset.width, y: offset.height)
+                    .blendMode(.multiply)
+                    .accessibilityHidden(true)
+                Text(text)
+                    .font(Type.display(size)).tracking(Type.displayTracking(size))
+                    .foregroundStyle(Ink.ink)
+            }
         }
     }
 }
