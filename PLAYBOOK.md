@@ -20,7 +20,9 @@ Shipped: SwiftData model, Vision reader (`RecognizeDocumentsRequest` → `Recogn
 
 Found: the on-device model reports `.available` in the simulator but every `respond` fails with `ModelManagerServices.ModelManagerError 1026`. Heuristics carried all four fixtures at 100%. See DECISIONS ADR-001 and `docs/LOG.md`.
 
-## Day 1 — Sun 7 Sep — The look goes to Metal, and the reader crops
+## Day 1 — Sun 7 Sep — The look goes to Metal, and the reader crops ✅
+
+Shipped: all four bullets. Found: Vision's document segmentation returns the same bottom-quarter strip for every photograph on this simulator; rectangles are the fallback (ADR-007). The build was down at the start of the slot because iCloud tags the `.app` (ADR-008). See `docs/LOG.md`.
 
 - Switch `silkscreened`, `Paper`/`Grain` and the misregistered plate to the Metal shaders in `Shaders/Silkscreen.metal` (`colorEffect` / `layerEffect`). Keep the SwiftUI versions behind a `LookEngine` switch so both can be screenshotted side by side; commit the pair of screenshots to `docs/screenshots/day-1-look-swiftui.png` and `day-1-look-metal.png`. Tune `strength`, `grain`, and plate offset by eye against the taste doc: grit lives in the image, never in type.
 - Crop the stub out of the photograph before reading and before showing it: Vision `DetectDocumentSegmentationRequest` → perspective-correct with Core Image (`CIPerspectiveCorrection`). The card plate should be the ticket, not the table it was lying on. Fall back to the full image when no quadrilateral is found.
@@ -29,7 +31,7 @@ Found: the on-device model reports `.available` in the simulator but every `resp
 
 ## Day 2 — Mon 8 Sep — Interaction craft
 
-- Card → detail with `navigationTransition(.zoom)` and `matchedTransitionSource`. The stub lifts off the table and sits up straight as it grows.
+- Card → detail with `navigationTransition(.zoom)` and `matchedTransitionSource`. The stub lifts off the table and sits up straight as it grows. (From Day 1: the plates are now the cropped ticket at about 2.3:1 and sit small in a half-width column; judge whether the table wants one wider column for landscape stubs once the zoom exists.)
 - Press physics: tilt to 0° and 1.02 scale on touch-down (already there), tune `Motion.stamp` so it overshoots once and settles. Reduce Motion path: no rotation, no overshoot.
 - Detail: hold to lift the silkscreen (already there) — add the misregistered plate sliding back into register while held. Haptic on register.
 - Empty drawer: the blank stub should breathe once on appear (a single spring, not a loop).

@@ -51,3 +51,23 @@ No network calls, no analytics, no account. Photos are stored in SwiftData with 
 Host Grotesk for words (Medium for display at −0.03em tracking), Newsreader for the single italic sentence and for reading, Fragment Mono for dates, seats, prices and confidence percentages. Hierarchy comes from size and space, not weight. The fonts ship as variable TTFs renamed without brackets (iOS did not register `HostGrotesk[wght].ttf` from `UIAppFonts`; `HostGrotesk-Variable.ttf` registers all six named instances). A Debug-only `FontAudit` logs what registered at launch.
 
 **Why.** This is the designedbybruno type system, settled on 2026-09-03. The bracket finding cost twenty minutes and is recorded so it costs nothing next time.
+
+## ADR-007 — Two detectors for the crop, and a quadrilateral that hugs the frame is not a ticket
+
+**Date:** 2026-09-07 · **Status:** decided
+
+`StubCrop` asks Vision's `DetectDocumentSegmentationRequest` first. If it finds nothing, or its quadrilateral touches three or more edges of the frame, `DetectRectanglesRequest` is asked next and its largest accepted rectangle wins. Both are straightened with `CIPerspectiveCorrection`. The full photograph is the floor, and `StubReader` falls back to it again if the crop reads as no text. The seed log and `StubReader.Result.detector` say which detector found the ticket.
+
+**Why.** On the iOS 26 simulator on this Mac, segmentation returns the same full-width bottom-quarter strip for every fixture at 0.83–0.99 confidence, at every input scale, through both the new and the `VN` API. The same request on macOS finds the ticket to the pixel. This is the language-model failure again (ADR-001): a model that reports itself confident and is not there. The rectangle detector is arithmetic, not an asset; it found all four fixtures at 1.0, within a few pixels of the Mac's segmentation. Two detectors mean the crop works on the host the daily slot actually runs on, and the edge rule means a lying detector is caught by geometry rather than by luck.
+
+**Consequences.** Do not remove the rectangle path when segmentation starts working on a device; keep both and let the log show which one is winning. Real photographs where the ticket fills the frame will fail the edge rule and fall to rectangles or the full frame, which is the ticket anyway.
+
+## ADR-008 — Build products live outside `~/Documents`
+
+**Date:** 2026-09-07 · **Status:** decided
+
+`scripts/build.sh`, `test.sh` and `run.sh` use `~/Library/Developer/Xcode/DerivedData/Stub-scripts` as derived data (override with `STUB_DERIVED_DATA`). `build/` keeps only logs, test results and the slot markers.
+
+**Why.** `~/Documents` on this Mac is an iCloud file-provider domain. The provider stamps every `.app` package under it with `com.apple.FinderInfo` and `com.apple.fileprovider.fpfs#P`, and `codesign` then refuses the bundle: "resource fork, Finder information, or similar detritus not allowed". Stripping with `xattr -cr` before signing lost the race every time, and a `.nosync` folder was tagged too. Day 1 started with the floor down for this reason.
+
+**Consequences.** The repo can stay where Bruno keeps it. Anything that must be signed is built elsewhere. If the repo ever moves out of a file-provider domain, this can be reverted, but there is no reason to.
