@@ -71,3 +71,13 @@ Host Grotesk for words (Medium for display at −0.03em tracking), Newsreader fo
 **Why.** `~/Documents` on this Mac is an iCloud file-provider domain. The provider stamps every `.app` package under it with `com.apple.FinderInfo` and `com.apple.fileprovider.fpfs#P`, and `codesign` then refuses the bundle: "resource fork, Finder information, or similar detritus not allowed". Stripping with `xattr -cr` before signing lost the race every time, and a `.nosync` folder was tagged too. Day 1 started with the floor down for this reason.
 
 **Consequences.** The repo can stay where Bruno keeps it. Anything that must be signed is built elsewhere. If the repo ever moves out of a file-provider domain, this can be reverted, but there is no reason to.
+
+## ADR-009 — Two uneven columns stay; the table is the width of the screen
+
+**Date:** 2026-09-08 · **Status:** decided
+
+The table keeps its two columns at 1.15 : 0.85, overlapping by six points, the right column starting lower (DESIGN.md rule 4). The content stack inside the `ScrollView` carries `frame(maxWidth: .infinity, alignment: .leading)` so the columns are sized against the screen, not against the widest line of text above them.
+
+**Why.** Day 1 asked whether landscape stubs at 2.3:1 want one wider column. The plates were small because the whole table was small: the `VStack` in the `ScrollView` took the width of its widest non-greedy child, the one-line season sentence, and `containerRelativeFrame` resolved against that. With the width restored the plates read at about 185pt and 137pt, the cinema names fit, and the zoom transition has a source worth growing from. A single column would trade the corkboard for a list.
+
+**Consequences.** Anything laid out inside the table's scroll content must not depend on the sentence's length. The Debug `-drive` argument (`DebugDrive`) is the second honest stand-in for hands in the simulator after `-seed` (ADR-003); interaction days should extend it rather than add a third mechanism.
