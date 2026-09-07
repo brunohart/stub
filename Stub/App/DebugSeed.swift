@@ -33,12 +33,13 @@ enum DebugSeed {
                     DebugSeed.log.info("\(url.lastPathComponent): \(String(describing: stage))")
                 }
                 let d = result.draft
-                log.info("\(url.lastPathComponent) → '\(d.title)' @ \(d.cinema) seat \(d.seat) by \(d.readBy) (\(Int(d.confidence * 100))%)")
+                log.info("\(url.lastPathComponent) → '\(d.title)' @ \(d.cinema) seat \(d.seat) by \(d.readBy) (\(Int(d.confidence * 100))%)\(result.detector.map { " [cropped by \($0.rawValue)]" } ?? " [full frame]")")
+                let plate = UIImage(cgImage: result.plate)
                 let stub = Stub(
                     title: d.isUsable ? d.title : url.deletingPathExtension().lastPathComponent,
                     cinema: d.cinema.nilIfEmpty, screenedAt: d.screenedAt, screen: d.screen.nilIfEmpty,
                     seat: d.seat.nilIfEmpty, price: d.price, currency: d.currency.nilIfEmpty,
-                    rawText: result.reading.text, imageData: ui.jpegData(compressionQuality: 0.82),
+                    rawText: result.reading.text, imageData: plate.jpegData(compressionQuality: 0.82),
                     readBy: d.readBy, confidence: d.confidence
                 )
                 context.insert(stub)
