@@ -1,13 +1,26 @@
 import SwiftUI
 import SwiftData
 
-/// One stub, close up. The photograph lifts from silkscreen to colour when you hold it.
+/// One stub, close up. It arrives tilted, as it lay on the table, and sits up straight as it grows (the zoom
+/// transition carries the frame, this view carries the rotation). Hold it and the silkscreen lifts to the
+/// photograph while the orange plate slides back into register; a haptic marks the moment it lands.
 struct StubDetailView: View {
     @Bindable var stub: Stub
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var holding = false
+    @State private var registered = false
+    @State private var tilt: Double
     @State private var showRaw = false
+
+    /// How far the orange plate missed by, at rest.
+    private let misregistration = CGSize(width: 6, height: 7)
+
+    init(stub: Stub) {
+        self.stub = stub
+        _tilt = State(initialValue: stub.tilt)
+    }
 
     var body: some View {
         ZStack {
@@ -19,13 +32,17 @@ struct StubDetailView: View {
                             .resizable().scaledToFit()
                             .silkscreened(strength: holding ? 0 : 1, seed: stub.tilt)
                             .clipShape(RoundedRectangle(cornerRadius: 3))
-                            .background(RoundedRectangle(cornerRadius: 3).fill(Ink.orange.opacity(0.14)).offset(x: 6, y: 7))
-                            .rotationEffect(.degrees(holding ? 0 : stub.tilt * 0.6))
-                            .animation(Motion.settle, value: holding)
-                            .onLongPressGesture(minimumDuration: .infinity, pressing: { holding = $0 }, perform: {})
-                            .sensoryFeedback(.impact(weight: .medium), trigger: holding) { _, new in new }
+                            .background(
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(Ink.orange.opacity(0.14))
+                                    .offset(holding ? .zero : misregistration)
+                            )
+                            .rotationEffect(.degrees(reduceMotion ? 0 : tilt))
+                            .onLongPressGesture(minimumDuration: .infinity, pressing: hold, perform: {})
+                            .sensoryFeedback(.impact(weight: .medium, intensity: 0.8), trigger: registered) { _, new in new }
+                            .accessibilityLabel("Photograph of the stub. Hold to see it in colour.")
                     } else {
-                        BlankStub(tilt: stub.tilt * 0.6, title: stub.title).frame(height: 160)
+                        BlankStub(tilt: reduceMotion ? 0 : tilt, title: stub.title).frame(height: 160)
                     }
 
                     VStack(alignment: .leading, spacing: 6) {
@@ -71,6 +88,28 @@ struct StubDetailView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
+        .onAppear {
+            // Sits up straight as it grows. The zoom is the system's; the straightening is ours, on the same clock.
+            withAnimation(Motion.settle) { tilt = 0 }
+        }
+        #if DEBUG
+        .onChange(of: DebugDrive.shared.holding) { _, held in hold(held) }
+        #endif
+    }
+
+    /// Touch-down lifts the print and slides the plate; the haptic fires when the plate is logically in
+    /// register, not on touch-down, so the feedback is the landing rather than the reach.
+    private func hold(_ pressing: Bool) {
+        if pressing {
+            withAnimation(reduceMotion ? Motion.plain : Motion.settle, completionCriteria: .logicallyComplete) {
+                holding = true
+            } completion: {
+                if holding { registered = true }
+            }
+        } else {
+            registered = false
+            withAnimation(reduceMotion ? Motion.plain : Motion.settle) { holding = false }
+        }
     }
 }
 
