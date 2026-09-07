@@ -7,6 +7,8 @@ struct TableView: View {
     @Environment(\.modelContext) private var context
     @State private var isImporting = false
     @State private var selected: Stub?
+    /// The zoom transition's pair: the card on the table is the source, the detail grows out of it.
+    @Namespace private var table
 
     var body: some View {
         NavigationStack {
@@ -18,9 +20,12 @@ struct TableView: View {
                         if stubs.isEmpty {
                             EmptyDrawer { isImporting = true }
                         } else {
-                            StubTable(stubs: stubs) { selected = $0 }
+                            StubTable(stubs: stubs, table: table) { selected = $0 }
                         }
                     }
+                    // The table is the width of the screen. Without this the stack shrinks to its widest
+                    // non-greedy child (the one-line season sentence) and the columns size against that.
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 20)
                     .padding(.top, 8)
                     .padding(.bottom, 120)
@@ -40,7 +45,15 @@ struct TableView: View {
             }
             .navigationDestination(item: $selected) { stub in
                 StubDetailView(stub: stub)
+                    .navigationTransition(.zoom(sourceID: stub.id, in: table))
             }
+            #if DEBUG
+            .task(id: stubs.count) {
+                // `-drive`: press, open, hold and close on a timer, so the simulator can be filmed without hands.
+                guard DebugDrive.requested, !stubs.isEmpty, !DebugDrive.shared.hasRun else { return }
+                DebugDrive.shared.run(stubs: stubs) { selected = $0 }
+            }
+            #endif
         }
     }
 
@@ -78,6 +91,7 @@ struct TableView: View {
 /// Two uneven columns. Objects with spatial relationships, not items in a grid.
 struct StubTable: View {
     let stubs: [Stub]
+    let table: Namespace.ID
     let open: (Stub) -> Void
 
     var body: some View {
@@ -97,6 +111,7 @@ struct StubTable: View {
         VStack(spacing: 22) {
             ForEach(items) { stub in
                 StubCard(stub: stub)
+                    .matchedTransitionSource(id: stub.id, in: table)
                     .onTapGesture { open(stub) }
             }
         }
@@ -105,11 +120,23 @@ struct StubTable: View {
 
 struct EmptyDrawer: View {
     let add: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// The blank stub breathes once when the drawer opens: one inhale, one settle, then still. Never a loop.
+    @State private var breath: CGFloat = 1
+
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            BlankStub(tilt: -1.1)
+            BlankStub(tilt: reduceMotion ? 0 : -1.1)
                 .frame(width: 210, height: 118)
+                .scaleEffect(breath, anchor: .bottomLeading)
                 .padding(.top, 20)
+                .task {
+                    guard !reduceMotion else { return }
+                    try? await Task.sleep(for: .milliseconds(400))
+                    withAnimation(Motion.breath) { breath = 1.035 } completion: {
+                        withAnimation(Motion.settle) { breath = 1 }
+                    }
+                }
             Button(action: add) {
                 Text("Add the first stub")
                     .font(Type.words(17))
