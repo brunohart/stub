@@ -29,7 +29,9 @@ Shipped: all four bullets. Found: Vision's document segmentation returns the sam
 - Probe the model once at launch with a one-token request and cache the outcome, so the import screen's status line is honest ("On-device model ready" is currently a lie when generation fails). Surface `ModelManagerError` codes in the log with a plain-English guess.
 - Tests: crop fallback, parser edge cases (price with comma, date without year, seat like "Row H Seat 12").
 
-## Day 2 — Mon 8 Sep — Interaction craft
+## Day 2 — Mon 8 Sep — Interaction craft ✅
+
+Shipped: all five bullets. Found: the table had been ~232pt wide since Day 0 (the stack shrank to the one-line season sentence); fixed, so the plates are ~60% larger and two columns stay (ADR-009). The simulator cannot be tapped from this session's tooling, so `scripts/run.sh --drive` choreographs the presses for the clip. See `docs/LOG.md`.
 
 - Card → detail with `navigationTransition(.zoom)` and `matchedTransitionSource`. The stub lifts off the table and sits up straight as it grows. (From Day 1: the plates are now the cropped ticket at about 2.3:1 and sit small in a half-width column; judge whether the table wants one wider column for landscape stubs once the zoom exists.)
 - Press physics: tilt to 0° and 1.02 scale on touch-down (already there), tune `Motion.stamp` so it overshoots once and settles. Reduce Motion path: no rotation, no overshoot.
