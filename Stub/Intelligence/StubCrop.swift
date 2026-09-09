@@ -63,6 +63,8 @@ enum StubCrop {
     static let minimumConfidence: Float = 0.5
     /// A corner within this share of the frame's shorter side of an edge is "on" that edge.
     static let edgeTolerance: CGFloat = 0.02
+    /// A quadrilateral wider or taller than this share of the frame spans it, and a ticket on a table does not.
+    static let maximumSpanFraction: CGFloat = 0.95
 
     /// Detect and straighten. Never throws: a failure to crop is a decision to keep the whole photograph.
     static func crop(_ image: CGImage) async -> Outcome {
@@ -168,6 +170,14 @@ enum StubCrop {
             quad.corners.contains { $0.y >= size.height - tolerance },
         ].filter { $0 }.count
         guard touched < 3 else { return "hugs \(touched) frame edges" }
+        // The same strip, a few pixels in from one edge (Day 3: bl.x 33 with a 28-pixel tolerance), touches only
+        // two. Width is the tell: nothing photographed on a table runs the whole frame.
+        let xs = quad.corners.map(\.x), ys = quad.corners.map(\.y)
+        let spanX = (xs.max()! - xs.min()!) / size.width
+        let spanY = (ys.max()! - ys.min()!) / size.height
+        guard spanX < maximumSpanFraction, spanY < maximumSpanFraction else {
+            return "spans \(Int(max(spanX, spanY) * 100))% of the frame"
+        }
         return nil
     }
 
