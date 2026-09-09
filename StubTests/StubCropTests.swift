@@ -51,6 +51,14 @@ struct StubCropTests {
             bottomRight: CGPoint(x: 1790, y: 600), bottomLeft: CGPoint(x: 20, y: 610)
         )
         #expect(StubCrop.accepts(cornered, in: size))
+
+        // Day 3: the strip came back 33 pixels in from the left, clear of the 28-pixel tolerance, touching only
+        // two edges, and was accepted; the crop had no text in it. Spanning the frame is the second tell.
+        let shifted = StubCrop.Quad(
+            topLeft: CGPoint(x: 33, y: 355), topRight: CGPoint(x: 2400, y: 355),
+            bottomRight: CGPoint(x: 2400, y: 5), bottomLeft: CGPoint(x: 33, y: 5)
+        )
+        #expect(StubCrop.reason(shifted, in: size) == "spans 98% of the frame")
     }
 
     @Test func perspectiveCorrectionStraightensAKnownRectangle() {
