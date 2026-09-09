@@ -39,7 +39,9 @@ Shipped: all five bullets. Found: the table had been ~232pt wide since Day 0 (th
 - Empty drawer: the blank stub should breathe once on appear (a single spring, not a loop).
 - Record a 10-second clip with `xcrun simctl io <sim> recordVideo docs/screenshots/day-2-press.mov` for the write-up.
 
-## Day 3 — Tue 9 Sep — Foundation Models, properly
+## Day 3 — Tue 9 Sep — Foundation Models, properly ✅
+
+Shipped: all four bullets. Found: the on-device model answered for the first time (the host's assets arrived), so the eval table has three columns. Cold, the model is a worse reader than the regex: it writes UTC for a wall-clock ticket, guesses USD for a `$`, and shortens venues. Given the heuristic's draft as a hint it matches the floor on every field (one run earlier it dropped a title, so the table is a sample). The reader now runs the model with the hint and streams the answer into the import fields (ADR-010). See `docs/LOG.md` and `docs/evals.md`.
 
 - Streaming: `session.streamResponse(to:generating:)` into the import fields so the title lands before the seat. Snapshot API drift is likely; compile and adapt.
 - Give the model the heuristic draft as a hint in the prompt and measure whether it helps.
