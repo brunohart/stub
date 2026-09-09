@@ -15,7 +15,8 @@ struct HeuristicParser: StubParsing {
         let lines = reading.lines
 
         for (i, line) in lines.enumerated() {
-            let upper = line.uppercased()
+            // Folded so CINÉMA is CINEMA to the folklore; the line itself keeps its accents.
+            let upper = line.uppercased().folding(options: .diacriticInsensitive, locale: nil)
 
             if draft.screenedAt == nil, let date = Self.date(in: line) {
                 draft.screenedAt = date
@@ -25,7 +26,7 @@ struct HeuristicParser: StubParsing {
                 draft.seat = seat
                 claimed.insert(i)
             }
-            if draft.screen.isEmpty, let screen = Self.match(#"(?i)\b(?:SCREEN|SCR|CINEMA|AUDITORIUM|AUD|HALL|THEATRE|THEATER)\s*[:#]?\s*(\d{1,2})\b"#, in: line) {
+            if draft.screen.isEmpty, let screen = Self.match(#"(?i)\b(?:SCREEN|SCR|CINEMA|AUDITORIUM|AUD|HALL|THEATRE|THEATER|SALLE|SAAL|SALA)\s*[:#]?\s*(\d{1,2})\b"#, in: line) {
                 draft.screen = "Screen \(screen)"
                 claimed.insert(i)
             }
@@ -53,6 +54,8 @@ struct HeuristicParser: StubParsing {
 
         // Title: the longest unclaimed line that is mostly letters and not boilerplate.
         let boilerplate = try! NSRegularExpression(pattern: #"(?i)\b(ADMIT|ADULT|CHILD|STUDENT|SENIOR|TICKET|ADMISSION|GST|TAX|TOTAL|RECEIPT|THANK|ENJOY|BOOKING|REF|WWW|\.COM|\.CO\.|ORDER|TRANS|NO REFUNDS?)\b"#)
+        // A street address is the cinema's, never the film's: a number, then a street word somewhere after it.
+        let address = try! NSRegularExpression(pattern: #"(?i)^\s*\d{1,5}[A-Z]?\s+\S.*\b(ST|STREET|RD|ROAD|AVE|AVENUE|LANE|LN|TERRACE|TCE|QUAY|BLVD|BOULEVARD|STRASSE|STRAßE|RUE)\b"#)
         let candidates = lines.enumerated()
             .filter { !claimed.contains($0.offset) }
             .map { $0.element }
@@ -61,6 +64,7 @@ struct HeuristicParser: StubParsing {
                 let range = NSRange(line.startIndex..., in: line)
                 return letters >= 3 && Double(letters) / Double(max(line.count, 1)) > 0.5
                     && boilerplate.firstMatch(in: line, range: range) == nil
+                    && address.firstMatch(in: line, range: range) == nil
             }
         if let best = candidates.max(by: { $0.count < $1.count }) {
             draft.title = Self.titleCase(Self.stripFormats(best))
@@ -72,7 +76,7 @@ struct HeuristicParser: StubParsing {
         if !draft.seat.isEmpty { score += 0.15 }
         if !draft.cinema.isEmpty { score += 0.15 }
         if draft.price != nil { score += 0.1 }
-        draft.confidence = score
+        draft.confidence = (score * 100).rounded() / 100   // Summed tenths land at 0.9999999999999999 in binary and the label would say 99%
         draft.readBy = "heuristic"
         return draft
     }
@@ -87,13 +91,18 @@ struct HeuristicParser: StubParsing {
         return String(line[r])
     }
 
-    /// "SEAT H12", "Seat: H-12", "Row H Seat 12", "ROW H, SEAT 12". Always normalised to "H12".
+    /// "SEAT H12", "Seat: H-12", "Row H Seat 12", "ROW H, SEAT 12", "RANG F PLACE 12", "Reihe F Platz 12".
+    /// Always normalised to "H12".
+    static let rowWords = "ROW|RANG|REIHE|FILA"
+    static let seatWords = "SEAT|PLACE|PLATZ|SIEGE|ASIENTO|POSTO"
+
     static func seat(in line: String) -> String? {
-        if let row = match(#"(?i)\bROW\s*[:#]?\s*([A-Z]{1,2})\b[\s,.\-]*SEAT\s*[:#]?\s*(\d{1,3})\b"#, in: line),
-           let number = match(#"(?i)\bROW\s*[:#]?\s*[A-Z]{1,2}\b[\s,.\-]*SEAT\s*[:#]?\s*(\d{1,3})\b"#, in: line) {
+        let line = line.folding(options: .diacriticInsensitive, locale: nil)
+        if let row = match(#"(?i)\b(?:\#(rowWords))\s*[:#]?\s*([A-Z]{1,2})\b[\s,.\-]*(?:\#(seatWords))\s*[:#]?\s*(\d{1,3})\b"#, in: line),
+           let number = match(#"(?i)\b(?:\#(rowWords))\s*[:#]?\s*[A-Z]{1,2}\b[\s,.\-]*(?:\#(seatWords))\s*[:#]?\s*(\d{1,3})\b"#, in: line) {
             return row.uppercased() + number
         }
-        if let seat = match(#"(?i)\bSEAT\s*[:#]?\s*([A-Z]{1,2}\s?-?\d{1,3})\b"#, in: line) {
+        if let seat = match(#"(?i)\b(?:\#(seatWords))\s*[:#]?\s*([A-Z]{1,2}\s?-?\d{1,3})\b"#, in: line) {
             return seat.replacingOccurrences(of: " ", with: "").replacingOccurrences(of: "-", with: "").uppercased()
         }
         return nil
@@ -181,7 +190,8 @@ struct HeuristicParser: StubParsing {
     }
 
     static func titleCase(_ s: String) -> String {
-        let small: Set<String> = ["of", "the", "and", "a", "an", "in", "on", "at", "to", "for", "by", "or"]
+        let small: Set<String> = ["of", "the", "and", "a", "an", "in", "on", "at", "to", "for", "by", "or",
+                                  "du", "de", "des", "der", "von", "van", "di", "del"]
         let words = s.lowercased().split(separator: " ").map(String.init)
         return words.enumerated().map { i, w in
             (i > 0 && small.contains(w)) ? w : w.prefix(1).uppercased() + w.dropFirst()
