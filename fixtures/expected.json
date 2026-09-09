@@ -1,0 +1,13 @@
+{
+  "_about": "The truth for each fixture in fixtures/, as printed on the ticket. StubTests/EvalTests.swift reads this, runs Vision + heuristics (+ the model when the host has one) and writes docs/evals.md. Dates are local time, yyyy-MM-dd HH:mm. Empty string means the ticket does not print that field.",
+  "fixtures": [
+    { "name": "stub-1-the-brutalist",     "title": "The Brutalist",  "cinema": "Embassy Theatre",          "screenedAt": "2026-09-06 19:30", "screen": "Screen 1", "seat": "H12", "price": "18.50", "currency": "NZD" },
+    { "name": "stub-2-perfect-days",      "title": "Perfect Days",   "cinema": "Lighthouse Cinema Cuba",   "screenedAt": "2024-03-12 18:15", "screen": "Screen 3", "seat": "F7",  "price": "15.00", "currency": "NZD" },
+    { "name": "stub-3-dune-part-two-imax","title": "Dune Part Two",  "cinema": "The Roxy Cinema",          "screenedAt": "2024-03-14 20:45", "screen": "Screen 2", "seat": "D4",  "price": "21.00", "currency": "NZD" },
+    { "name": "stub-4-past-lives",        "title": "Past Lives",     "cinema": "Penthouse Cinema",         "screenedAt": "2024-02-09 18:00", "screen": "Screen 4", "seat": "K9",  "price": "14.00", "currency": "NZD" },
+    { "name": "stub-5-rotated",           "title": "No Other Land",  "cinema": "Event Cinemas Queen St",   "screenedAt": "2025-03-04 18:45", "screen": "Screen 7", "seat": "J14", "price": "22.00", "currency": "NZD", "hard": "rotated 12°" },
+    { "name": "stub-6-low-contrast",      "title": "Aftersun",       "cinema": "Rialto Cinemas Newmarket", "screenedAt": "2024-06-02 16:15", "screen": "Screen 3", "seat": "E11", "price": "19.50", "currency": "NZD", "hard": "pale ink on greyed paper" },
+    { "name": "stub-7-thermal",           "title": "Anora",          "cinema": "Academy Cinemas",          "screenedAt": "2025-02-19 20:15", "screen": "Screen 2", "seat": "C8",  "price": "19.00", "currency": "NZD", "hard": "thermal receipt, address line, GST and TOTAL lines" },
+    { "name": "stub-8-european",          "title": "La Chimera",     "cinema": "Cinéma du Panthéon",       "screenedAt": "2024-03-24 20:30", "screen": "Screen 2", "seat": "F12", "price": "12.50", "currency": "EUR", "hard": "accents, dd.MM.yyyy, RANG/PLACE, trailing €" }
+  ]
+}
