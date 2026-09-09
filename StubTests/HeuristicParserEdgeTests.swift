@@ -64,4 +64,47 @@ struct HeuristicParserEdgeTests {
         let d = HeuristicParser.date(in: "Sat 6 Sep 2026 7:30PM")
         #expect(Calendar.current.component(.year, from: d!) == 2026)
     }
+
+    // Day 3: the four harder fixtures.
+
+    @Test func frenchAndGermanSeats() {
+        #expect(HeuristicParser.seat(in: "RANG F PLACE 12") == "F12")
+        #expect(HeuristicParser.seat(in: "Reihe H Platz 3") == "H3")
+        #expect(HeuristicParser.seat(in: "Siège: K9") == "K9")
+        #expect(HeuristicParser.seat(in: "FILA C ASIENTO 14") == "C14")
+    }
+
+    @Test func europeanScreenWords() {
+        let d = HeuristicParser.parse(StubReading(lines: ["CINÉMA DU PANTHÉON", "LA CHIMERA", "24.03.2024 20:30", "SALLE 2", "RANG F PLACE 12", "TARIF PLEIN 12,50 €", "Billet n° 4471"]))
+        #expect(d.title == "La Chimera")
+        #expect(d.cinema == "Cinéma du Panthéon")
+        #expect(d.screen == "Screen 2")
+        #expect(d.seat == "F12")
+        #expect(d.price == Decimal(string: "12.50"))
+        #expect(d.currency == "EUR")
+        #expect(d.screenedAt != nil)
+    }
+
+    @Test func accentedVenueIsStillAVenue() {
+        #expect(HeuristicParser.looksLikeVenue("CINÉMA DU PANTHÉON".folding(options: .diacriticInsensitive, locale: nil)))
+        #expect(HeuristicParser.titleCase("CINÉMA DU PANTHÉON") == "Cinéma du Panthéon")
+    }
+
+    @Test func addressLineIsNotATitle() {
+        let d = HeuristicParser.parse(StubReading(lines: [
+            "ACADEMY CINEMAS", "44 LORNE ST AUCKLAND", "--------------------", "ANORA",
+            "Wed 19 Feb 2025 8:15PM", "CINEMA 2   SEAT C8", "ADULT        $19.00", "GST INCL      $2.48",
+            "TOTAL        $19.00", "TRANS 004512", "ADMIT ONE",
+        ]))
+        #expect(d.title == "Anora")
+        #expect(d.cinema == "Academy Cinemas")
+        #expect(d.screen == "Screen 2")
+        #expect(d.seat == "C8")
+        #expect(d.price == Decimal(string: "19.00"))
+    }
+
+    @Test func numberedTitlesAreNotAddresses() {
+        let d = HeuristicParser.parse(StubReading(lines: ["EMBASSY THEATRE", "12 ANGRY MEN", "SEAT B2", "$12.00"]))
+        #expect(d.title == "12 Angry Men")
+    }
 }
