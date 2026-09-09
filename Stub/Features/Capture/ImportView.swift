@@ -36,7 +36,9 @@ struct ImportView: View {
                             StageLine(stage: stage)
                         }
 
-                        if reading != nil || stage == .done || image == nil {
+                        // The fields are on screen while the model is still answering, so a streamed title
+                        // has somewhere to land.
+                        if reading != nil || stage == .done || image == nil || understanding {
                             fields
                         }
 
@@ -78,6 +80,11 @@ struct ImportView: View {
                 Task { await load(item) }
             }
         }
+    }
+
+    private var understanding: Bool {
+        if case .understanding = stage { return true }
+        return false
     }
 
     private var picker: some View {
@@ -130,9 +137,12 @@ struct ImportView: View {
         }
         image = ui
         do {
-            let result = try await StubReader.read(cg) { stage in
+            let result = try await StubReader.read(cg, progress: { stage in
                 withAnimation(Motion.settle) { self.stage = stage }
-            }
+            }, partial: { snapshot in
+                // The model's answer as it forms: the title lands first, then the rest fills in beneath it.
+                withAnimation(Motion.place) { draft = snapshot }
+            })
             reading = result.reading
             withAnimation(Motion.place) {
                 draft = result.draft

@@ -47,15 +47,43 @@ struct ModelParser: StubParsing {
         }
     }
 
-    func parse(_ reading: StubReading) async throws -> StubDraft {
-        let session = LanguageModelSession(instructions: """
+    /// The standing instructions. The prompt carries the text and, when there is one, the heuristic's draft.
+    static func session() -> LanguageModelSession {
+        LanguageModelSession(instructions: """
             You read cinema ticket stubs. You are given the text recognised from a photograph of one stub, \
             one printed line per line, top to bottom. Extract the fields. Never invent a value that is not \
-            printed; leave it empty instead. Titles are films, not cinemas. Seats look like a letter then a number.
+            printed; leave it empty instead. Titles are films, not cinemas. Seats look like a letter then a number. \
+            When a first pass by a rule-based reader is given, treat it as a hint: keep what the text confirms, \
+            correct what it does not, and fill what it missed.
             """)
+    }
+
+    /// The prompt. With a hint, the heuristic's reading is appended so the model corrects rather than starts cold.
+    static func prompt(_ reading: StubReading, hint: StubDraft?) -> String {
+        var text = "Ticket text:\n\(reading.text)"
+        if let hint, hint.isUsable {
+            var lines = ["title: \(hint.title)"]
+            if !hint.cinema.isEmpty { lines.append("cinema: \(hint.cinema)") }
+            if let d = hint.screenedAt { lines.append("screenedAt: \(d.formatted(.iso8601.year().month().day().time(includingFractionalSeconds: false)))") }
+            if !hint.screen.isEmpty { lines.append("screen: \(hint.screen)") }
+            if !hint.seat.isEmpty { lines.append("seat: \(hint.seat)") }
+            if let p = hint.price { lines.append("price: \(p)") }
+            if !hint.currency.isEmpty { lines.append("currency: \(hint.currency)") }
+            text += "\n\nFirst pass by the rule-based reader (a hint, not the truth):\n" + lines.joined(separator: "\n")
+        }
+        return text
+    }
+
+    func parse(_ reading: StubReading) async throws -> StubDraft {
+        try await parse(reading, hint: nil)
+    }
+
+    /// One answer, whole. `hint` is the heuristic's draft when the caller has one (Day 3: measured in `docs/evals.md`).
+    func parse(_ reading: StubReading, hint: StubDraft?) async throws -> StubDraft {
+        let session = Self.session()
         do {
             let response = try await session.respond(
-                to: "Ticket text:\n\(reading.text)",
+                to: Self.prompt(reading, hint: hint),
                 generating: Generated.self
             )
             return Self.draft(from: response.content)
@@ -64,9 +92,77 @@ struct ModelParser: StubParsing {
         }
     }
 
+    /// The answer as it forms. Each snapshot of the partially generated struct becomes a draft; properties fill
+    /// in the order they are declared, so the title lands before the seat and the import fields can show it.
+    /// Only changed drafts are yielded. Cancelling the consumer cancels the generation.
+    func stream(_ reading: StubReading, hint: StubDraft?) -> AsyncThrowingStream<StubDraft, any Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task {
+                let session = Self.session()
+                do {
+                    let snapshots = session.streamResponse(to: Self.prompt(reading, hint: hint), generating: Generated.self)
+                    var last: StubDraft?
+                    for try await snapshot in snapshots {
+                        let draft = Self.draft(from: snapshot.content)
+                        if draft != last {
+                            continuation.yield(draft)
+                            last = draft
+                        }
+                    }
+                    continuation.finish()
+                } catch let error as LanguageModelSession.GenerationError {
+                    continuation.finish(throwing: ModelFailure(reason: Self.describe(error)))
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
     struct ModelFailure: LocalizedError {
         let reason: String
         var errorDescription: String? { reason }
+    }
+
+    /// "SCR 2", "Cinema 3", "Salle 2" → "Screen 2". A bare number is a screen too. Anything else stays as said.
+    static func normalisedScreen(_ raw: String) -> String {
+        let s = raw.trimmingCharacters(in: .whitespaces)
+        guard !s.isEmpty else { return "" }
+        if let n = HeuristicParser.match(#"(?i)\b(?:SCREEN|SCR|CINEMA|AUDITORIUM|AUD|HALL|THEATRE|THEATER|SALLE|SAAL|SALA)\s*[:#]?\s*(\d{1,2})\b"#, in: s)
+            ?? HeuristicParser.match(#"^\s*(\d{1,2})\s*$"#, in: s) {
+            return "Screen \(n)"
+        }
+        return s
+    }
+
+    /// "SEAT D 4", "RANG F PLACE 12", "h12" → "D4", "F12", "H12". The heuristic's seat folklore, reused.
+    static func normalisedSeat(_ raw: String) -> String {
+        let s = raw.trimmingCharacters(in: .whitespaces)
+        guard !s.isEmpty else { return "" }
+        if let seat = HeuristicParser.seat(in: s) { return seat }
+        if let bare = HeuristicParser.match(#"^\s*([A-Z]{1,2}\s?-?\d{1,3})\s*$"#, in: s.uppercased()) {
+            return bare.replacingOccurrences(of: " ", with: "").replacingOccurrences(of: "-", with: "")
+        }
+        return s.uppercased()
+    }
+
+    /// A ticket prints the time on the wall of the cinema, no zone. The model tends to write ISO 8601 with a
+    /// `Z` (Day 3 evals: every date landed twelve or thirteen hours late), so any zone designator is dropped
+    /// and the digits are read as local time. A date with no time is kept at midnight.
+    static func wallClock(_ raw: String) -> Date? {
+        var s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !s.isEmpty else { return nil }
+        s = s.replacingOccurrences(of: #"(?:Z|[+-]\d{2}:?\d{2})$"#, with: "", options: .regularExpression)
+        s = s.replacingOccurrences(of: #"\.\d+$"#, with: "", options: .regularExpression)
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = .current
+        for format in ["yyyy-MM-dd'T'HH:mm:ss", "yyyy-MM-dd'T'HH:mm", "yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd HH:mm", "yyyy-MM-dd"] {
+            f.dateFormat = format
+            if let d = f.date(from: s) { return d }
+        }
+        return nil
     }
 
     /// Name the failure. `GenerationError` prints as a bare code otherwise, and a bare code teaches nothing.
@@ -86,30 +182,36 @@ struct ModelParser: StubParsing {
     }
 
     static func draft(from g: Generated) -> StubDraft {
+        draft(title: g.title, cinema: g.cinema, screenedAt: g.screenedAt, screen: g.screen, seat: g.seat, price: g.price, currency: g.currency)
+    }
+
+    /// A snapshot mid-generation: every property is optional until the model has said it.
+    static func draft(from p: Generated.PartiallyGenerated) -> StubDraft {
+        draft(title: p.title ?? "", cinema: p.cinema ?? "", screenedAt: p.screenedAt ?? "", screen: p.screen ?? "",
+              seat: p.seat ?? "", price: p.price ?? "", currency: p.currency ?? "")
+    }
+
+    /// The model's fields, put into the shapes the drawer files: the same normalisation the heuristic applies,
+    /// so the two are compared on what they read and not on how they spelt it (Day 3 evals: the cold model's
+    /// misses on screen and seat were "SCR 2" and "SEAT D 4", read correctly and left as printed).
+    static func draft(title: String, cinema: String, screenedAt: String, screen: String, seat: String, price: String, currency: String) -> StubDraft {
         var draft = StubDraft()
-        draft.title = g.title.trimmingCharacters(in: .whitespaces)
-        draft.cinema = g.cinema.trimmingCharacters(in: .whitespaces)
-        draft.screen = g.screen.trimmingCharacters(in: .whitespaces)
-        draft.seat = g.seat.trimmingCharacters(in: .whitespaces).uppercased()
-        draft.currency = g.currency.trimmingCharacters(in: .whitespaces).uppercased()
-        if !g.price.isEmpty {
-            draft.price = Decimal(string: g.price.filter { $0.isNumber || $0 == "." })
+        draft.title = HeuristicParser.stripFormats(title.trimmingCharacters(in: .whitespaces))
+        draft.cinema = cinema.trimmingCharacters(in: .whitespaces)
+        draft.screen = normalisedScreen(screen)
+        draft.seat = normalisedSeat(seat)
+        draft.currency = currency.trimmingCharacters(in: .whitespaces).uppercased()
+        if !price.isEmpty {
+            draft.price = Decimal(string: price.replacingOccurrences(of: ",", with: ".").filter { $0.isNumber || $0 == "." })
         }
-        if !g.screenedAt.isEmpty {
-            let iso = ISO8601DateFormatter()
-            iso.formatOptions = [.withInternetDateTime]
-            iso.timeZone = .current
-            draft.screenedAt = iso.date(from: g.screenedAt)
-                ?? iso.date(from: g.screenedAt + "Z")
-                ?? { iso.formatOptions = [.withFullDate]; return iso.date(from: g.screenedAt) }()
-        }
+        draft.screenedAt = wallClock(screenedAt)
         var score = 0.0
         if draft.isUsable { score += 0.5 }
         if draft.screenedAt != nil { score += 0.2 }
         if !draft.seat.isEmpty { score += 0.1 }
         if !draft.cinema.isEmpty { score += 0.1 }
         if draft.price != nil { score += 0.1 }
-        draft.confidence = score
+        draft.confidence = (score * 100).rounded() / 100   // Summed tenths land at 0.9999999999999999 in binary and the label would say 99%
         draft.readBy = "foundation-models"
         return draft
     }
