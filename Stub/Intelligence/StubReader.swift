@@ -24,7 +24,13 @@ enum StubReader {
         var draft: StubDraft
     }
 
-    static func read(_ image: CGImage, progress: @Sendable @MainActor (Stage) -> Void) async throws -> Result {
+    /// `partial` is called with each draft the model streams, title first, so a screen can fill in as the
+    /// answer forms. It is not called on the heuristic path: that answer arrives whole.
+    static func read(
+        _ image: CGImage,
+        progress: @Sendable @MainActor (Stage) -> Void,
+        partial: (@Sendable @MainActor (StubDraft) -> Void)? = nil
+    ) async throws -> Result {
         await progress(.cropping)
         let crop = await StubCrop.crop(image)
 
@@ -48,18 +54,31 @@ enum StubReader {
         let parser = preferredParser()
         await progress(.understanding(parser: parser.name))
 
-        var draft: StubDraft
-        do {
-            draft = try await parser.parse(reading)
-            if !draft.isUsable, parser.name != "heuristic" {
-                log.notice("Model returned no title; falling back to heuristics")
-                draft = HeuristicParser.parse(reading)
+        // The floor first: it is cheap, it is the fallback, and it is the model's hint.
+        let floor = HeuristicParser.parse(reading)
+        var draft = floor
+        if #available(iOS 26.0, *), let model = parser as? ModelParser {
+            do {
+                let started = ContinuousClock.now
+                var last: StubDraft?
+                var titleAt: Duration?, seatAt: Duration?
+                for try await snapshot in model.stream(reading, hint: floor) {
+                    if titleAt == nil, snapshot.isUsable { titleAt = started.duration(to: .now) }
+                    if seatAt == nil, !snapshot.seat.isEmpty { seatAt = started.duration(to: .now) }
+                    last = snapshot
+                    await partial?(snapshot)
+                }
+                let total = started.duration(to: .now)
+                func ms(_ d: Duration?) -> String { d.map { "\(Int($0 / .milliseconds(1))) ms" } ?? "never" }
+                log.info("Model streamed: title at \(ms(titleAt)), seat at \(ms(seatAt)), done at \(ms(total))")
+                if let last, last.isUsable {
+                    draft = last
+                } else {
+                    log.notice("Model returned no title; falling back to heuristics")
+                }
+            } catch {
+                log.error("\(parser.name) failed: \(ModelProbe.explain(error)). Using heuristics.")
             }
-        } catch {
-            let explained: String
-            if #available(iOS 26.0, *) { explained = ModelProbe.explain(error) } else { explained = error.localizedDescription }
-            log.error("\(parser.name) failed: \(explained). Using heuristics.")
-            draft = HeuristicParser.parse(reading)
         }
         await progress(.done)
         return Result(plate: plate, cropped: cropped, detector: detector, reading: reading, draft: draft)
