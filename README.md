@@ -36,7 +36,7 @@ scripts/run.sh --seed --reset --shot docs/screenshots/now.png
 
 ## Honesty
 
-On Day 0 the on-device model said it was available and then refused every request in the simulator (`ModelManagerError 1026`). The heuristic parser filed all four fixtures correctly. That is why the heuristic exists and why every stub records who read it. The eval table comparing the two lands on Day 3.
+On Day 0 the on-device model said it was available and then refused every request in the simulator (`ModelManagerError 1026`). The heuristic parser filed all four fixtures correctly. That is why the heuristic exists and why every stub records who read it. On Day 3 the model answered for the first time and the two were measured on the same eight fixtures: `docs/evals.md`. Cold, the model reads two of eight prices and six of eight cinemas; given the heuristic's draft as a hint it matches the heuristic on every field, at the same latency. The heuristic reads eight of eight on every field in about a millisecond. The model reads with the hint; the heuristic stays the floor (ADR-001, ADR-010).
 
 ## Licence
 
