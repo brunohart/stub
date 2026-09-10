@@ -6,11 +6,21 @@ struct StubApp: App {
     let container: ModelContainer
 
     init() {
+        #if DEBUG
+        // A reset drawer gets a fresh sentence, not yesterday's: cleared before the table's first task can
+        // read the cache for the drawer that is about to be emptied.
+        if DebugSeed.resets { SeasonCache.clear() }
+        #endif
         do {
             container = try ModelContainer(for: Stub.self)
         } catch {
             fatalError("Stub could not open its drawer: \(error)")
         }
+        #if DEBUG
+        // Empty the drawer here, not in the seed: the seed waits for the probe, and in those seconds the
+        // table would otherwise count yesterday's drawer and start phrasing it.
+        if DebugSeed.resets { try? container.mainContext.delete(model: Stub.self) }
+        #endif
     }
 
     var body: some Scene {

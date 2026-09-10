@@ -21,17 +21,18 @@ final class SeasonModel {
     /// sentence is only ever written for the drawer as it is now.
     func update(_ new: SeasonSummary) async {
         summary = new
+        SeasonWriter.log.debug("Season (\(new.films) stubs, key \(new.key)): counted")
         if let cached = SeasonCache.sentence(for: new.key) {
             sentence = cached
             author = .model
-            SeasonWriter.log.info("Season (\(new.films) stubs): cached: \"\(cached)\"")
+            SeasonWriter.log.info("Season (\(new.films) stubs, key \(new.key)): cached: \"\(cached)\"")
             return
         }
         sentence = new.handSentence
         author = .hand
         guard new.films >= 1 else { return }   // the empty drawer's line is product copy, not a summary
         guard #available(iOS 26.0, *), ModelParser.isAvailable, ModelProbe.outcome.allowsModel else {
-            SeasonWriter.log.info("Season (\(new.films) stubs): hand-counted; \(StubReader.modelStatus)")
+            SeasonWriter.log.info("Season (\(new.films) stubs, key \(new.key)): hand-counted; \(StubReader.modelStatus)")
             return
         }
         do {
@@ -45,11 +46,13 @@ final class SeasonModel {
             SeasonCache.store(written, for: new.key)
             sentence = written
             author = .model
-            SeasonWriter.log.info("Season (\(new.films) stubs): written by the model in \(ms) ms: \"\(written)\"")
+            SeasonWriter.log.info("Season (\(new.films) stubs, key \(new.key)): written by the model in \(ms) ms: \"\(written)\"")
         } catch is CancellationError {
             return
         } catch {
-            SeasonWriter.log.error("Season (\(new.films) stubs): hand-counted; \(ModelProbe.explain(error))")
+            // The drawer changed under the request: the model throws its own error on cancel, not CancellationError.
+            if Task.isCancelled { return }
+            SeasonWriter.log.error("Season (\(new.films) stubs, key \(new.key)): hand-counted; \(ModelProbe.explain(error))")
         }
     }
 }

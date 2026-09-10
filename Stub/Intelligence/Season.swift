@@ -189,8 +189,10 @@ enum SeasonWriter {
             You write one sentence about a person's season of cinema-going, from a short summary of the ticket \
             stubs in their drawer. Rules: one sentence, under twenty words. No exclamation marks. No emoji. \
             Spell every number out as a word; never write a digit. Dry and observational, the way a friend who \
-            has seen the drawer might put it; no enthusiasm, no advice, no questions. Do not list every cinema \
-            or month; pick the one or two facts that say the most.
+            has seen the drawer might put it; no enthusiasm, no advice, no questions. Address the owner of the \
+            drawer as "you", or leave the subject out; never "the person". Never enumerate: not the \
+            cinemas, not the months, not the weekdays. Pick the one or two facts that say the most and leave \
+            the rest out.
             """)
     }
 
@@ -199,21 +201,31 @@ enum SeasonWriter {
         var errorDescription: String? { "the model's sentence broke a rule (\(reason))" }
     }
 
-    /// The model's sentence, judged. Throws when the model fails or its sentence breaks a rule.
-    static func write(_ summary: SeasonSummary) async throws -> String {
+    /// The model's sentence, judged. A refused sentence earns one more try with the reason in the prompt
+    /// (Day 4: the first sentence for the seeded drawer ran to twenty-five words). Throws when the model
+    /// fails or both sentences break a rule.
+    static func write(_ summary: SeasonSummary, attempts: Int = 2) async throws -> String {
         var options = GenerationOptions()
         options.maximumResponseTokens = 80
-        let response: LanguageModelSession.Response<Season>
-        do {
-            response = try await session().respond(to: summary.brief, generating: Season.self, options: options)
-        } catch let error as LanguageModelSession.GenerationError {
-            throw ModelParser.ModelFailure(reason: ModelParser.describe(error))
+        let session = session()
+        var prompt = summary.brief
+        var refused = ""
+        for attempt in 1...max(attempts, 1) {
+            let response: LanguageModelSession.Response<Season>
+            do {
+                response = try await session.respond(to: prompt, generating: Season.self, options: options)
+            } catch let error as LanguageModelSession.GenerationError {
+                throw ModelParser.ModelFailure(reason: ModelParser.describe(error))
+            }
+            switch SeasonRules.judge(response.content.sentence) {
+            case .accepted(let sentence): return sentence
+            case .rejected(let reason):
+                log.notice("Season rejected, attempt \(attempt) (\(reason)): \(response.content.sentence)")
+                refused = reason
+                prompt = "That sentence was refused (\(reason)). Write it again: one sentence, under twenty words, "
+                    + "numbers as words, and at most two facts from the summary."
+            }
         }
-        switch SeasonRules.judge(response.content.sentence) {
-        case .accepted(let sentence): return sentence
-        case .rejected(let reason):
-            log.notice("Season rejected (\(reason)): \(response.content.sentence)")
-            throw Rejected(reason: reason)
-        }
+        throw Rejected(reason: refused)
     }
 }
