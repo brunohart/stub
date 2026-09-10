@@ -12,6 +12,8 @@ final class DebugDrive {
     static let shared = DebugDrive()
     static let log = Logger(subsystem: "com.designedbybruno.stub", category: "drive")
     static var requested: Bool { ProcessInfo.processInfo.arguments.contains("-drive") }
+    /// `-season`: open the season sheet once the seed has settled, so the sheet can be screenshotted.
+    static var wantsSeason: Bool { ProcessInfo.processInfo.arguments.contains("-season") }
 
     /// The card the driver is pressing, if any. `StubCard` treats it as a touch.
     var pressedID: UUID?
