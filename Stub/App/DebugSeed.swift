@@ -48,6 +48,7 @@ enum DebugSeed {
             }
         }
         try? context.save()
+        log.info("Seed done: \(urls.count) stubs read")
     }
 }
 #endif

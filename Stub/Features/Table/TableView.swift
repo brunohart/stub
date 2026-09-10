@@ -7,10 +7,14 @@ struct TableView: View {
     @Environment(\.modelContext) private var context
     @State private var isImporting = false
     @State private var selected: Stub?
+    @State private var showSeason = false
+    /// The sentence and the numbers. Hand-counted at once, phrased by the model when it is idle.
+    @State private var season = SeasonModel()
     /// The zoom transition's pair: the card on the table is the source, the detail grows out of it.
     @Namespace private var table
 
     var body: some View {
+        let summary = SeasonSummary(stubs: stubs)
         NavigationStack {
             ZStack {
                 Paper()
@@ -43,6 +47,11 @@ struct TableView: View {
             .sheet(isPresented: $isImporting) {
                 ImportView()
             }
+            .sheet(isPresented: $showSeason) {
+                SeasonView(summary: season.summary, sentence: season.sentence)
+            }
+            // Re-count when the drawer changes; the previous sentence in progress is cancelled with the task.
+            .task(id: summary.key) { await season.update(summary) }
             .navigationDestination(item: $selected) { stub in
                 StubDetailView(stub: stub)
                     .navigationTransition(.zoom(sourceID: stub.id, in: table))
@@ -53,6 +62,12 @@ struct TableView: View {
                 guard DebugDrive.requested, !stubs.isEmpty, !DebugDrive.shared.hasRun else { return }
                 DebugDrive.shared.run(stubs: stubs) { selected = $0 }
             }
+            .task(id: stubs.count) {
+                // `-season`: open the season sheet once the drawer has sat still for a moment after the seed.
+                guard DebugDrive.wantsSeason, !stubs.isEmpty else { return }
+                do { try await Task.sleep(for: .seconds(2)) } catch { return }
+                showSeason = true
+            }
             #endif
         }
     }
@@ -60,31 +75,25 @@ struct TableView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 10) {
             DisplayTitle("Stub", size: 44)
-            Text(seasonLine)
-                .font(Type.italic(20))
-                .foregroundStyle(Ink.navy)
-                .lineSpacing(2)
-                .fixedSize(horizontal: false, vertical: true)
+            // The one italic sentence. Counted by hand on Day 0; written by the on-device model from Day 4,
+            // with the hand count as the floor (ADR-011). Tap it for the numbers.
+            Button {
+                if !stubs.isEmpty { showSeason = true }
+            } label: {
+                Text(season.sentence)
+                    .font(Type.italic(20))
+                    .foregroundStyle(Ink.navy)
+                    .lineSpacing(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .multilineTextAlignment(.leading)
+                    .contentTransition(.opacity)
+                    .animation(Motion.place, value: season.sentence)
+            }
+            .buttonStyle(.plain)
+            .disabled(stubs.isEmpty)
+            .accessibilityHint(stubs.isEmpty ? "" : "Opens the season: the numbers behind this sentence.")
         }
         .padding(.top, 4)
-    }
-
-    /// The one italic sentence. Day 0: counted by hand. Day 5: written by the on-device model.
-    private var seasonLine: String {
-        switch stubs.count {
-        case 0: return "Nothing in the drawer yet. Every film you saw in a room with strangers, kept here, read here, never uploaded."
-        case 1: return "One stub. The drawer has started."
-        default:
-            let cinemas = Set(stubs.compactMap(\.cinema)).count
-            let places = cinemas <= 1 ? "one cinema" : "\(spelled(cinemas).lowercased()) cinemas"
-            return "\(spelled(stubs.count)) stubs across \(places)."
-        }
-    }
-
-    private func spelled(_ n: Int) -> String {
-        let f = NumberFormatter()
-        f.numberStyle = .spellOut
-        return (f.string(from: NSNumber(value: n)) ?? "\(n)").capitalized
     }
 }
 
