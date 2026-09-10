@@ -44,7 +44,7 @@ enum ModelProbe {
 
     /// Probe once. Later calls return the cached outcome without touching the model again.
     @discardableResult
-    static func run(timeout: Duration = .seconds(12)) async -> Outcome {
+    static func run(timeout: Duration = .seconds(20)) async -> Outcome {
         if case .untested = outcome {} else { return outcome }
 
         if let reason = ModelParser.unavailabilityReason() {
@@ -93,6 +93,9 @@ enum ModelProbe {
         var parts: [String] = []
         if let generation = error as? LanguageModelSession.GenerationError {
             parts.append(ModelParser.describe(generation))
+        } else if let described = (error as? any LocalizedError)?.errorDescription {
+            // Our own failures (ModelFailure, SeasonWriter.Rejected) carry their reason here, not in userInfo.
+            parts.append(described)
         }
         // The framework throws a plain NSError whose chain hangs off NSMultipleUnderlyingErrorsKey, not
         // NSUnderlyingErrorKey, and the `GenerationError` cast fails. Walk both keys, keep the deepest reason.

@@ -11,13 +11,14 @@ enum DebugSeed {
     static let log = Logger(subsystem: "com.designedbybruno.stub", category: "seed")
 
     static var requested: Bool { ProcessInfo.processInfo.arguments.contains("-seed") }
+    static var resets: Bool { ProcessInfo.processInfo.arguments.contains("-reset") }
 
     @MainActor
     static func run(in container: ModelContainer) async {
         let context = container.mainContext
         let existing = (try? context.fetchCount(FetchDescriptor<Stub>())) ?? 0
-        if ProcessInfo.processInfo.arguments.contains("-reset") {
-            try? context.delete(model: Stub.self)
+        if resets {
+            // Already emptied in StubApp.init; nothing to skip.
         } else if existing > 0 {
             log.info("Seed skipped: \(existing) stubs already in the drawer")
             return
