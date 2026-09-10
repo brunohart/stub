@@ -1,11 +1,17 @@
 import Foundation
 import CoreGraphics
 import OSLog
+import Synchronization
 
 /// The whole pipeline: photograph → crop → text → fields. Prefers the on-device model, keeps the heuristic
 /// as the floor, and always returns the raw read so the human can overrule both.
 enum StubReader {
     static let log = Logger(subsystem: "com.designedbybruno.stub", category: "reader")
+
+    /// How many reads are in flight. The season sentence waits for zero: the model has one pair of hands,
+    /// and a stub being read should not queue behind a sentence about the drawer.
+    private static let inFlight = Mutex(0)
+    static var isBusy: Bool { inFlight.withLock { $0 > 0 } }
 
     enum Stage: Equatable, Sendable {
         case cropping     // Vision document segmentation
@@ -31,6 +37,8 @@ enum StubReader {
         progress: @Sendable @MainActor (Stage) -> Void,
         partial: (@Sendable @MainActor (StubDraft) -> Void)? = nil
     ) async throws -> Result {
+        inFlight.withLock { $0 += 1 }
+        defer { inFlight.withLock { $0 -= 1 } }
         await progress(.cropping)
         let crop = await StubCrop.crop(image)
 
