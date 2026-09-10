@@ -48,13 +48,17 @@ Shipped: all four bullets. Found: the on-device model answered for the first tim
 - Eval harness: `fixtures/expected.json` with the truth for each fixture; a test target that runs Vision + heuristic (+ model when available) and writes `docs/evals.md` as a table: field, heuristic hit rate, model hit rate, latency. Evidence over assertion.
 - Add four harder fixtures (rotated, low contrast, receipt-style thermal print, a European ticket with `€` and `dd.mm.yyyy`).
 
-## Day 4 — Wed 10 Sep — The season line
+## Day 4 — Wed 10 Sep — The season line ✅
+
+Shipped: all three bullets. Found: the model keeps the rules about half the time cold (three of its first four sentences for the seeded drawer ran past twenty words), so the rules are checked in code and a refusal earns one retry with the reason; the hand-counted sentence is the floor (ADR-011). The probe's 12 s window was hit twice and is now 20 s. See `docs/LOG.md`.
 
 - The one italic sentence gets written by the on-device model: `@Generable struct Season { sentence: String }` from a compact summary of the drawer (counts, cinemas, weekdays, months, price total). Rules in the instructions: under 20 words, no exclamation marks, no emoji, numbers spelled out, dry. Fall back to the hand-counted sentence.
 - A Season sheet: the numbers in Fragment Mono (films, cinemas, most-visited, busiest month, total paid), the sentence in Newsreader italic, nothing else.
 - Cache the sentence per drawer-hash so it is only regenerated when the drawer changes.
 
 ## Day 5 — Thu 11 Sep — Reach: intents and a widget
+
+- (From Day 4) Before the widget: when the model's seat has no row and the hint's has, keep the hint's; title-case the model's title and cinema as the heuristic does. Both in `ModelParser.draft` so the eval table sees them. The widget shows the last stub's seat, and "PLACE 12" on a lock screen is the wrong first impression.
 
 - App Intents: `LogStubIntent` (opens the app straight into import), `FilmsThisYearIntent` (returns the count, speakable). `AppShortcutsProvider` phrases: "Log a stub in Stub", "How many films this year in Stub".
 - WidgetKit extension (`StubWidget` target in project.yml): lock-screen and small home-screen widget showing the last stub's title, date and seat on parchment. Shared model container via an App Group.
