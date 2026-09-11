@@ -86,7 +86,7 @@ struct ModelParser: StubParsing {
                 to: Self.prompt(reading, hint: hint),
                 generating: Generated.self
             )
-            return Self.draft(from: response.content)
+            return Self.draft(from: response.content, hint: hint)
         } catch let error as LanguageModelSession.GenerationError {
             throw ModelFailure(reason: Self.describe(error))
         }
@@ -103,7 +103,7 @@ struct ModelParser: StubParsing {
                     let snapshots = session.streamResponse(to: Self.prompt(reading, hint: hint), generating: Generated.self)
                     var last: StubDraft?
                     for try await snapshot in snapshots {
-                        let draft = Self.draft(from: snapshot.content)
+                        let draft = Self.draft(from: snapshot.content, hint: hint)
                         if draft != last {
                             continuation.yield(draft)
                             last = draft
@@ -181,25 +181,49 @@ struct ModelParser: StubParsing {
         }
     }
 
-    static func draft(from g: Generated) -> StubDraft {
-        draft(title: g.title, cinema: g.cinema, screenedAt: g.screenedAt, screen: g.screen, seat: g.seat, price: g.price, currency: g.currency)
+    static func draft(from g: Generated, hint: StubDraft? = nil) -> StubDraft {
+        draft(title: g.title, cinema: g.cinema, screenedAt: g.screenedAt, screen: g.screen, seat: g.seat, price: g.price,
+              currency: g.currency, hint: hint)
     }
 
     /// A snapshot mid-generation: every property is optional until the model has said it.
-    static func draft(from p: Generated.PartiallyGenerated) -> StubDraft {
+    static func draft(from p: Generated.PartiallyGenerated, hint: StubDraft? = nil) -> StubDraft {
         draft(title: p.title ?? "", cinema: p.cinema ?? "", screenedAt: p.screenedAt ?? "", screen: p.screen ?? "",
-              seat: p.seat ?? "", price: p.price ?? "", currency: p.currency ?? "")
+              seat: p.seat ?? "", price: p.price ?? "", currency: p.currency ?? "", hint: hint)
+    }
+
+    /// "H12", "AA3": a row and a number. The shape the drawer files a seat in.
+    static func hasRow(_ seat: String) -> Bool {
+        seat.range(of: #"^[A-Z]{1,2}\d{1,3}$"#, options: .regularExpression) != nil
+    }
+
+    /// The heuristic reads capitals off the ticket and title-cases them. The model sometimes copies the capitals
+    /// instead ("AFTERSUN", "RIALTO CINEMAS NEWMARKET" on Day 4), and "PLACE 12" on a lock screen is the wrong
+    /// first impression. A shouted answer gets the heuristic's casing; a cased one is the model's own choice and stays.
+    static func cased(_ s: String) -> String {
+        let t = s.trimmingCharacters(in: .whitespaces)
+        guard t.contains(where: \.isLetter), !t.contains(where: \.isLowercase) else { return t }
+        return HeuristicParser.titleCase(t)
     }
 
     /// The model's fields, put into the shapes the drawer files: the same normalisation the heuristic applies,
     /// so the two are compared on what they read and not on how they spelt it (Day 3 evals: the cold model's
     /// misses on screen and seat were "SCR 2" and "SEAT D 4", read correctly and left as printed).
-    static func draft(title: String, cinema: String, screenedAt: String, screen: String, seat: String, price: String, currency: String) -> StubDraft {
+    ///
+    /// `hint` is the heuristic's draft when the model was reading with one (ADR-010). It settles one argument:
+    /// a seat the model read without its row ("PLACE 12", Day 4) when the hint has the row (F12). The row was
+    /// printed and the regex saw it; the model's version is not a seat the drawer can file. An empty seat is left
+    /// empty: filling what it missed is the model's job, and the eval table should see when it does not.
+    static func draft(title: String, cinema: String, screenedAt: String, screen: String, seat: String, price: String,
+                      currency: String, hint: StubDraft? = nil) -> StubDraft {
         var draft = StubDraft()
-        draft.title = HeuristicParser.stripFormats(title.trimmingCharacters(in: .whitespaces))
-        draft.cinema = cinema.trimmingCharacters(in: .whitespaces)
+        draft.title = cased(HeuristicParser.stripFormats(title.trimmingCharacters(in: .whitespaces)))
+        draft.cinema = cased(cinema)
         draft.screen = normalisedScreen(screen)
         draft.seat = normalisedSeat(seat)
+        if let hint, !draft.seat.isEmpty, !hasRow(draft.seat), hasRow(hint.seat) {
+            draft.seat = hint.seat
+        }
         draft.currency = currency.trimmingCharacters(in: .whitespaces).uppercased()
         if !price.isEmpty {
             draft.price = Decimal(string: price.replacingOccurrences(of: ",", with: ".").filter { $0.isNumber || $0 == "." })
