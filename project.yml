@@ -38,6 +38,13 @@ targets:
           - FragmentMono-Italic.ttf
         NSCameraUsageDescription: Stub photographs your ticket stub. The photo stays on this device.
         NSPhotoLibraryUsageDescription: Stub reads ticket stubs from your library. Nothing is uploaded.
+    # The drawer lives in an App Group so the widget can read it (Day 5). Generated, like Info.plist.
+    entitlements:
+      path: Stub/Stub.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.designedbybruno.stub]
+    dependencies:
+      - target: StubWidget
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.designedbybruno.stub
@@ -46,6 +53,43 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         SWIFT_EMIT_LOC_STRINGS: YES
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: ""
+  # The widget: the last stub on the lock screen and the home screen. Shares the model, the inks, the type
+  # tokens and the store with the app by compiling the same files; nothing it shares may need Metal or UIKit.
+  StubWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: StubWidget
+      - path: Stub/Models/Stub.swift
+      - path: Stub/Design/Ink.swift
+      - path: Stub/Design/Type.swift
+      - path: Stub/Reach/SharedStore.swift
+      - path: Stub/Resources/Fonts/HostGrotesk-Variable.ttf
+        buildPhase: resources
+      - path: Stub/Resources/Fonts/FragmentMono-Regular.ttf
+        buildPhase: resources
+    info:
+      path: StubWidget/Info.plist
+      properties:
+        CFBundleDisplayName: Stub
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        UIAppFonts:
+          - HostGrotesk-Variable.ttf
+          - FragmentMono-Regular.ttf
+    entitlements:
+      path: StubWidget/StubWidget.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.designedbybruno.stub]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.designedbybruno.stub.widget
+        PRODUCT_NAME: StubWidget
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: NO
+        SKIP_INSTALL: YES
   StubTests:
     type: bundle.unit-test
     platform: iOS
@@ -62,6 +106,7 @@ schemes:
     build:
       targets:
         Stub: all
+        StubWidget: all
         StubTests: [test]
     run:
       config: Debug
