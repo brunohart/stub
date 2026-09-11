@@ -49,6 +49,8 @@ struct LastStubWidget: Widget {
         .configurationDisplayName("Last stub")
         .description("The last film you kept.")
         .supportedFamilies([.systemSmall, .accessoryRectangular, .accessoryInline])
+        // The system's margins took a fifth of the small widget and wrapped "La Chimera"; the card insets itself.
+        .contentMarginsDisabled()
     }
 }
 
@@ -96,7 +98,8 @@ struct LastStubView: View {
                     .lineLimit(3)
                     .minimumScaleFactor(0.8)
                 if let numbers = stub.numbers {
-                    Text(numbers).numberText(11)
+                    // "09 FEB 24 · K9" is one line of numbers; the gallery preview wrapped it at the dot.
+                    Text(numbers).numberText(11).lineLimit(1).minimumScaleFactor(0.8)
                 }
                 if let cinema = stub.cinema {
                     Text(cinema)
@@ -106,10 +109,10 @@ struct LastStubView: View {
                 }
             }
             .padding(11)
-            .padding(.trailing, 20)
+            .padding(.trailing, 16)
         }
         .rotationEffect(.degrees(-0.8))
-        .padding(4)
+        .padding(10)
     }
 
     private var perforation: some View {
@@ -129,7 +132,7 @@ struct LastStubView: View {
                 .foregroundStyle(Ink.grey)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(4)
+        .padding(12)
     }
 
     private var rectangular: some View {
@@ -151,6 +154,7 @@ struct LastStubView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .padding(.horizontal, 4)
     }
 
     private var inline: some View {
