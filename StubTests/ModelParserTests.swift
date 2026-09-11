@@ -46,6 +46,35 @@ struct ModelParserTests {
         #expect(d.confidence == 1.0)
     }
 
+    @Test func hintKeepsTheRowTheModelDropped() {
+        var hint = StubDraft()
+        hint.title = "La Chimera"; hint.seat = "F12"
+        // Day 4: the model read "PLACE 12" off the French stub with the hint saying F12, and the drawer filed "PLACE 12".
+        #expect(ModelParser.draft(title: "La Chimera", cinema: "", screenedAt: "", screen: "", seat: "PLACE 12", price: "", currency: "", hint: hint).seat == "F12")
+        #expect(ModelParser.draft(title: "La Chimera", cinema: "", screenedAt: "", screen: "", seat: "12", price: "", currency: "", hint: hint).seat == "F12")
+        // A seat with its row is the model's own, even when it disagrees with the hint.
+        #expect(ModelParser.draft(title: "La Chimera", cinema: "", screenedAt: "", screen: "", seat: "G12", price: "", currency: "", hint: hint).seat == "G12")
+        // Nothing said is nothing filed: the eval table should see the miss.
+        #expect(ModelParser.draft(title: "La Chimera", cinema: "", screenedAt: "", screen: "", seat: "", price: "", currency: "", hint: hint).seat == "")
+        // No hint, or a hint with no row of its own, changes nothing.
+        #expect(ModelParser.draft(title: "La Chimera", cinema: "", screenedAt: "", screen: "", seat: "PLACE 12", price: "", currency: "").seat == "PLACE 12")
+        hint.seat = "12"
+        #expect(ModelParser.draft(title: "La Chimera", cinema: "", screenedAt: "", screen: "", seat: "PLACE 12", price: "", currency: "", hint: hint).seat == "PLACE 12")
+        #expect(ModelParser.hasRow("H12") && ModelParser.hasRow("AA3") && !ModelParser.hasRow("PLACE 12") && !ModelParser.hasRow("12") && !ModelParser.hasRow(""))
+    }
+
+    @Test func shoutedAnswersGetTheHeuristicsCasing() {
+        // Day 4: "AFTERSUN" and "RIALTO CINEMAS NEWMARKET" came back in capitals on one run.
+        let d = ModelParser.draft(title: "AFTERSUN", cinema: "RIALTO CINEMAS NEWMARKET", screenedAt: "", screen: "", seat: "", price: "", currency: "")
+        #expect(d.title == "Aftersun" && d.cinema == "Rialto Cinemas Newmarket")
+        // A cased answer is the model's choice and is left alone; so is a title with no letters to case.
+        #expect(ModelParser.cased("Cinéma du Panthéon") == "Cinéma du Panthéon")
+        #expect(ModelParser.cased("Dune Part Two") == "Dune Part Two")
+        #expect(ModelParser.cased("THE ROXY CINEMA") == "The Roxy Cinema")
+        #expect(ModelParser.cased("1917") == "1917")
+        #expect(ModelParser.cased("  ") == "")
+    }
+
     @Test func promptCarriesTheHint() {
         var hint = StubDraft()
         hint.title = "Past Lives"; hint.seat = "K9"
