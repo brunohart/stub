@@ -11,11 +11,14 @@ struct StubApp: App {
         // read the cache for the drawer that is about to be emptied.
         if DebugSeed.resets { SeasonCache.clear() }
         #endif
+        // The drawer lives where the widget can read it (Day 5). A pre-Day-5 drawer is moved across once.
+        SharedStore.migrateIfNeeded()
         do {
-            container = try ModelContainer(for: Stub.self)
+            container = try SharedStore.container()
         } catch {
             fatalError("Stub could not open its drawer: \(error)")
         }
+        Reach.shared.container = container
         #if DEBUG
         // Empty the drawer here, not in the seed: the seed waits for the probe, and in those seconds the
         // table would otherwise count yesterday's drawer and start phrasing it.

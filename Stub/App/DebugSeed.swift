@@ -24,6 +24,7 @@ enum DebugSeed {
             return
         }
         log.info("Model status: \(StubReader.modelStatus)")
+        log.info("Store: \(SharedStore.isShared ? "shared with the widget" : "app-local, no App Group") at \(SharedStore.url.path)")
         let urls = (Bundle.main.urls(forResourcesWithExtension: "png", subdirectory: nil) ?? [])
             .filter { $0.lastPathComponent.hasPrefix("stub-") }
             .sorted { $0.lastPathComponent < $1.lastPathComponent }

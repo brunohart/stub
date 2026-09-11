@@ -12,6 +12,8 @@ struct TableView: View {
     @State private var season = SeasonModel()
     /// The zoom transition's pair: the card on the table is the source, the detail grows out of it.
     @Namespace private var table
+    /// Siri and the Shortcuts app come in through here: "Log a stub" sets `wantsImport`.
+    private let reach = Reach.shared
 
     var body: some View {
         let summary = SeasonSummary(stubs: stubs)
@@ -51,7 +53,16 @@ struct TableView: View {
                 SeasonView(summary: season.summary, sentence: season.sentence)
             }
             // Re-count when the drawer changes; the previous sentence in progress is cancelled with the task.
-            .task(id: summary.key) { await season.update(summary) }
+            // The widget is told at the same moment: it prints the last card and has no clock of its own.
+            .task(id: summary.key) {
+                Reach.refreshWidgets()
+                await season.update(summary)
+            }
+            .onChange(of: reach.wantsImport, initial: true) { _, wants in
+                guard wants else { return }
+                reach.wantsImport = false
+                isImporting = true
+            }
             .navigationDestination(item: $selected) { stub in
                 StubDetailView(stub: stub)
                     .navigationTransition(.zoom(sourceID: stub.id, in: table))
