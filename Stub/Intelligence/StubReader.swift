@@ -59,7 +59,34 @@ enum StubReader {
         }
         log.info("Vision read \(reading.lines.count) lines\(cropped ? " from the crop" : "")")
 
-        let parser = preferredParser()
+        let draft = await understand(reading, progress: progress, partial: partial)
+        return Result(plate: plate, cropped: cropped, detector: detector, reading: reading, draft: draft)
+    }
+
+    /// The camera path (Day 6): the live scanner has already read the print, so there is nothing to crop
+    /// and nothing for Vision to do. The lines go straight to the parsers; the photograph is only the plate.
+    static func read(
+        _ reading: StubReading,
+        plate: CGImage,
+        progress: @Sendable @MainActor (Stage) -> Void,
+        partial: (@Sendable @MainActor (StubDraft) -> Void)? = nil
+    ) async -> Result {
+        inFlight.withLock { $0 += 1 }
+        defer { inFlight.withLock { $0 -= 1 } }
+        log.info("Scanner read \(reading.lines.count) lines live")
+        let draft = await understand(reading, progress: progress, partial: partial)
+        return Result(plate: plate, cropped: false, detector: nil, reading: reading, draft: draft)
+    }
+
+    /// Text to fields. The floor first, always; then the model with the floor's draft in hand (ADR-010),
+    /// streaming each snapshot to `partial`. Whatever the model does, this returns a draft.
+    static func understand(
+        _ reading: StubReading,
+        using parser: (any StubParsing)? = nil,
+        progress: @Sendable @MainActor (Stage) -> Void,
+        partial: (@Sendable @MainActor (StubDraft) -> Void)? = nil
+    ) async -> StubDraft {
+        let parser = parser ?? preferredParser()
         await progress(.understanding(parser: parser.name))
 
         // The floor first: it is cheap, it is the fallback, and it is the model's hint.
@@ -89,7 +116,7 @@ enum StubReader {
             }
         }
         await progress(.done)
-        return Result(plate: plate, cropped: cropped, detector: detector, reading: reading, draft: draft)
+        return draft
     }
 
     /// The model, when it reports available and the launch probe did not catch it lying. Otherwise the floor.

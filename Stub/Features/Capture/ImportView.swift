@@ -14,6 +14,8 @@ struct ImportView: View {
     @State private var draft = StubDraft()
     @State private var failure: String?
     @State private var showRaw = false
+    @State private var isScanning = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         NavigationStack {
@@ -27,7 +29,8 @@ struct ImportView: View {
                                 .frame(maxHeight: 260)
                                 .silkscreened(strength: stage == .done ? 1 : 0.4, seed: 2)
                                 .clipShape(RoundedRectangle(cornerRadius: 3))
-                                .animation(Motion.settle, value: stage)
+                                .animation(reduceMotion ? Motion.plain : Motion.settle, value: stage)
+                                .accessibilityLabel(stage == .done ? "The stub, printed on parchment." : "The photograph of the stub, being read.")
                         } else {
                             picker
                         }
@@ -79,6 +82,9 @@ struct ImportView: View {
                 guard let item else { return }
                 Task { await load(item) }
             }
+            .fullScreenCover(isPresented: $isScanning) {
+                ScanSheet { scan in Task { await scanned(scan) } }
+            }
         }
     }
 
@@ -88,23 +94,67 @@ struct ImportView: View {
     }
 
     private var picker: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        // The camera, when there is one to hold (Day 6). The simulator has none, and keeps the Photos path.
+        let scannable = StubScanner.isUsable
+        return VStack(alignment: .leading, spacing: 14) {
+            if scannable {
+                Button { isScanning = true } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "camera.viewfinder")
+                        Text("Scan the stub with the camera")
+                            .font(Type.words(16))
+                    }
+                    .foregroundStyle(Ink.paper)
+                    .padding(.horizontal, 16).padding(.vertical, 14)
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    .background(Ink.ink, in: RoundedRectangle(cornerRadius: 6))
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Opens the camera and reads the print live.")
+            }
             PhotosPicker(selection: $pick, matching: .images, photoLibrary: .shared()) {
                 HStack(spacing: 12) {
                     Image(systemName: "photo.on.rectangle.angled")
                     Text("Choose a photograph of the stub")
                         .font(Type.words(16))
                 }
-                .foregroundStyle(Ink.paper)
+                .foregroundStyle(scannable ? Ink.ink : Ink.paper)
                 .padding(.horizontal, 16).padding(.vertical, 14)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Ink.ink, in: RoundedRectangle(cornerRadius: 6))
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                .background(scannable ? Ink.ink.opacity(0.08) : Ink.ink, in: RoundedRectangle(cornerRadius: 6))
             }
+            .accessibilityHint("Opens your photo library.")
             Text("Or type it. The reader is a shortcut, not a gate.")
                 .font(Type.italic(16)).foregroundStyle(Ink.navy)
             Text(StubReader.modelStatus)
                 .font(Type.numbers(11)).foregroundStyle(Ink.grey)
         }
+    }
+
+    /// The camera's lines go through the same parsers as a photograph's (ADR-010); the frame is the plate.
+    private func scanned(_ scan: StubScanner.Scan) async {
+        failure = nil
+        reading = nil
+        if let photo = scan.photo { image = UIImage(cgImage: photo) }
+        guard !scan.reading.lines.isEmpty else {
+            stage = .done
+            failure = "The camera read nothing. Hold the stub flatter, or type it in."
+            return
+        }
+        // A frame the camera could not give is a blank stub in the drawer, which the card already knows how to print.
+        let plate = scan.photo ?? blankPlate
+        let result = await StubReader.read(scan.reading, plate: plate, progress: { stage in
+            withAnimation(reduceMotion ? Motion.plain : Motion.settle) { self.stage = stage }
+        }, partial: { snapshot in
+            withAnimation(Motion.place) { draft = snapshot }
+        })
+        reading = result.reading
+        withAnimation(Motion.place) { draft = result.draft }
+    }
+
+    private var blankPlate: CGImage {
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 8, height: 8))
+        return renderer.image { ctx in UIColor(Ink.cream).setFill(); ctx.fill(CGRect(x: 0, y: 0, width: 8, height: 8)) }.cgImage!
     }
 
     private var fields: some View {
@@ -124,6 +174,7 @@ struct ImportView: View {
             if draft.readBy != "manual", draft.isUsable {
                 Text("Read by \(draft.readBy == "foundation-models" ? "the on-device model" : "heuristics") · confidence \(Int(draft.confidence * 100))%")
                     .font(Type.numbers(11)).foregroundStyle(Ink.grey)
+                    .accessibilityLabel("Read by \(draft.readBy == "foundation-models" ? "the on-device model" : "heuristics"), \(Int(draft.confidence * 100)) percent confident.")
             }
         }
     }
@@ -188,10 +239,13 @@ struct Field: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(label).font(Type.words(12)).foregroundStyle(Ink.grey)
+                .accessibilityHidden(true)
             TextField("", text: $text)
                 .font(font)
                 .foregroundStyle(Ink.ink)
                 .textInputAutocapitalization(.words)
+                .frame(minHeight: 44)
+                .accessibilityLabel(label)
             Rectangle().fill(Ink.ink.opacity(0.18)).frame(height: 1)
         }
     }
@@ -204,6 +258,8 @@ struct StageLine: View {
             ProgressView().tint(Ink.orange)
             Text(label).font(Type.italic(16)).foregroundStyle(Ink.navy)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label)
     }
     private var label: String {
         switch stage {
