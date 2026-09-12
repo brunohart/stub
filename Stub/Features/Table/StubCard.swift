@@ -19,9 +19,9 @@ struct StubCard: View {
         VStack(alignment: .leading, spacing: 8) {
             plate
             VStack(alignment: .leading, spacing: 3) {
+                // Never truncated: at the large Dynamic Type sizes a title takes the lines it needs.
                 Text(stub.title)
                     .displayText(17)
-                    .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 8) {
                     if let d = stub.displayDate { Text(d).numberText(11) }
@@ -43,8 +43,11 @@ struct StubCard: View {
         .contentShape(Rectangle())
         .onLongPressGesture(minimumDuration: .infinity, pressing: { touched = $0 }, perform: {})
         .sensoryFeedback(.impact(weight: .light), trigger: pressed) { _, new in new }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(stub.title), \(stub.displayDate ?? ""), \(stub.cinema ?? "")")
+        // One element to VoiceOver, a button (the table adds the action), that says what the stub knows.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(stub.spokenLabel)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityHint("Opens the stub.")
     }
 
     @ViewBuilder
@@ -86,14 +89,17 @@ struct BlankStub: View {
                 .background(RoundedRectangle(cornerRadius: 3).fill(Ink.orange.opacity(0.12)).offset(x: 5, y: 6))
             VStack(alignment: .leading, spacing: 6) {
                 Text("ADMIT ONE").font(Type.numbers(10)).foregroundStyle(Ink.grey)
+                    .accessibilityHidden(true)
                 if let title {
-                    Text(title).displayText(15).lineLimit(3)
+                    Text(title).displayText(15).fixedSize(horizontal: false, vertical: true)
                 }
             }
             .padding(12)
             .padding(.trailing, 28)
         }
         .rotationEffect(.degrees(tilt))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(title.map { "A blank stub for \($0)." } ?? "A blank stub. The drawer is empty.")
     }
 
     private var perforation: some View {

@@ -63,6 +63,14 @@ struct TableView: View {
                 reach.wantsImport = false
                 isImporting = true
             }
+            #if DEBUG
+            .task {
+                // `-import`: open the import sheet after the seed has settled, so it can be screenshotted.
+                guard DebugDrive.wantsImport else { return }
+                do { try await Task.sleep(for: .seconds(DebugDrive.curtain)) } catch { return }
+                isImporting = true
+            }
+            #endif
             .navigationDestination(item: $selected) { stub in
                 StubDetailView(stub: stub)
                     .navigationTransition(.zoom(sourceID: stub.id, in: table))
@@ -102,6 +110,7 @@ struct TableView: View {
             }
             .buttonStyle(.plain)
             .disabled(stubs.isEmpty)
+            .frame(minHeight: 44, alignment: .topLeading)
             .accessibilityHint(stubs.isEmpty ? "" : "Opens the season: the numbers behind this sentence.")
         }
         .padding(.top, 4)
@@ -113,17 +122,24 @@ struct StubTable: View {
     let stubs: [Stub]
     let table: Namespace.ID
     let open: (Stub) -> Void
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        let left = stubs.enumerated().filter { $0.offset % 2 == 0 }.map(\.element)
-        let right = stubs.enumerated().filter { $0.offset % 2 == 1 }.map(\.element)
-        // 1.15fr / 0.85fr, overlapping by 6pt. The container is the scroll view; 40pt is the table's own margin.
-        HStack(alignment: .top, spacing: -6) {
-            column(left)
-                .containerRelativeFrame(.horizontal) { width, _ in (width - 40) * 0.575 }
-            column(right)
-                .containerRelativeFrame(.horizontal) { width, _ in (width - 40) * 0.425 }
-                .padding(.top, 44)
+        if typeSize.isAccessibilitySize {
+            // At the accessibility sizes the narrow column would wrap every title to a word a line. The stubs
+            // become a stack in the hand, one under the other, still tilted (ADR-013).
+            column(stubs)
+        } else {
+            let left = stubs.enumerated().filter { $0.offset % 2 == 0 }.map(\.element)
+            let right = stubs.enumerated().filter { $0.offset % 2 == 1 }.map(\.element)
+            // 1.15fr / 0.85fr, overlapping by 6pt. The container is the scroll view; 40pt is the table's own margin.
+            HStack(alignment: .top, spacing: -6) {
+                column(left)
+                    .containerRelativeFrame(.horizontal) { width, _ in (width - 40) * 0.575 }
+                column(right)
+                    .containerRelativeFrame(.horizontal) { width, _ in (width - 40) * 0.425 }
+                    .padding(.top, 44)
+            }
         }
     }
 
@@ -133,6 +149,8 @@ struct StubTable: View {
                 StubCard(stub: stub)
                     .matchedTransitionSource(id: stub.id, in: table)
                     .onTapGesture { open(stub) }
+                    // The press gesture keeps the card from being a Button; VoiceOver's double-tap comes in here.
+                    .accessibilityAction { open(stub) }
             }
         }
     }
@@ -162,6 +180,7 @@ struct EmptyDrawer: View {
                     .font(Type.words(17))
                     .foregroundStyle(Ink.paper)
                     .padding(.horizontal, 18).padding(.vertical, 12)
+                    .frame(minHeight: 44)
                     .background(Ink.ink, in: RoundedRectangle(cornerRadius: 6))
             }
             .buttonStyle(.plain)

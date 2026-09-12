@@ -13,6 +13,7 @@ struct StubDetailView: View {
     @State private var registered = false
     @State private var tilt: Double
     @State private var showRaw = false
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     /// How far the orange plate missed by, at rest.
     private let misregistration = CGSize(width: 6, height: 7)
@@ -40,7 +41,8 @@ struct StubDetailView: View {
                             .rotationEffect(.degrees(reduceMotion ? 0 : tilt))
                             .onLongPressGesture(minimumDuration: .infinity, pressing: hold, perform: {})
                             .sensoryFeedback(.impact(weight: .medium, intensity: 0.8), trigger: registered) { _, new in new }
-                            .accessibilityLabel("Photograph of the stub. Hold to see it in colour.")
+                            .accessibilityLabel("The stub for \(stub.title), printed on parchment.")
+                            .accessibilityHint("Hold to lift the print and see the photograph.")
                     } else {
                         BlankStub(tilt: reduceMotion ? 0 : tilt, title: stub.title).frame(height: 160)
                     }
@@ -52,8 +54,10 @@ struct StubDetailView: View {
                         }
                     }
 
-                    HStack(alignment: .top, spacing: 26) {
-                        if let d = stub.displayDate { Figure("Date", d) }
+                    // Four figures in a row; at the accessibility sizes they would not fit, so they stack.
+                    let figures = AnyLayout(typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 16)) : AnyLayout(HStackLayout(alignment: .top, spacing: 26)))
+                    figures {
+                        if let d = stub.displayDate { Figure("Date", d, spoken: stub.spokenDate) }
                         if let s = stub.seat { Figure("Seat", s) }
                         if let sc = stub.screen { Figure("Screen", sc.replacingOccurrences(of: "Screen ", with: "")) }
                         if let p = stub.displayPrice { Figure("Paid", p) }
@@ -63,6 +67,7 @@ struct StubDetailView: View {
 
                     Text("Read by \(stub.readBy == "foundation-models" ? "the on-device model" : stub.readBy) · confidence \(Int(stub.confidence * 100))%")
                         .font(Type.numbers(11)).foregroundStyle(Ink.grey)
+                        .accessibilityLabel("Read by \(stub.readBy == "foundation-models" ? "the on-device model" : stub.readBy), \(Int(stub.confidence * 100)) percent confident.")
 
                     if !stub.rawText.isEmpty {
                         DisclosureGroup(isExpanded: $showRaw) {
@@ -78,6 +83,8 @@ struct StubDetailView: View {
                         dismiss()
                     } label: {
                         Text("Throw this stub away").font(Type.words(14)).foregroundStyle(Ink.rust)
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .padding(.top, 12)
@@ -113,15 +120,19 @@ struct StubDetailView: View {
     }
 }
 
-/// A number and its quiet label.
+/// A number and its quiet label. Read aloud as "Seat, H12": the label first, then the value, and a date
+/// in words rather than the printed "06 SEP 26".
 struct Figure: View {
     let label: String
     let value: String
-    init(_ label: String, _ value: String) { self.label = label; self.value = value }
+    var spoken: String?
+    init(_ label: String, _ value: String, spoken: String? = nil) { self.label = label; self.value = value; self.spoken = spoken }
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(value).numberText(15)
             Text(label).font(Type.words(11)).foregroundStyle(Ink.grey)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(label), \(spoken ?? value)")
     }
 }

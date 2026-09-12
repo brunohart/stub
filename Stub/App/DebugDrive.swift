@@ -14,6 +14,8 @@ final class DebugDrive {
     static var requested: Bool { ProcessInfo.processInfo.arguments.contains("-drive") }
     /// `-season`: open the season sheet once the seed has settled, so the sheet can be screenshotted.
     static var wantsSeason: Bool { ProcessInfo.processInfo.arguments.contains("-season") }
+    /// `-import`: open the import sheet once the seed has settled, so the sheet can be screenshotted.
+    static var wantsImport: Bool { ProcessInfo.processInfo.arguments.contains("-import") }
 
     /// The card the driver is pressing, if any. `StubCard` treats it as a touch.
     var pressedID: UUID?
