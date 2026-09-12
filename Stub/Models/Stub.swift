@@ -80,6 +80,22 @@ extension Stub {
     var seatLine: String? {
         [screen, seat].compactMap { $0 }.joined(separator: " · ").nilIfEmpty
     }
+
+    /// The date as VoiceOver should say it: "6 September 2026", not "06 SEP 26" letter by letter.
+    var spokenDate: String? {
+        guard let screenedAt else { return nil }
+        return screenedAt.formatted(.dateTime.day().month(.wide).year())
+    }
+
+    /// What a card says when it is read aloud: the film, the date, the cinema, the seat. Nothing it does
+    /// not know, and no label for the number (a seat sounds like a seat).
+    var spokenLabel: String {
+        var parts = [title]
+        if let spokenDate { parts.append(spokenDate) }
+        if let cinema { parts.append(cinema) }
+        if let seat { parts.append("seat \(seat)") }
+        return parts.joined(separator: ", ")
+    }
 }
 
 extension String {
