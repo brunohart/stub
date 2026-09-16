@@ -2,6 +2,10 @@
 
 Newest at the top. One entry per slot. What shipped, what broke, what the reader did.
 
+## 2026-09-17 — Day 11
+
+Playbook complete, nothing scheduled. No playbook entry, no Linear backlog.
+
 ## 2026-09-16 — Days 8–10
 
 Playbook complete, nothing scheduled. Days 8, 9 and 10 had no playbook entry and no Linear backlog for the project; nothing was built. The Day 7 "still rough" list (the two Vision requests measured against each other, the span in words in the season brief, "Aftrsun", a script for the README's eval table, the privacy manifest) is where a Day 8 would start if this file grows one.
