@@ -2,6 +2,10 @@
 
 Newest at the top. One entry per slot. What shipped, what broke, what the reader did.
 
+## 2026-09-20 — Days 12–14
+
+Playbook complete, nothing scheduled. The slots for Days 12 and 13 did not fire; caught up on Day 14. No playbook entry, no code changed. Linear not reachable from this slot. The Day 7 "still rough" list is still where a Day 8 would start.
+
 ## 2026-09-17 — Day 11
 
 Playbook complete, nothing scheduled. No playbook entry, no Linear backlog.
