@@ -28,7 +28,7 @@ struct StubDetailView: View {
             Paper()
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    if let data = stub.imageData, let ui = UIImage(data: data) {
+                    if let ui = PlateImage.image(for: stub.id, in: .detail, data: stub.imageData) {
                         Image(uiImage: ui)
                             .resizable().scaledToFit()
                             .silkscreened(strength: holding ? 0 : 1, seed: stub.tilt)
