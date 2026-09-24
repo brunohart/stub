@@ -38,6 +38,8 @@ targets:
           - FragmentMono-Italic.ttf
         NSCameraUsageDescription: Stub photographs your ticket stub. The photo stays on this device.
         NSPhotoLibraryUsageDescription: Stub reads ticket stubs from your library. Nothing is uploaded.
+        # No network, no crypto of our own (ADR-005): answers App Store Connect's export question for every upload.
+        ITSAppUsesNonExemptEncryption: false
     # The drawer lives in an App Group so the widget can read it (Day 5). Generated, like Info.plist.
     entitlements:
       path: Stub/Stub.entitlements
