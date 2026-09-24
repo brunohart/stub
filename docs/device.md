@@ -49,7 +49,7 @@ Each of these is unproved in the simulator, for the reason given.
 Not ready, and not far. What is missing:
 
 - **An `ExportOptions.plist` and an archive script.** `scripts/build.sh` builds for the simulator only. An `xcodebuild archive` for `generic/platform=iOS` with the team set, then `-exportArchive` with `method: app-store-connect`, is the whole of it.
-- **Privacy manifest.** `PrivacyInfo.xcprivacy` declaring no tracking, no required-reason API use beyond `UserDefaults` (the season cache, reason `CA92.1`) and file timestamps. Add it to both targets' sources in `project.yml`.
+- **Privacy manifest.** Done: `Stub/Resources/PrivacyInfo.xcprivacy` declares no tracking, no collected data, and one required-reason API, `UserDefaults` (the season cache, reason `CA92.1`); XcodeGen picks it up with the rest of `Stub/`. Nothing reads file timestamps, and the widget calls no required-reason API, so it needs no manifest of its own. `ITSAppUsesNonExemptEncryption: false` in `project.yml` answers the export question on every upload. Check after `xcodegen generate` that `PrivacyInfo.xcprivacy` is in the app's Resources phase.
 - **App Store Connect record**: the bundle ID, the App Group capability, a 1024 icon (already in the asset catalog), screenshots (the `docs/screenshots` set is at simulator resolution and will do for a first internal build).
 - **Version and build.** `CFBundleShortVersionString` is `0.1.0` in `project.yml` for both targets; `CFBundleVersion` is `1`. Bump the build number per upload.
 
