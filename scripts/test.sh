@@ -5,7 +5,7 @@ cd "$(dirname "$0")/.."
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 SIM="$(scripts/sim.sh)"
 DD="${STUB_DERIVED_DATA:-$HOME/Library/Developer/Xcode/DerivedData/Stub-scripts}"   # see build.sh: iCloud must not see the .app
-mkdir -p "$DD"
+mkdir -p build "$DD"
 for attempt in 1 2 3; do
   # xcodebuild exits non-zero on a failed test as well as on a run that never started, so the pipeline's status
   # cannot tell the two apart (Day 3: a failing test was retried three times). The log can.
