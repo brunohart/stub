@@ -78,7 +78,8 @@ struct Silkscreen: ViewModifier, @MainActor Animatable {
             content
                 .saturation(1 - 0.18 * strength)
                 .contrast(1 + 0.08 * strength)
-                .overlay(Ink.paper.opacity(0.55 * strength).blendMode(.multiply))
+                // The closure form: the iOS 27 SDK finds `.overlay(_:)`'s view and shape-style overloads equally good here.
+                .overlay { Ink.paper.opacity(0.55 * strength).blendMode(.multiply) }
                 .overlay(Grain(opacity: grain * strength))
                 .compositingGroup()
         }
