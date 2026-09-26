@@ -40,12 +40,12 @@ Native Swift, iOS 26. Built in the open over seven scheduled days, 6–13 Septem
 
 ## Run it
 
-Requires Xcode 26 with an iOS 26 simulator and [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`). For the on-device model, Apple Intelligence on the Mac and (on this host) the iOS 26.5 simulator runtime.
+Requires Xcode 27 with an iOS 27 simulator (the app still targets iOS 26; ADR-014) and [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`). For the on-device model, Apple Intelligence on the Mac and a simulator runtime the host's model will serve: on this host that was iOS 26.5 against macOS 26.6, and on the iOS 27 runtime the model reports itself still downloading.
 
 ```bash
 git clone https://github.com/brunohart/stub && cd stub
 scripts/build.sh                       # xcodegen + simulator build
-scripts/test.sh                        # 48 tests on a booted iPhone 17 Pro; the eval suite takes ~3 minutes with the model present
+scripts/test.sh                        # 48 tests on a booted iPhone 18 Pro; the eval suite takes ~3 minutes with the model present
 scripts/run.sh --seed --reset --wait-for "written|hand-counted" --shot docs/screenshots/now.png
 ```
 

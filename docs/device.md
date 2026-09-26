@@ -31,7 +31,7 @@ Keep the repo where it is. Derived data goes to `~/Library/Developer/Xcode/Deriv
 
 The on-device model needs Apple Intelligence on and its assets downloaded: Settings → Apple Intelligence & Siri. Until then `SystemLanguageModel.default.availability` reports `.unavailable(.appleIntelligenceNotEnabled)` or `.modelNotReady`, the import screen's status line says so in words, and every stub is read by the heuristic parser (ADR-001). The launch probe (`ModelProbe`) asks the model for one word and caches the answer; when it answers, the seed log and every card say `by foundation-models`.
 
-On this Mac the probe only passes on the iOS 26.5 simulator runtime. The 26.2 runtime fails with `ModelManagerError 1026` against a macOS 26.6 host even with Apple Intelligence on. A phone on iOS 26 with Apple Intelligence on does not have that problem; if the probe fails there, the status line's reason is the one to read.
+On this Mac the probe only passed on the iOS 26.5 simulator runtime. The 26.2 runtime fails with `ModelManagerError 1026` against a macOS 26.6 host even with Apple Intelligence on. Since 2026-09-26 the scripts run on the iOS 27 runtime (ADR-014), where the probe says the model is still downloading, so the simulator proves the heuristic path and the model rows in `docs/evals.md` are the 26.5 runtime's. A phone on iOS 26 with Apple Intelligence on does not have that problem; if the probe fails there, the status line's reason is the one to read.
 
 ## 3. What to test on the phone, in order
 
