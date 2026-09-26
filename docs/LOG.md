@@ -2,6 +2,20 @@
 
 Newest at the top. One entry per slot. What shipped, what broke, what the reader did.
 
+## 2026-09-26 — The simulator moves to iOS 27
+
+Not a slot. Xcode 27 is on the host and the iOS 17.5–26.5 simulator runtimes were removed with the old one, so `scripts/sim.sh` could no longer find its iPhone 17 Pro on iOS 26 and the next slot would have stopped at "no iPhone 17 Pro iOS 26 simulator".
+
+**Shipped.** `sim.sh` boots an iPhone 18 Pro on iOS 27 (ADR-014, amending ADR-003 for the simulator only); the deployment target stays iOS 26. The eval report names the runtime it ran on instead of printing "iOS 26". README, `docs/device.md` and the `stub-build` slot's instructions say iOS 27.
+
+**Reader.** All eight fixtures cropped by rectangles (segmentation still returns the bottom strip at 0.99 and is rejected), all filed `by heuristic (100%)`, 8/8 on every field in the eval. The model probe says "The on-device model is still downloading" on this runtime against macOS 26.6.2, so nothing was read by the model and the season sentence was hand-counted. `docs/evals.md` was put back to the 2026-09-12 run, which has the model's columns; the heuristic-only run would have replaced them with nothing.
+
+**Broke and fixed.** The iOS 27 SDK would not compile `Paper.swift`: `Ink.paper.opacity(…).blendMode(.multiply)` inside `.overlay(_:)` matched both the view and the shape-style overloads, first as "ambiguous use of 'opacity'", then, with the colour pinned, of `blendMode`. The overlay now uses the closure form, which only takes a view, so the SwiftUI plate draws exactly what it drew on 26. Forty-eight tests pass on the iPhone 18 Pro.
+
+**For Bruno.** If the model should be proved in the simulator again, either reinstall the iOS 26.5 runtime (Xcode › Settings › Components) or wait for the host to reach macOS 27; the 26.5-against-26.6 finding suggests the runtime and the host have to match.
+
+**Still rough.** With the model absent the seed is fast, and `--wait-for "written|hand-counted"` matches the season line logged after the seventh stub, so the proof screenshot shows seven of eight in the drawer. The eval note prints two full stops when the model's reason already ends in one.
+
 ## 2026-09-20 — Days 12–14
 
 Playbook complete, nothing scheduled. The slots for Days 12 and 13 did not fire; caught up on Day 14. No playbook entry, no code changed. Linear not reachable from this slot. The Day 7 "still rough" list is still where a Day 8 would start.

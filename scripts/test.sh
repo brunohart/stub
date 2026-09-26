@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run the unit tests on a booted iOS 26 simulator (boots one if none is up).
+# Run the unit tests on a booted iOS 27 simulator (boots one if none is up).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"

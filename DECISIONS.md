@@ -22,7 +22,7 @@ The silkscreen treatment (desaturate, contrast, multiply onto parchment, grain),
 
 ## ADR-003 — Simulator first, with a seed path that exercises the real pipeline
 
-**Date:** 2026-09-06 · **Status:** decided
+**Date:** 2026-09-06 · **Status:** decided (the simulator is iOS 27 since ADR-014)
 
 Every day's work must run in the iOS 26 simulator. Because the simulator has no camera and cannot be tapped from a script, Debug builds accept `-seed` (and `-reset`) launch arguments that push the bundled fixture stubs through Vision and the parsers and file them. `scripts/run.sh --seed --reset --shot …` is the daily proof.
 
@@ -121,3 +121,13 @@ The SwiftData store lives at `SharedStore.url`: `Stub.store` inside the `group.c
 **Why.** At AX5 the 0.85 column is about 150 points wide and a 17-point face is drawn at roughly 40; "Dune Part Two" is a word a line and the corkboard is a ransom note. The designedbybruno rules say the grid shifts to a single column when the metaphor changes from a table to a stack of cards in the hand; a person reading at the accessibility sizes is holding the phone that close. Truncating a title to keep a column narrow would be the type paying for the layout, and DESIGN.md says the type is constant and quiet. The threshold is the platform's own, not a width measured by hand.
 
 **Consequences.** Nothing new is laid out in the table that assumes two columns. The one-column table is proved by a screenshot at an accessibility size (`scripts/run.sh --type accessibility-extra-large`), the two-column table at xxLarge. A future wide-column decision for landscape stubs (Day 1's question, answered on Day 2) is separate from this.
+
+## ADR-014 — The simulator is iOS 27; the app still targets iOS 26
+
+**Date:** 2026-09-26 · **Status:** decided (amends ADR-003 for the simulator only)
+
+The daily proof runs on an iPhone 18 Pro on the iOS 27 runtime: `scripts/sim.sh` looks for a booted iOS 27 iPhone and otherwise boots the newest iPhone 18 Pro. `IPHONEOS_DEPLOYMENT_TARGET` stays `26.0`, and every `#available(iOS 26.0, *)` gate stays where it is.
+
+**Why.** Xcode 27 arrived and the host's iOS 17.5–26.5 simulator runtimes went with the old one; the iPhone 17 Pro on iOS 26 that `sim.sh` asked for no longer exists, so the daily slot would have stopped before building. Following the toolchain costs one line (`Paper.swift`'s multiply overlay, which the iOS 27 SDK finds ambiguous between `.overlay`'s view and shape-style overloads) and keeps the floor where the next slot will actually run. Raising the deployment target would drop every phone still on iOS 26 for no feature the app uses.
+
+**Consequences.** On this host the on-device model does not answer on the iOS 27 runtime (the probe says it is still downloading), so the simulator now proves the heuristic path (ADR-001) and not the model's; `docs/evals.md` keeps the 2026-09-12 run from the 26.5 runtime until a model run replaces it. The eval report names the runtime it ran on rather than assuming one. Nothing is proved on iOS 26 any more unless that runtime is reinstalled (Xcode › Settings › Components).
