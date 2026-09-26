@@ -181,12 +181,17 @@ struct ImportView: View {
 
     private func load(_ item: PhotosPickerItem) async {
         failure = nil
+        // Upright and no larger than the reader needs, decoded off the main thread: a portrait photograph
+        // reaches Vision the right way up, and a 48 MP one is not carried through the crop at 48 MP.
+        let size = PlateImage.intake
         guard let data = try? await item.loadTransferable(type: Data.self),
-              let ui = UIImage(data: data), let cg = ui.cgImage else {
+              let cg = await Task.detached(priority: .userInitiated, operation: {
+                  PlateImage.decode(data, maxPixelSize: size)
+              }).value else {
             failure = "That photograph could not be opened."
             return
         }
-        image = ui
+        image = UIImage(cgImage: cg)
         do {
             let result = try await StubReader.read(cg, progress: { stage in
                 withAnimation(Motion.settle) { self.stage = stage }
