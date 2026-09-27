@@ -30,6 +30,18 @@ Every stub also comes back as an **edition**: a ticket designed for its film's r
 6. **Nothing invented.** No taglines, no plot, no stars, no fake barcode. The Aztec code on the back says what the strip says.
 7. **You can feel it.** A finger dragged across the card feels the stock (cotton is soft, foil is slick) and clicks once at the perforation.
 
+## The press
+
+The person who kept a stub can pull their own proof of its edition (ADR-016, `docs/briefs/the-press.md`). The rules for editions still hold; these are added.
+
+1. **You choose between drawings. You never move a mark.** Another take of a part, another movement, inks or stock from the genome's lists. No colour picker, no drag, no text, no sticker.
+2. **Only what you are holding moves.** A part is turned on its own die; the rest of the poster stands still while it redraws.
+3. **Going back is one step.** A proof is a difference laid over the edition, never a replacement; deleting it shows the title's (or the model's) edition exactly.
+4. **The front is the film's; the back is yours.** Nothing is added to the front but what the strip already prints. The owner's pencil (a signature, A/P, the takes) goes on the back.
+5. **The press room is chrome, not an edition.** Parchment, `Ink`, the three faces, one italic sentence a screen. No dark deck, no glass, no tracked uppercase labels.
+6. **Haptics are the stock's.** The wheel's detents, the lever's resistance and the platen are felt at the stock's own sharpness, and punctuate what the hand does.
+7. **One light, and nothing moves on its own,** except wet ink drying for a moment after a pull, which is the consequence of an act and ends.
+
 ## Inks
 
 | Token | Hex | Use |
