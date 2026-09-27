@@ -1,6 +1,6 @@
 # Stub
 
-**A private archive of every film you saw in a room with strangers.** Photograph the ticket stub. The phone reads it, understands it, files it. Nothing leaves the device.
+**A private archive of every film you saw in a room with strangers.** Photograph the ticket stub. The phone reads it, understands it, files it, and hands you two things back: the stub as scanned, and an **edition**, a ticket designed for that film's release that you can tilt in the light, feel under your finger and turn over. Nothing leaves the device.
 
 Native Swift, iOS 26. Built in the open over seven scheduled days, 6–13 September 2026, one slot a day, each slot proving its work with a screenshot from the simulator. Playbook in [`PLAYBOOK.md`](PLAYBOOK.md), decisions in [`DECISIONS.md`](DECISIONS.md), the look in [`DESIGN.md`](DESIGN.md), what actually happened each day in [`docs/LOG.md`](docs/LOG.md), what the two readers score in [`docs/evals.md`](docs/evals.md), what only a phone can prove in [`docs/device.md`](docs/device.md). The write-up is [`docs/post.md`](docs/post.md). Tagged `v0.1.0` on Day 7.
 
@@ -9,6 +9,14 @@ Native Swift, iOS 26. Built in the open over seven scheduled days, 6–13 Septem
 <img src="docs/screenshots/day-4-season.png" width="30%" alt="Day 4: the season sheet">
 <img src="docs/screenshots/day-2-detail-held.png" width="30%" alt="Day 2: a stub held, the silkscreen lifted">
 </p>
+
+## Editions
+
+Every release gets its own edition (Day 21, [ADR-015](DECISIONS.md#adr-015--every-release-gets-an-edition-the-hash-draws-it-the-model-art-directs-it-from-a-closed-vocabulary)). Eight movements, twelve palettes, four stocks; the on-device model chooses between them for each film, the release's hash draws the composition, and every copy prints its own seat, night and which viewing it was. On the back of every edition is the stub as it was scanned.
+
+<p><img src="docs/editions/specimen-lit.png" width="100%" alt="Four editions lit: The Brutalist in constructivist gold foil, Perfect Days in letterpress on cotton, Dune Part Two in risograph with a holographic disc, Anora in deco with silver foil"></p>
+
+That sheet is not the app: it is the specimen in [`docs/editions`](docs/editions), the Metal shaders emulated per pixel in a browser, because Day 21 was written without a Mac. The simulator proof comes with the next slot ([`docs/LOG.md`](docs/LOG.md)).
 
 ## What it uses, and why each one is worth a post
 
@@ -24,6 +32,7 @@ Native Swift, iOS 26. Built in the open over seven scheduled days, 6–13 Septem
 | Reach | App Intents, WidgetKit | "Log a stub in Stub", "How many films this year in Stub"; the last stub on the home and lock screen |
 | Camera | VisionKit `DataScannerViewController` | Live text on a physical stub, feeding the same parsers. Device only |
 | Access | VoiceOver, Dynamic Type, 44pt targets | Every card says what it knows; one column at the accessibility sizes ([ADR-013](DECISIONS.md#adr-013--the-table-is-two-columns-until-the-type-gets-large-at-the-accessibility-sizes-it-is-one)) |
+| Print | Foundation Models `@Guide(.anyOf(…))`, Metal `layerEffect` / `colorEffect`, Core Motion, Core Haptics, Core Image Aztec | Every release gets an edition: the model art-directs it from a closed vocabulary, the hash draws it, one light from the phone's attitude lights the relief, the foil and the stock, a finger feels the paper, and the back holds the stub as scanned ([ADR-015](DECISIONS.md#adr-015--every-release-gets-an-edition-the-hash-draws-it-the-model-art-directs-it-from-a-closed-vocabulary)) |
 
 ## Seven days
 
@@ -37,6 +46,7 @@ Native Swift, iOS 26. Built in the open over seven scheduled days, 6–13 Septem
 | 5 | App Intents and Shortcuts phrases; the widget; the drawer moves into an App Group | <img src="docs/screenshots/day-5-reach.png" width="120"> <img src="docs/screenshots/day-5-shortcuts.png" width="120"> <img src="docs/screenshots/day-5-widget.png" width="120"> |
 | 6 | The camera path through VisionKit, gated to devices; the icon, drawn by script; the accessibility pass | <img src="docs/screenshots/day-6-type-xxl.png" width="120"> <img src="docs/screenshots/day-6-type-ax.png" width="120"> <img src="docs/screenshots/day-6-icon.png" width="120"> |
 | 7 | This README, the post, the device notes, `v0.1.0` | <img src="docs/screenshots/day-7-table.png" width="120"> |
+| 21 | Editions: the genome, eight movements, the edition shaders, the art director, the keepsake with its tilt, texture and back, the press after Keep. Written without a compiler; unproved until the next Mac slot | <img src="docs/editions/specimen-floor.png" width="120"> <img src="docs/editions/specimen-lit-tilted.png" width="120"> |
 
 ## Run it
 
@@ -48,6 +58,8 @@ scripts/build.sh                       # xcodegen + simulator build
 scripts/test.sh                        # 48 tests on a booted iPhone 18 Pro; the eval suite takes ~3 minutes with the model present
 scripts/run.sh --seed --reset --wait-for "written|hand-counted" --shot docs/screenshots/now.png
 ```
+
+`--edition` opens the newest stub so its edition is chosen and printed (`--turned` for its back, `--tilt 0.35,-0.25` to hold the light, since the simulator has no gyroscope); `STUB_AFTER=4 scripts/run.sh --seed --reset --edition --wait-for "Edition '" --shot …` photographs it after the press.
 
 `--seed` pushes the eight synthetic stubs in `fixtures/` through the real crop → Vision → parser pipeline on launch, so the simulator has a full drawer without a camera or a hand on the screen. The log printed afterwards says which detector cropped each stub, which parser read it, and how long the model took. `--drive` presses, opens and holds on a timer so the interactions can be filmed; `--season` and `--import` open those sheets; `--type accessibility-extra-large` sets Dynamic Type for the run; `--look swiftui` draws the Day 0 look instead of the shaders.
 
