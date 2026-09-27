@@ -5,7 +5,8 @@ import Observation
 import OSLog
 
 #if DEBUG
-/// Launch with `-drive` (with `-seed`) and the table presses, opens, holds and closes on a timer.
+/// Launch with `-drive` (with `-seed`) and the table presses, opens, turns the edition in the light, turns it over,
+/// holds the photograph and closes, on a timer.
 /// The simulator cannot be tapped from a script (ADR-003), so the interactions that Day 2 is about are
 /// driven from here: the same state the finger would set, on a clock, so `recordVideo` can watch.
 @MainActor @Observable
@@ -65,7 +66,7 @@ final class DebugDrive {
             } catch {
                 // Restarted by the seed filing another stub (quietly), or cancelled mid-show.
                 if hasRun { Self.log.info("drive: cancelled") }
-                pressedID = nil; holding = false
+                pressedID = nil; holding = false; turned = false; tilt = Self.heldTilt
             }
         }
     }
@@ -80,14 +81,23 @@ final class DebugDrive {
         pressedID = first.id;       try await beat(0.7)
         pressedID = nil;            try await beat(1.0)
         Self.log.info("drive: open \(first.title)")
-        open(first);                try await beat(2.0)
+        // Long enough for the press to run when the release has never been printed (ADR-015).
+        open(first);                try await beat(3.2)
+        Self.log.info("drive: turn it in the light")
+        for step in 0...48 {
+            let a = Double(step) / 48 * 2 * .pi
+            tilt = CGPoint(x: sin(a) * 0.8, y: -sin(a * 2) * 0.35)
+            try await beat(1.0 / 24)
+        }
+        tilt = Self.heldTilt;       try await beat(0.8)
+        Self.log.info("drive: turn over")
+        turned = true;              try await beat(1.6)
         Self.log.info("drive: hold")
         holding = true;             try await beat(2.0)
         Self.log.info("drive: release")
-        holding = false;            try await beat(1.5)
-        Self.log.info("drive: hold")
-        holding = true;             try await beat(2.5)
         holding = false;            try await beat(1.2)
+        Self.log.info("drive: turn back")
+        turned = false;             try await beat(1.4)
         Self.log.info("drive: close")
         open(nil);                  try await beat(1.5)
         Self.log.info("drive: done")
