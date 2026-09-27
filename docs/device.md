@@ -1,6 +1,6 @@
 # Running Stub on a phone
 
-Everything in this repo was proved in the iOS 26 simulator (ADR-003). Four things cannot be proved there, and each needs one thing only Bruno can do. This page is the list.
+Everything in this repo up to Day 7 was proved in the simulator (ADR-003); Day 21's editions were written without one and are proved nowhere yet (`docs/LOG.md`). Some things cannot be proved in a simulator at all, and each needs one thing only Bruno can do. This page is the list.
 
 ## 1. Signing: a team in `project.yml`
 
@@ -44,12 +44,14 @@ Each of these is unproved in the simulator, for the reason given.
 5. **The feel** (Day 2). The springs were tuned by arithmetic in the simulator. Press a card, hold the photograph in the detail, feel the haptic land when the plate slides into register. Reduce Motion (Settings → Accessibility → Motion) should remove the tilt and the overshoot everywhere.
 6. **Streaming on a device** (Day 3). The simulator's model runs on the CPU fallback (`Cannot create MPS context`); the phone has the Neural Engine. The seed log's "Model streamed: title at … done at …" lines are the number to compare against the simulator's 3–18 s per stub.
 
+7. **The edition in the hand** (Day 21, ADR-015). Open a stub. The card should lean up to eleven degrees as the phone turns and the light should slide across the foil and the stock with it; put the phone down flat and the card should settle square within a few seconds. Drag a finger slowly across the card: cotton should feel soft and dragging, foil and holographic bright and slick, and crossing the perforation should tick once. Tap to turn it over; hold the photograph on the back and the print should lift. Keep a new stub and feel the press: a light tap for each plate, a heavy one for the foil. With Apple Intelligence on, the first view of a release should say "Choosing an edition for …" for a few seconds and the detail's machinery line should say "chosen by the on-device model". Reduce Motion should stop the card leaning and turning (the faces cross-fade) while the light still follows a finger. None of this exists in the simulator: no gyroscope, no Taptic Engine, and foil only reads in light that moves.
+
 ## 4. TestFlight
 
 Not ready, and not far. What is missing:
 
 - **An `ExportOptions.plist` and an archive script.** `scripts/build.sh` builds for the simulator only. An `xcodebuild archive` for `generic/platform=iOS` with the team set, then `-exportArchive` with `method: app-store-connect`, is the whole of it.
-- **Privacy manifest.** `PrivacyInfo.xcprivacy` declaring no tracking, no required-reason API use beyond `UserDefaults` (the season cache, reason `CA92.1`) and file timestamps. Add it to both targets' sources in `project.yml`.
+- **Privacy manifest.** `PrivacyInfo.xcprivacy` declaring no tracking, no required-reason API use beyond `UserDefaults` (the season cache and the printed editions, reason `CA92.1`) and file timestamps. Add it to both targets' sources in `project.yml`.
 - **App Store Connect record**: the bundle ID, the App Group capability, a 1024 icon (already in the asset catalog), screenshots (the `docs/screenshots` set is at simulator resolution and will do for a first internal build).
 - **Version and build.** `CFBundleShortVersionString` is `0.1.0` in `project.yml` for both targets; `CFBundleVersion` is `1`. Bump the build number per upload.
 
