@@ -87,6 +87,9 @@ struct EditionTests {
         #expect(Copy.viewing(of: first, among: drawer) == 1)
         #expect(Copy.viewing(of: second, among: drawer) == 2)
         #expect(Copy.viewing(of: other, among: drawer) == 1)
+        let counted = Copy.viewings(of: second, among: drawer)
+        #expect(counted.viewing == 2 && counted.of == 2)
+        #expect(Copy(stub: first, among: drawer).viewings == 2)
         #expect(Copy(title: "x", viewing: 2).viewingWords == "Second viewing")
         #expect(Copy(title: "x", viewing: 11).viewingWords == "Viewing 11")
     }

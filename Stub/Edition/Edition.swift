@@ -115,15 +115,24 @@ struct Copy: Equatable, Sendable {
     var price: String?
     /// 1 for the first time this release is in the drawer, 2 for the second.
     var viewing: Int
+    /// How many stubs of this release the drawer holds: "viewing 1 of 2".
+    var viewings: Int
     var year: Int?
 
     init(title: String, cinema: String? = nil, date: String? = nil, time: String? = nil, screen: String? = nil,
-         seat: String? = nil, price: String? = nil, viewing: Int = 1, year: Int? = nil) {
+         seat: String? = nil, price: String? = nil, viewing: Int = 1, viewings: Int? = nil, year: Int? = nil) {
         self.title = title; self.cinema = cinema; self.date = date; self.time = time; self.screen = screen
-        self.seat = seat; self.price = price; self.viewing = viewing; self.year = year
+        self.seat = seat; self.price = price; self.viewing = viewing; self.viewings = max(viewings ?? viewing, viewing)
+        self.year = year
     }
 
-    init(stub: Stub, viewing: Int) {
+    /// The copy a stub prints, counted against the drawer it is in.
+    init(stub: Stub, among stubs: [Stub]) {
+        let (viewing, viewings) = Self.viewings(of: stub, among: stubs)
+        self.init(stub: stub, viewing: viewing, viewings: viewings)
+    }
+
+    init(stub: Stub, viewing: Int, viewings: Int? = nil) {
         var time: String?
         var date: String?
         var year: Int?
@@ -142,6 +151,7 @@ struct Copy: Equatable, Sendable {
             seat: stub.seat,
             price: stub.displayPrice,
             viewing: viewing,
+            viewings: viewings,
             year: year
         )
     }
@@ -166,11 +176,17 @@ struct Copy: Equatable, Sendable {
     /// Which viewing of its release a stub was: the drawer's stubs of the same release, in the order they were
     /// seen (the screening, or when it was kept if the ticket printed no date).
     static func viewing(of stub: Stub, among stubs: [Stub]) -> Int {
+        viewings(of: stub, among: stubs).viewing
+    }
+
+    /// Which viewing, and of how many.
+    static func viewings(of stub: Stub, among stubs: [Stub]) -> (viewing: Int, of: Int) {
         let key = Release.key(for: stub.title)
         let same = stubs
             .filter { Release.key(for: $0.title) == key }
             .sorted { ($0.screenedAt ?? $0.createdAt, $0.createdAt) < ($1.screenedAt ?? $1.createdAt, $1.createdAt) }
-        return (same.firstIndex { $0.id == stub.id } ?? 0) + 1
+        let viewing = (same.firstIndex { $0.id == stub.id } ?? 0) + 1
+        return (viewing, max(same.count, viewing))
     }
 
     /// "Screen 2 · D4": the numbers the strip prints on its second line.
