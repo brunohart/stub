@@ -30,7 +30,8 @@ extension Stock {
 
 /// An edition, printed. The stock, the inks pressed into it, the foil stamped on it, all lit from one light.
 /// Drawn at `Card.size`; whoever shows it scales it. `printed` counts the passes: 0 is bare stock, 1 to 3 the
-/// plates, 4 the foil. The print run counts up; everywhere else it is whole.
+/// plates, 4 the foil. The print run counts up, and each pass fades in with its own impression; everywhere else
+/// the card is whole.
 struct EditionFace: View {
     let composition: Composition
     var light: Light = .rest
@@ -48,29 +49,38 @@ struct EditionFace: View {
             }
             .modifier(StockEffect(light: light, stock: stock, seed: Double(c.edition.seed % 997)))
 
-            Canvas { context, _ in
-                Printer(composition: c).inks(into: context, printed: printed, plates: .first ... .second)
-            }
-            .modifier(ReliefEffect(light: light, depth: depth, reach: stock.reach))
+            // One canvas a plate, so each has its own impression and the print run can lay each down on its own.
+            plate(.first, depth: depth)
+            plate(.second, depth: depth)
 
-            if c.isMetallic, printed >= Plate.foil {
+            if c.isMetallic {
                 Canvas { context, _ in
                     Printer(composition: c).foil(into: context)
                 }
                 .modifier(FoilEffect(light: light, metal: c.inks.foilBase, holographic: stock == .holographic,
                                      lightGround: c.inks.groundIsLight))
-                .transition(.opacity)
+                .opacity(printed >= Plate.foil ? 1 : 0)
+                // The foil lands: a breath larger, then pressed flat.
+                .scaleEffect(printed >= Plate.foil ? 1 : 1.04)
             }
 
             // The type lies over the foil, never under it: stamped last in time, but a title the foil covered would
-            // be a title nobody could read. Its own canvas, so its impression is its own.
-            Canvas { context, _ in
-                Printer(composition: c).inks(into: context, printed: printed, plates: .type ... .type)
-            }
-            .modifier(ReliefEffect(light: light, depth: depth, reach: stock.reach))
+            // be a title nobody could read.
+            plate(.type, depth: depth)
         }
         .frame(width: Card.width, height: Card.height)
         .clipShape(TicketShape())
+    }
+}
+
+extension EditionFace {
+    fileprivate func plate(_ plate: Plate, depth: Double) -> some View {
+        let c = composition
+        return Canvas { context, _ in
+            Printer(composition: c).inks(into: context, plates: plate ... plate)
+        }
+        .modifier(ReliefEffect(light: light, depth: depth, reach: c.edition.stock.reach))
+        .opacity(printed >= plate.rawValue ? 1 : 0)
     }
 }
 
@@ -100,15 +110,15 @@ struct TicketShape: Shape {
 struct Printer {
     let composition: Composition
 
-    /// The marks on `plates` that have been printed, less any the foil takes.
-    func inks(into context: GraphicsContext, printed: Int, plates: ClosedRange<Plate>) {
+    /// The marks on `plates`, less any the foil takes.
+    func inks(into context: GraphicsContext, plates: ClosedRange<Plate>) {
         let c = composition
         var poster = context
         poster.clip(to: Path(Card.posterRect))
-        for mark in c.poster where plates.contains(mark.plate) && mark.plate.rawValue <= printed && !(mark.foil && c.isMetallic) {
+        for mark in c.poster where plates.contains(mark.plate) && !(mark.foil && c.isMetallic) {
             draw(mark, into: poster, colour: c.inks.color(mark.role))
         }
-        for mark in c.strip where plates.contains(mark.plate) && mark.plate.rawValue <= printed {
+        for mark in c.strip where plates.contains(mark.plate) {
             draw(mark, into: context, colour: c.inks.color(mark.role))
         }
     }
