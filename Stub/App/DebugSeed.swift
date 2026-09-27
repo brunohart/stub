@@ -12,9 +12,13 @@ enum DebugSeed {
 
     static var requested: Bool { ProcessInfo.processInfo.arguments.contains("-seed") }
     static var resets: Bool { ProcessInfo.processInfo.arguments.contains("-reset") }
+    /// The seed has filed its last stub, or had nothing to do. `-edition` waits for it: a read by the model takes
+    /// longer than the drawer's two seconds of stillness, and an edition opened mid-seed waits for the reader.
+    @MainActor static private(set) var finished = false
 
     @MainActor
     static func run(in container: ModelContainer) async {
+        defer { finished = true }
         let context = container.mainContext
         let existing = (try? context.fetchCount(FetchDescriptor<Stub>())) ?? 0
         if resets {

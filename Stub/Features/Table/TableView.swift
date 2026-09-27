@@ -86,6 +86,7 @@ struct TableView: View {
                 // with `-turned`, its back) can be screenshotted (ADR-015).
                 guard DebugDrive.wantsEdition, !DebugDrive.requested, !stubs.isEmpty else { return }
                 do { try await Task.sleep(for: .seconds(2)) } catch { return }
+                guard !DebugSeed.requested || DebugSeed.finished else { return }
                 selected = stubs.first
             }
             .task(id: stubs.count) {
