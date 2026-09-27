@@ -1,26 +1,32 @@
 import SwiftUI
 import SwiftData
 
-/// One stub, close up. It arrives tilted, as it lay on the table, and sits up straight as it grows (the zoom
-/// transition carries the frame, this view carries the rotation). Hold it and the silkscreen lifts to the
-/// photograph while the orange plate slides back into register; a haptic marks the moment it lands.
+/// One stub, close up, as two things (ADR-015): its edition, designed for the film's release, and on the back of it
+/// the stub as it was scanned. The card arrives tilted, as the stub lay on the table, and sits up straight as it
+/// grows (the zoom transition carries the frame, this view carries the rotation). Turn it over for the photograph;
+/// hold the photograph and the silkscreen lifts, as it does in the drawer.
 struct StubDetailView: View {
     @Bindable var stub: Stub
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var holding = false
-    @State private var registered = false
+    /// The whole drawer, so the edition can say which viewing of its release this stub was.
+    @Query private var drawer: [Stub]
     @State private var tilt: Double
+    @State private var turned: Bool
     @State private var showRaw = false
+    @State private var shareable: Image?
     @Environment(\.dynamicTypeSize) private var typeSize
-
-    /// How far the orange plate missed by, at rest.
-    private let misregistration = CGSize(width: 6, height: 7)
+    private let editions = Editions.shared
 
     init(stub: Stub) {
         self.stub = stub
         _tilt = State(initialValue: stub.tilt)
+        #if DEBUG
+        _turned = State(initialValue: DebugDrive.wantsTurned)
+        #else
+        _turned = State(initialValue: false)
+        #endif
     }
 
     var body: some View {
@@ -28,24 +34,8 @@ struct StubDetailView: View {
             Paper()
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    if let data = stub.imageData, let ui = UIImage(data: data) {
-                        Image(uiImage: ui)
-                            .resizable().scaledToFit()
-                            .silkscreened(strength: holding ? 0 : 1, seed: stub.tilt)
-                            .clipShape(RoundedRectangle(cornerRadius: 3))
-                            .background(
-                                RoundedRectangle(cornerRadius: 3)
-                                    .fill(Ink.orange.opacity(0.14))
-                                    .offset(holding ? .zero : misregistration)
-                            )
-                            .rotationEffect(.degrees(reduceMotion ? 0 : tilt))
-                            .onLongPressGesture(minimumDuration: .infinity, pressing: hold, perform: {})
-                            .sensoryFeedback(.impact(weight: .medium, intensity: 0.8), trigger: registered) { _, new in new }
-                            .accessibilityLabel("The stub for \(stub.title), printed on parchment.")
-                            .accessibilityHint("Hold to lift the print and see the photograph.")
-                    } else {
-                        BlankStub(tilt: reduceMotion ? 0 : tilt, title: stub.title).frame(height: 160)
-                    }
+                    Keepsake(stub: stub, copy: copy, turned: $turned)
+                        .rotationEffect(.degrees(reduceMotion ? 0 : tilt))
 
                     VStack(alignment: .leading, spacing: 6) {
                         Text(stub.title).displayText(34).fixedSize(horizontal: false, vertical: true)
@@ -68,6 +58,13 @@ struct StubDetailView: View {
                     Text("Read by \(stub.readBy == "foundation-models" ? "the on-device model" : stub.readBy) · confidence \(Int(stub.confidence * 100))%")
                         .font(Type.numbers(11)).foregroundStyle(Ink.grey)
                         .accessibilityLabel("Read by \(stub.readBy == "foundation-models" ? "the on-device model" : stub.readBy), \(Int(stub.confidence * 100)) percent confident.")
+
+                    // Honest machinery for the edition too: what it is, and who chose it (DESIGN.md rule 7).
+                    if let edition = editions.edition(for: stub.title) {
+                        Text("Edition: \(edition.described.lowercased()) · \(edition.directedBy == .model ? "chosen by the on-device model" : "drawn from the title")")
+                            .font(Type.numbers(11)).foregroundStyle(Ink.grey)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
 
                     if !stub.rawText.isEmpty {
                         DisclosureGroup(isExpanded: $showRaw) {
@@ -95,28 +92,41 @@ struct StubDetailView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                if let shareable {
+                    ShareLink(item: shareable, preview: SharePreview("An edition of \(stub.title)", image: shareable)) {
+                        Label("Share the edition", systemImage: "square.and.arrow.up")
+                    }
+                    .tint(Ink.ink)
+                }
+            }
+        }
         .onAppear {
             // Sits up straight as it grows. The zoom is the system's; the straightening is ours, on the same clock.
             withAnimation(Motion.settle) { tilt = 0 }
         }
+        // The share is the front, whole, rendered once the edition is printed, at three times the card.
+        .onChange(of: editions.edition(for: stub.title), initial: true) { _, edition in
+            guard let edition else { return }
+            shareable = Self.render(Composition(edition: edition, copy: copy))
+        }
         #if DEBUG
-        .onChange(of: DebugDrive.shared.holding) { _, held in hold(held) }
+        .onChange(of: DebugDrive.shared.turned) { _, now in turned = now }
         #endif
     }
 
-    /// Touch-down lifts the print and slides the plate; the haptic fires when the plate is logically in
-    /// register, not on touch-down, so the feedback is the landing rather than the reach.
-    private func hold(_ pressing: Bool) {
-        if pressing {
-            withAnimation(reduceMotion ? Motion.plain : Motion.settle, completionCriteria: .logicallyComplete) {
-                holding = true
-            } completion: {
-                if holding { registered = true }
-            }
-        } else {
-            registered = false
-            withAnimation(reduceMotion ? Motion.plain : Motion.settle) { holding = false }
-        }
+    /// This stub's copy of its edition, counted against the drawer.
+    private var copy: Copy { Copy(stub: stub, among: drawer) }
+
+    /// The edition's front on a margin of parchment, lit a little from the side, as an image to share.
+    private static func render(_ composition: Composition) -> Image? {
+        let card = EditionFace(composition: composition, light: Light(tilt: CGPoint(x: 0.3, y: -0.2)))
+            .padding(28)
+            .background(Ink.paper)
+        let renderer = ImageRenderer(content: card)
+        renderer.scale = 3
+        return renderer.uiImage.map { Image(uiImage: $0) }
     }
 }
 
