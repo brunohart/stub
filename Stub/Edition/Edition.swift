@@ -58,6 +58,44 @@ struct Edition: Equatable, Codable, Sendable {
     var directedBy: Director
     var version: Int = Genome.version
 
+    init(release: String, movement: Movement, palette: Palette, stock: Stock, seed: UInt64, directedBy: Director,
+         version: Int = Genome.version) {
+        self.release = release; self.movement = movement; self.palette = palette; self.stock = stock
+        self.seed = seed; self.directedBy = directedBy; self.version = version
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case release, movement, palette, stock, seed, directedBy, version
+    }
+
+    // The seed is kept as hex: a UInt64 past 2^53 is a number JSON readers are allowed to round, and a rounded
+    // seed would draw a different card.
+    init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        release = try c.decode(String.self, forKey: .release)
+        movement = try c.decode(Movement.self, forKey: .movement)
+        palette = try c.decode(Palette.self, forKey: .palette)
+        stock = try c.decode(Stock.self, forKey: .stock)
+        let hex = try c.decode(String.self, forKey: .seed)
+        guard let seed = UInt64(hex, radix: 16) else {
+            throw DecodingError.dataCorruptedError(forKey: .seed, in: c, debugDescription: "seed '\(hex)' is not hex")
+        }
+        self.seed = seed
+        directedBy = try c.decode(Director.self, forKey: .directedBy)
+        version = try c.decode(Int.self, forKey: .version)
+    }
+
+    func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(release, forKey: .release)
+        try c.encode(movement, forKey: .movement)
+        try c.encode(palette, forKey: .palette)
+        try c.encode(stock, forKey: .stock)
+        try c.encode(String(seed, radix: 16), forKey: .seed)
+        try c.encode(directedBy, forKey: .directedBy)
+        try c.encode(version, forKey: .version)
+    }
+
     /// A die for one part of the drawing (`"title"`, `"rays"`, …). See `Dice.fork`.
     func dice(_ part: String) -> Dice {
         Dice(seed: seed).fork(part)
