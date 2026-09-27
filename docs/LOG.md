@@ -2,6 +2,20 @@
 
 Newest at the top. One entry per slot. What shipped, what broke, what the reader did.
 
+## 2026-09-28 — Day 22: Day 21, built
+
+The first day of the press brief (`docs/briefs/the-press.md`, PLAYBOOK Days 22–30), and the first Mac to see Day 21. Not a scheduled slot: the 07:00 slot died at once ("OAuth session expired and could not be refreshed") and nothing ran.
+
+**Shipped.** Day 21 built. The brief is in the repo and the playbook has Days 22 to 30. `-edition` waits for the seed to finish before it opens the newest stub (`DebugSeed.finished`). Screenshots `docs/screenshots/day-21-edition.png` (La Chimera: blueprint, night inks, the ring in foil, `-tilt 0.35,-0.25`) and `day-21-edition-turned.png` (its back: the scanned stub in four photo corners, the colophon, "Drawn from the title.", the serial and the Aztec code).
+
+**What the compiler found.** Almost nothing. About 2,600 lines of Swift and Metal written on a container with no toolchain compiled first time on the iOS 27 SDK with no errors and one warning: `GenerationOptions.sampling` is deprecated in favour of `samplingMode`. The SDK back-deploys `samplingMode` to iOS 26, so the art director now builds its options with `GenerationOptions(samplingMode: .greedy)` and the build has no warnings. Seventy-one tests in fourteen suites pass on the iPhone 18 Pro (iOS 27), including the pinned floor and every edition, palette, director and texture test, none of which had run before. The floor for the fixtures is the one the Python mirror computed on Day 21: The Brutalist constructivist/sand/foil, La Chimera blueprint/night/foil.
+
+**Reader.** The on-device model answers on the iOS 27 runtime today (probe `Ready` in 1.8 s in the app, 16 s cold in the test host), two days after it said "still downloading" on the same host. All eight seeded stubs filed `by foundation-models (100%)`, cropped by rectangles, every title, cinema and seat right, "Aftersun" spelled properly for once. Streaming finishes in about 2.4 s a stub. The test host's second probe timed out and the eval ran heuristic-only, so `docs/evals.md` stays at the 2026-09-12 run.
+
+**Broke and fixed.** The first edition shot opened The Brutalist after the first stub was filed, not after the eighth. `-edition` opened the newest stub once the drawer had sat still for two seconds, and with the model reading, one read takes longer than that. It now also waits for the seed.
+
+**Still rough.** The model has not art-directed an edition in the simulator yet. Every edition in three runs was drawn from the title because the model "took longer than 12.0 seconds": the first time because the seed was still reading, the next two, most likely, because the season sentence asks the same model at the same moment and the on-device model answers one request at a time (the season's own lines were dropped by the log, so this is inferred from the timing, not seen). On a phone this happens on Keep: the import sheet prints the new copy's edition while the drawer's changed count sets the season rephrasing, and whichever edition loses is cached for good. The edition is what the person is looking at, so the season should wait for `Editions` as it waits for the reader; that is a small change and was left for a day that can measure it. On a dark palette the card's edge sliver (the strip's ground, darkened) shows as a black line under the pale back. The unified log dropped the season's info lines for a run, as it did on Day 4.
+
 ## 2026-09-27 — Day 21: Editions
 
 Not a scheduled slot; asked for by Bruno. Scan a ticket, get two back: the stub as scanned, and an edition designed for its film's release (ADR-015, DESIGN.md › Editions, PLAYBOOK Day 21). **Written on a Linux container with no Swift toolchain** (`download.swift.org` is outside the container's network policy), so nothing below has been compiled, run in the simulator, or screenshotted from the app. The first Mac slot builds it before anything else, per the rule at the top of the playbook.

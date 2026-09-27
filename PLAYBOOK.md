@@ -89,7 +89,7 @@ Shipped: all four bullets. README, `docs/post.md`, `docs/device.md`, tag `v0.1.0
 
 The launchd agent keeps firing; the skill exits cleanly with "playbook complete" until this file grows. Add Day 8+ entries here to keep going.
 
-## Day 21 — Sun 27 Sep — Editions
+## Day 21 — Sun 27 Sep — Editions ✅
 
 Every stub comes back as two things: the stub as scanned, and an edition designed for its film's release (ADR-015, DESIGN.md › Editions). Written on a container without a Swift toolchain, so the first Mac slot after this one builds it before anything else (the rule at the top of this file).
 
@@ -101,3 +101,55 @@ Every stub comes back as two things: the stub as scanned, and an edition designe
 - The print run after Keep: plate by plate, the foil last, a haptic per pass.
 - Proof, next Mac slot: `scripts/run.sh --seed --reset --edition --tilt 0.35,-0.25 --wait-for "written|hand-counted" --shot docs/screenshots/day-21-edition.png`, and the same with `--turned`.
 
+
+## The press — Days 22 to 30
+
+`docs/briefs/the-press.md` is the brief: a place where the person who kept a stub pulls their own proof of its edition. You choose between drawings; you never move a mark. Read it after DESIGN, DECISIONS and the Day 21 log. Each day ends with the ritual at the top; new `run.sh` flags go through `DebugDrive` (ADR-009). Nothing from Day 23 on starts until Day 22 is green.
+
+## Day 22 — Mon 28 Sep — Day 21, built ✅
+
+Shipped: both bullets. It compiled first time with one deprecation (`sampling` → `samplingMode`); 71 tests pass. The model is back on the iOS 27 simulator but lost every edition to its patience, most likely to the season sentence asking at the same moment. See `docs/LOG.md`.
+
+- `scripts/build.sh`, fix every compile error in the editions, then `scripts/test.sh` green. Log what the compiler found.
+- Day 21's proof shots: `scripts/run.sh --seed --reset --edition --tilt 0.35,-0.25 --wait-for "Edition '" --shot docs/screenshots/day-21-edition.png` (with `STUB_AFTER=4` so the press has run), and the same with `--turned`.
+
+## Day 23 — Tue 29 Sep — Parts, takes and the proof
+
+Data only, no new UI (brief §4).
+
+- Parts and per-part dice in all eight movements: each movement declares its parts (at most one frame; pieces read only their own die and the frame's outputs), every poster `Mark` carries its `Part.ID`, strip marks carry none. `dice(_ part:, take:)` is the one way a part gets its die; take 0 is the part's own die, take n is `fork("take n")`.
+- `Genome.version = 2`; `Genome.floor` unchanged. `edition.js` in lockstep, the specimen regenerated, v1 and v2 specimen screenshots committed side by side.
+- `Proof`, `ProofCache` (one JSON dictionary in `UserDefaults`, keyed by release), `Director.you`, `Edition.applying(_:)` behind `Editions.edition(for:)`. "What the press keeps" in the detail: the proof's JSON and its size in bytes.
+- Tests 1, 2, 4, 5, 6, 7 from the brief (§9). ADR-016 and DESIGN.md › *The press*.
+- Flag: `--proof "disc=14,bars=3"`. Proof: the edition shot at take 0, and with the proof.
+
+## Day 24 — Wed 30 Sep — The press room, isolation, the wheel
+
+- Hold the keepsake to take it to the press; the room (the bed, the bench, the italic line), ghosting the parts you are not holding, the wheel and its detents, in-betweens (`Composition.between`), the rotor and the adjustable wheel (brief §5.1–5.3).
+- Test 3. Flags: `--press`, `--part constructivist/disc`, `--take 14`, `--scrub 13.5`. Proof: shots at 13, 13.5 and 14, and `docs/screenshots/day-24-press.mov`.
+
+## Day 25 — Thu 1 Oct — Separations
+
+- The pinch, per-sheet projection, unprojected hit-testing, the flat Reduce Motion row (brief §5.4). Flag: `--separated 0.8`. Proof: the shot, and a clip of the card coming apart and pressing back together.
+
+## Day 26 — Fri 2 Oct — The fan, draw-downs and the swatch book
+
+- `FanLayout`, the flood shader, hold-to-feel, the fast print run (brief §5.5–5.6). Flags: `--bench movement|inks|stock`, `--flood 0.4`. Proof: one shot per bench, and the flood held at 0.4.
+
+## Day 27 — Sat 3 Oct — The lever, wet ink and the back
+
+- Lever and platen, the `wet` uniform, `UndoManager`, the signature, A/P and takes in pencil, the colophon and the detail's line (brief §5.7–5.9). Flags: `--pulled`, `--wet 0.6`. Proof: the wet shot, and the back signed (a fixture signature drawn by `DebugSeed`).
+
+## Day 28 — Sun 4 Oct — The punch and patina
+
+- Remarques punched through both faces for second and later viewings; patina from `screenedAt` and the seed (brief §6.1–6.2). Tests 8 and 9. Flags: `--viewings 3`, `--age 6`.
+- A ninth fixture in `scripts/make-fixtures.swift`, a second Dune Part Two ticket ("DUNE PART TWO IMAX", a later date, another seat), with its truth in `fixtures/expected.json`.
+
+## Day 29 — Mon 5 Oct — The room's light
+
+- ADR-017. The card on a real table through the camera (RealityKit), gated on `ARWorldTrackingConfiguration.isSupported`. The entity builds in the simulator; placing it is a device test (`docs/device.md` §3).
+
+## Day 30 — Tue 6 Oct — The moving share, and the write-up
+
+- Confirm `ImageRenderer` draws the edition's shaders first. A three-second clip of the card turning in the light in the `ShareLink`.
+- `README.md` (the press row, the day table), `docs/device.md` §3 (the press in the hand), and a draft `docs/post-press.md` on one subject: re-rolling a part without moving the rest, from `Dice.fork` to the wheel.
