@@ -1,0 +1,35 @@
+<!doctype html><meta charset="utf-8">
+<!-- The edition lit: the Metal shaders emulated per pixel (lit.js) on the specimen's marks. ?tilt=x,y moves the light. A design tool, not a proof of the app. -->
+<style>
+@font-face { font-family: 'Host Grotesk'; src: url('../../Stub/Resources/Fonts/HostGrotesk-Variable.ttf'); font-weight: 300 800; }
+@font-face { font-family: 'Newsreader'; src: url('../../Stub/Resources/Fonts/Newsreader-Variable.ttf'); font-weight: 200 800; }
+@font-face { font-family: 'Newsreader'; src: url('../../Stub/Resources/Fonts/Newsreader-Italic-Variable.ttf'); font-weight: 200 800; font-style: italic; }
+@font-face { font-family: 'Fragment Mono'; src: url('../../Stub/Resources/Fonts/FragmentMono-Regular.ttf'); }
+body { margin: 0; background: #F0EDE6; padding: 36px; }
+#grid { display: grid; grid-template-columns: repeat(4, 330px); gap: 40px 36px; }
+figure { margin: 0; } figcaption { font: 12px 'Fragment Mono'; color: #8A8578; margin-top: 10px; }
+canvas { filter: drop-shadow(6px 10px 14px rgba(40,30,20,.22)) drop-shadow(1px 2px 2px rgba(40,30,20,.25)); }
+</style>
+<div id="grid"></div>
+<script src="edition.js"></script>
+<script src="lit.js"></script>
+<script>
+const params = new URLSearchParams(location.search);
+const tilt = (params.get('tilt') || '0,0').split(',').map(Number);
+const CARDS = [
+  ['The Brutalist', 'constructivist', 'sand', 'foil', { cinema: 'Embassy Theatre', date: '08 MAR 2024', time: '19:30', screen: '1', seat: 'H12', price: '$22.00', year: 2024 }],
+  ['Perfect Days', 'letterpress', 'chalk', 'cotton', { cinema: 'Lighthouse Cinema Cuba', date: '15 MAR 2024', time: '18:15', screen: '2', seat: 'F7', price: '$18.50', year: 2024 }],
+  ['Dune Part Two', 'riso', 'moss', 'holographic', { cinema: 'The Roxy Cinema', date: '22 MAR 2024', time: '20:00', screen: '2', seat: 'D4', price: '$26.00', year: 2024 }],
+  ['Anora', 'deco', 'night', 'foil', { cinema: 'Event Cinemas Queen St', date: '01 NOV 2024', time: '21:30', screen: '7', seat: 'C8', price: '$21.50', year: 2024 }],
+];
+document.fonts.load('700 20px "Host Grotesk"').then(() => Promise.all(['300','500','800'].map(w => document.fonts.load(`${w} 20px "Host Grotesk"`)).concat([document.fonts.load('20px Newsreader'), document.fonts.load('italic 20px Newsreader'), document.fonts.load('20px "Fragment Mono"')]))).then(() => {
+  for (const [title, movement, palette, stock, f] of CARDS) {
+    const copy = { title, ...f, viewing: 1, viewings: 1, viewingWords: 'First viewing', when: `${f.date} · ${f.time}`, place: `Screen ${f.screen} · ${f.seat}` };
+    const ed = { ...floorEdition(title), movement, palette, stock };
+    const fig = document.createElement('figure'); fig.appendChild(litCard(ed, copy, tilt));
+    const cap = document.createElement('figcaption'); cap.textContent = `${movement} · ${palette} · ${stock} · tilt ${tilt.join(',')}`; fig.appendChild(cap);
+    document.getElementById('grid').appendChild(fig);
+  }
+  document.body.dataset.ready = '1';
+});
+</script>

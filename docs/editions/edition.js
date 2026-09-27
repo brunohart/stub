@@ -319,6 +319,7 @@ function render(edition, copy, { tilt = [0.3, -0.25], printed = 9 } = {}) {
   const posterG = add(card, 'g', { 'clip-path': `url(#${id}p)` });
   const inks = add(posterG, 'g', {});
   const foil = add(posterG, 'g', {});
+  const type = add(posterG, 'g', {});   // over the foil, as EditionFace lays it
   const stripG = add(card, 'g', {});
   const draw = (mk, into) => {
     const toFoil = mk.foil && metallic;
@@ -346,7 +347,7 @@ function render(edition, copy, { tilt = [0.3, -0.25], printed = 9 } = {}) {
       return e;
     }
   };
-  poster.forEach(mk => draw(mk, inks));
+  poster.forEach(mk => draw(mk, mk.plate === 3 ? type : inks));
   st.forEach(mk => draw(mk, stripG));
   add(card, 'rect', { x: 0, y: 0, width: W, height: H, fill: `url(#${id}g)` });
   return svg;
