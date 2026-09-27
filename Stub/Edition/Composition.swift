@@ -44,6 +44,7 @@ struct Composer {
         switch edition.movement {
         case .swiss: swiss()
         case .constructivist: constructivist()
+        case .deco: deco()
         default: swiss()
         }
     }
