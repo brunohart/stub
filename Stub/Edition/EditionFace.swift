@@ -14,7 +14,7 @@ struct Light: Equatable, Sendable {
 extension Stock {
     /// How the stock shows through: grain on all of them, a long fibre in cotton, a satin gloss on coated card.
     var grain: Double { self == .cotton ? 0.05 : 0.025 }
-    var fibre: Double { self == .cotton ? 0.06 : 0 }
+    var fibre: Double { self == .cotton ? 0.045 : 0 }
     var gloss: Double {
         switch self {
         case .cotton: 0.02
@@ -49,7 +49,7 @@ struct EditionFace: View {
             .modifier(StockEffect(light: light, stock: stock, seed: Double(c.edition.seed % 997)))
 
             Canvas { context, _ in
-                Printer(composition: c).inks(into: context, printed: printed)
+                Printer(composition: c).inks(into: context, printed: printed, plates: .first ... .second)
             }
             .modifier(ReliefEffect(light: light, depth: depth, reach: stock.reach))
 
@@ -61,6 +61,13 @@ struct EditionFace: View {
                                      lightGround: c.inks.groundIsLight))
                 .transition(.opacity)
             }
+
+            // The type lies over the foil, never under it: stamped last in time, but a title the foil covered would
+            // be a title nobody could read. Its own canvas, so its impression is its own.
+            Canvas { context, _ in
+                Printer(composition: c).inks(into: context, printed: printed, plates: .type ... .type)
+            }
+            .modifier(ReliefEffect(light: light, depth: depth, reach: stock.reach))
         }
         .frame(width: Card.width, height: Card.height)
         .clipShape(TicketShape())
@@ -88,19 +95,20 @@ struct TicketShape: Shape {
     }
 }
 
-/// Lays the marks onto a canvas. The inks and the foil are separate canvases so each gets its own surface;
-/// a foil mark on a stock that has no foil is printed in its ink with the rest.
+/// Lays the marks onto a canvas. Plates, foil and type are separate canvases so each gets its own surface and
+/// the type lies on top; a foil mark on a stock that has no foil is printed in its ink with the rest.
 struct Printer {
     let composition: Composition
 
-    func inks(into context: GraphicsContext, printed: Int) {
+    /// The marks on `plates` that have been printed, less any the foil takes.
+    func inks(into context: GraphicsContext, printed: Int, plates: ClosedRange<Plate>) {
         let c = composition
         var poster = context
         poster.clip(to: Path(Card.posterRect))
-        for mark in c.poster where mark.plate.rawValue <= printed && !(mark.foil && c.isMetallic) {
+        for mark in c.poster where plates.contains(mark.plate) && mark.plate.rawValue <= printed && !(mark.foil && c.isMetallic) {
             draw(mark, into: poster, colour: c.inks.color(mark.role))
         }
-        for mark in c.strip where mark.plate.rawValue <= printed {
+        for mark in c.strip where plates.contains(mark.plate) && mark.plate.rawValue <= printed {
             draw(mark, into: context, colour: c.inks.color(mark.role))
         }
     }
