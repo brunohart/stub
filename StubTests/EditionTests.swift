@@ -25,9 +25,8 @@ struct EditionTests {
     @Test func diceIsSplitMix() {
         // The published SplitMix64 sequence for seed 1.
         var dice = Dice(seed: 1)
-        #expect(dice.next() == 0x910a2dec89025cc1)
-        #expect(dice.next() == 0xbeeb8da1658eec67)
-        #expect(dice.next() == 0xf893a2eefb32555e)
+        let rolls = (0..<3).map { _ in dice.next() }
+        #expect(rolls == [0x910a2dec89025cc1, 0xbeeb8da1658eec67, 0xf893a2eefb32555e])
         var again = Dice(seed: 42)
         for _ in 0..<500 {
             let u = again.unit()
@@ -37,9 +36,10 @@ struct EditionTests {
 
     @Test func forksAreIndependent() {
         let base = Dice(seed: 7)
-        var a = base.fork("rays"), b = base.fork("rays"), c = base.fork("title")
-        #expect(a.next() == b.next(), "the same part rolls the same")
-        #expect(base.fork("rays").seed != c.seed)
+        var a = base.fork("rays"), b = base.fork("rays")
+        let (ra, rb) = (a.next(), b.next())
+        #expect(ra == rb, "the same part rolls the same")
+        #expect(base.fork("rays").seed != base.fork("title").seed)
         var rolled = base
         _ = rolled.next(); _ = rolled.next()
         #expect(rolled.fork("rays").seed == base.fork("rays").seed, "a fork is from the seed, not from how far the die has rolled")
