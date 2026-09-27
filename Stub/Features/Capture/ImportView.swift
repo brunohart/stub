@@ -2,10 +2,16 @@ import SwiftUI
 import SwiftData
 import PhotosUI
 
-/// Bring a stub in. From the library today; from the camera when there is a device to hold.
+/// Bring a stub in. From the library today; from the camera when there is a device to hold. Keep it and you get two
+/// things back (ADR-015): the stub as scanned, filed in the drawer, and its edition, printed here before your eyes.
 struct ImportView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    /// The drawer, so a kept stub's edition knows which viewing of its release it is.
+    @Query private var drawer: [Stub]
+    /// The stub just kept. Set, the sheet stops being a form and becomes the press.
+    @State private var kept: Stub?
+    @State private var keptTurned = false
 
     @State private var pick: PhotosPickerItem?
     @State private var image: UIImage?
@@ -21,61 +27,67 @@ struct ImportView: View {
         NavigationStack {
             ZStack {
                 Paper()
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 22) {
-                        if let image {
-                            Image(uiImage: image)
-                                .resizable().scaledToFit()
-                                .frame(maxHeight: 260)
-                                .silkscreened(strength: stage == .done ? 1 : 0.4, seed: 2)
-                                .clipShape(RoundedRectangle(cornerRadius: 3))
-                                .animation(reduceMotion ? Motion.plain : Motion.settle, value: stage)
-                                .accessibilityLabel(stage == .done ? "The stub, printed on parchment." : "The photograph of the stub, being read.")
-                        } else {
-                            picker
-                        }
-
-                        if let stage, stage != .done {
-                            StageLine(stage: stage)
-                        }
-
-                        // The fields are on screen while the model is still answering, so a streamed title
-                        // has somewhere to land.
-                        if reading != nil || stage == .done || image == nil || understanding {
-                            fields
-                        }
-
-                        if let failure {
-                            Text(failure).font(Type.reading(15)).foregroundStyle(Ink.rust)
-                        }
-
-                        if let reading {
-                            DisclosureGroup(isExpanded: $showRaw) {
-                                Text(reading.text)
-                                    .font(Type.numbers(12))
-                                    .foregroundStyle(Ink.ink.opacity(0.7))
-                                    .padding(.top, 8)
-                            } label: {
-                                Text("What the reader saw")
-                                    .font(Type.words(14)).foregroundStyle(Ink.grey)
+                if let kept {
+                    press(kept)
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 22) {
+                            if let image {
+                                Image(uiImage: image)
+                                    .resizable().scaledToFit()
+                                    .frame(maxHeight: 260)
+                                    .silkscreened(strength: stage == .done ? 1 : 0.4, seed: 2)
+                                    .clipShape(RoundedRectangle(cornerRadius: 3))
+                                    .animation(reduceMotion ? Motion.plain : Motion.settle, value: stage)
+                                    .accessibilityLabel(stage == .done ? "The stub, printed on parchment." : "The photograph of the stub, being read.")
+                            } else {
+                                picker
                             }
-                            .tint(Ink.grey)
+
+                            if let stage, stage != .done {
+                                StageLine(stage: stage)
+                            }
+
+                            // The fields are on screen while the model is still answering, so a streamed title
+                            // has somewhere to land.
+                            if reading != nil || stage == .done || image == nil || understanding {
+                                fields
+                            }
+
+                            if let failure {
+                                Text(failure).font(Type.reading(15)).foregroundStyle(Ink.rust)
+                            }
+
+                            if let reading {
+                                DisclosureGroup(isExpanded: $showRaw) {
+                                    Text(reading.text)
+                                        .font(Type.numbers(12))
+                                        .foregroundStyle(Ink.ink.opacity(0.7))
+                                        .padding(.top, 8)
+                                } label: {
+                                    Text("What the reader saw")
+                                        .font(Type.words(14)).foregroundStyle(Ink.grey)
+                                }
+                                .tint(Ink.grey)
+                            }
                         }
+                        .padding(20)
                     }
-                    .padding(20)
                 }
             }
-            .navigationTitle("New stub")
+            .navigationTitle(kept == nil ? "New stub" : "Kept")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }.tint(Ink.ink)
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Keep") { keep() }
-                        .tint(Ink.ink)
-                        .disabled(!draft.isUsable)
+                if kept == nil {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { dismiss() }.tint(Ink.ink)
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Keep") { keep() }
+                            .tint(Ink.ink)
+                            .disabled(!draft.isUsable)
+                    }
                 }
             }
             .onChange(of: pick) { _, item in
@@ -222,7 +234,28 @@ struct ImportView: View {
             confidence: reading == nil ? 1 : draft.confidence
         )
         context.insert(stub)
-        dismiss()
+        // Not dismissed: the stub is in the drawer, and now its edition is printed.
+        withAnimation(reduceMotion ? Motion.plain : Motion.place) { kept = stub }
+    }
+
+    /// The press: the kept stub's copy of its edition, printed pass by pass, with the stub as scanned on its back.
+    private func press(_ stub: Stub) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 22) {
+                Keepsake(stub: stub, copy: Copy(stub: stub, among: drawer), turned: $keptTurned, pressesOnAppear: true)
+                Button { dismiss() } label: {
+                    Text("Into the drawer")
+                        .font(Type.words(17))
+                        .foregroundStyle(Ink.paper)
+                        .padding(.horizontal, 18).padding(.vertical, 12)
+                        .frame(minHeight: 44)
+                        .background(Ink.ink, in: RoundedRectangle(cornerRadius: 6))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(20)
+        }
+        .transition(.opacity)
     }
 }
 
