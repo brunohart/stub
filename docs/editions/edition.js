@@ -12,7 +12,15 @@ class Dice {
   sign() { return this.chance(0.5) ? -1 : 1; }
   fork(l) { return new Dice(this.seed ^ fnv(l)); }
 }
-function releaseKey(t) { return t.trim().toLowerCase().replace(/&/g, ' and ').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^0-9a-z]/g, ' ').split(/\s+/).filter(Boolean).join(' '); }
+// As Release.key: formats stripped (up to three), diacritics and case folded, "&" read as "and", anything that is
+// not a letter or a digit in any script a space.
+const FORMATS = /\s*\(?\b(2D|3D|IMAX|4DX|ATMOS|DOLBY|VMAX|GOLD CLASS|OC|CC|M|PG|R13|R16|R18|G)\b\)?\s*$/i;
+function releaseKey(t) {
+  let bare = t.trim();
+  for (let i = 0; i < 3; i++) { const s = bare.replace(FORMATS, '').trim(); if (s === bare) break; bare = s; }
+  return bare.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/&/g, ' and ')
+    .replace(/[^\p{L}\p{N}]/gu, ' ').split(/\s+/).filter(Boolean).join(' ');
+}
 const MOVEMENTS = ['swiss', 'constructivist', 'deco', 'cutout', 'riso', 'letterpress', 'blueprint', 'noir'];
 const PALETTES = ['sand', 'night', 'ember', 'tide', 'moss', 'chalk', 'bruise', 'oxide', 'cobalt', 'citrus', 'blush', 'smoke'];
 const STOCKS = ['cotton', 'coated', 'foil', 'holographic'];
