@@ -185,3 +185,8 @@ extension Dice {
         CGFloat(between(Double(low), Double(high)))
     }
 }
+
+extension CGPoint {
+    /// `CGPoint(x, y)`: compositions place a great many points.
+    init(_ x: CGFloat, _ y: CGFloat) { self.init(x: x, y: y) }
+}
