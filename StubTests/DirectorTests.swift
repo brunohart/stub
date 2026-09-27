@@ -42,6 +42,6 @@ struct DirectorTests {
         let printed = EditionCache.all(in: defaults)
         #expect(printed.count == 2, "one entry per release")
         #expect(printed["the brutalist"] == brutalist)
-        #expect(printed["the brutalist"]?.seed == 0x915efa9ae0edb7b8, "the seed survives the round trip whole, past 2^53")
+        #expect(printed["the brutalist"]?.seed == UInt64(0x915efa9ae0edb7b8), "the seed survives the round trip whole, past 2^53")
     }
 }
