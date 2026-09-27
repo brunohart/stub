@@ -9,7 +9,8 @@ struct StubApp: App {
         #if DEBUG
         // A reset drawer gets a fresh sentence, not yesterday's: cleared before the table's first task can
         // read the cache for the drawer that is about to be emptied.
-        if DebugSeed.resets { SeasonCache.clear() }
+        // The editions go with it: a reset drawer's releases are chosen and printed again.
+        if DebugSeed.resets { SeasonCache.clear(); EditionCache.clear() }
         #endif
         // The drawer lives where the widget can read it (Day 5). A pre-Day-5 drawer is moved across once.
         SharedStore.migrateIfNeeded()
