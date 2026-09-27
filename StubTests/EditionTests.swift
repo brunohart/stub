@@ -109,3 +109,22 @@ struct EditionTests {
         #expect(Copy(stub: Stub(title: "Anora", screen: "IMAX"), viewing: 1).place == "IMAX")
     }
 }
+
+/// The feel of the stock: the arithmetic under the haptics, which the simulator cannot play.
+struct TextureTests {
+    @Test func perforationIsCrossedOnce() {
+        #expect(Texture.crossesPerforation(from: Card.poster - 3, to: Card.poster + 3))
+        #expect(Texture.crossesPerforation(from: Card.poster + 10, to: Card.poster - 1))
+        #expect(!Texture.crossesPerforation(from: 100, to: 200), "a stroke across the poster is not the perforation")
+        #expect(!Texture.crossesPerforation(from: Card.poster, to: Card.poster + 4), "starting on it is not crossing it")
+    }
+
+    @Test func paperIsDullAndMetalIsBright() {
+        #expect(Stock.cotton.sharpness < Stock.coated.sharpness)
+        #expect(Stock.coated.sharpness < Stock.foil.sharpness)
+        #expect(Stock.cotton.grip > Stock.holographic.grip)
+        for stock in Stock.allCases {
+            #expect((0...1).contains(stock.sharpness) && (0...1).contains(stock.grip))
+        }
+    }
+}
