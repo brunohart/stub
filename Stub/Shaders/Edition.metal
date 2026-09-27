@@ -40,7 +40,9 @@ static float edition_height(half4 s) {
 [[ stitchable ]] half4 stock(float2 position, half4 color, float4 bounds, float2 light, float grain, float fibre, float gloss, float seed) {
     float2 uv = (position - bounds.xy) / max(bounds.zw, float2(1.0));
     float n = edition_hash(floor(position) + seed) - 0.5;
-    float f = edition_noise(position * float2(0.045, 0.55) + seed * 13.0) - 0.5;
+    // Cotton rag: short fibres, a little longer across than down, two octaves so it reads as paper, not grain.
+    float f = edition_noise(position * float2(0.11, 0.32) + seed * 13.0) * 0.65
+        + edition_noise(position * float2(0.31, 0.9) + seed * 7.0) * 0.35 - 0.5;
     float s = edition_sheen(uv, light, 2.2) * gloss;
     float3 rgb = float3(color.rgb) + n * grain + f * fibre + s;
     return half4(half3(clamp(rgb, 0.0, 1.0)) * color.a, color.a);
@@ -91,14 +93,16 @@ static float edition_height(half4 s) {
     float3 base = float3(metal.rgb);
     float3 colour;
     if (holographic > 0.5) {
-        float t = dot(uv, float2(0.9, 0.5)) * 1.6 + light.x * 1.3 + light.y * 0.9;
+        // A diffraction grating: fine bands of colour across the stamp that slide as the light moves.
+        float t = dot(uv, float2(0.9, 0.5)) * 4.2 + light.x * 2.2 + light.y * 1.4;
         float3 film = 0.5 + 0.5 * cos(6.28318 * (t + float3(0.0, 0.33, 0.67)));
         film = mix(film, film * 0.62, lightGround);
-        colour = mix(base, film, 0.55) * (0.74 + 0.5 * sheen);
+        colour = mix(base, film, 0.38) * (0.78 + 0.55 * sheen);
     } else {
         colour = base * (0.62 + 0.72 * sheen);
     }
-    colour += spec * 0.35 + edge * 0.18 + brush * 0.045;
+    // Holographic film is smooth; only metal foil shows the brush.
+    colour += spec * 0.35 + edge * 0.18 + brush * (holographic > 0.5 ? 0.015 : 0.045);
     colour = clamp(colour, 0.0, 1.0);
     return half4(half3(colour) * m.a, m.a);
 }
