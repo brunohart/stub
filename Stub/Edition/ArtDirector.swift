@@ -136,8 +136,13 @@ enum EditionCache {
     }
 }
 
-/// Every release's edition, decided once. Asked for a release it has not printed, it gives the model a while to
-/// choose (when there is a model), falls back to the floor, and keeps whichever it printed.
+/// Every release's edition, decided once, and the proof pulled over it, if any. Asked for a release it has not
+/// printed, it gives the model a while to choose (when there is a model), falls back to the floor, and keeps whichever
+/// it printed.
+///
+/// `edition(for:)` is the one seam where a proof is applied (ADR-016): the detail, the print run and the share all get
+/// the proof without knowing it exists. The edition underneath is never overwritten, so going back is deleting the
+/// proof.
 @MainActor @Observable
 final class Editions {
     static let shared = Editions()
@@ -145,31 +150,108 @@ final class Editions {
     /// How long the press waits for the model before printing the floor. The print run says it is choosing.
     static let patience: Duration = .seconds(12)
 
+    /// Every release's edition as the hash or the model printed it.
     private(set) var printed: [String: Edition]
+    /// Every release's last pulled proof.
+    private(set) var proofs: [String: Proof]
     private var deciding: [String: Task<Edition, Never>] = [:]
+    @ObservationIgnored private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
-        printed = EditionCache.all(in: defaults)
+        self.defaults = defaults
+        var printed = EditionCache.all(in: defaults)
+        // Version 1 was retired, not frozen: nothing had shipped (ADR-016). The movement, the palette, the stock and
+        // who chose them are kept; the composition under them is drawn at the current version from now on.
+        for (key, edition) in printed where edition.version < Genome.version {
+            var redrawn = edition
+            redrawn.version = Genome.version
+            printed[key] = redrawn
+            EditionCache.store(redrawn, in: defaults)
+            Self.log.notice("Edition '\(key)': printed at version \(edition.version), redrawn at version \(Genome.version)")
+        }
+        self.printed = printed
+        proofs = ProofCache.all(in: defaults)
+        #if DEBUG
+        for edition in printed.values { pullDebugProof(over: edition) }
+        #endif
     }
 
-    /// The release's edition if it has been printed; `nil` means the next look at it will print it.
+    /// The release's edition as it is shown, its pulled proof laid over it; `nil` means the next look at it will
+    /// print it.
     func edition(for title: String) -> Edition? {
+        let key = Release.key(for: title)
+        return printed[key]?.applying(proofs[key])
+    }
+
+    /// The edition as the hash or the model printed it, under any proof: what "going back" goes back to.
+    func underneath(for title: String) -> Edition? {
         printed[Release.key(for: title)]
     }
 
-    /// The release's edition: the one already printed, or one decided now and kept.
+    /// The release's last pulled proof.
+    func proof(for title: String) -> Proof? {
+        proofs[Release.key(for: title)]
+    }
+
+    /// Keep `proof` as its release's pulled proof. A proof that differs in nothing is not a proof: it is going back.
+    func pull(_ proof: Proof, at date: Date = .now) {
+        guard let underneath = printed[proof.release] else { return }
+        guard underneath.applying(proof) != underneath else {
+            discardProof(release: proof.release)
+            return
+        }
+        var pulled = proof
+        pulled.pulledAt = pulled.pulledAt ?? date
+        proofs[proof.release] = pulled
+        ProofCache.store(pulled, in: defaults)
+    }
+
+    /// Going back: the proof is deleted and the edition underneath shows again, exactly as it was.
+    func discardProof(release: String) {
+        proofs[release] = nil
+        ProofCache.remove(release: release, in: defaults)
+    }
+
+    /// Keep an edition as printed. The model and the floor come in through `decide`; this is for a test, and for a
+    /// release printed some other way in future.
+    func store(_ edition: Edition) {
+        printed[edition.release] = edition
+        EditionCache.store(edition, in: defaults)
+    }
+
+    /// The release's edition, its proof laid over it: the one already printed, or one decided now and kept.
     func decide(title: String, year: Int?, screen: String?) async -> Edition {
         let key = Release.key(for: title)
-        if let known = printed[key] { return known }
-        if let running = deciding[key] { return await running.value }
-        let task = Task { await Self.choose(title: title, year: year, screen: screen) }
-        deciding[key] = task
-        let edition = await task.value
-        deciding[key] = nil
-        printed[key] = edition
-        EditionCache.store(edition)
-        return edition
+        if printed[key] == nil {
+            if let running = deciding[key] {
+                _ = await running.value
+            } else {
+                let task = Task { await Self.choose(title: title, year: year, screen: screen) }
+                deciding[key] = task
+                let edition = await task.value
+                deciding[key] = nil
+                store(edition)
+                #if DEBUG
+                pullDebugProof(over: edition)
+                #endif
+            }
+        }
+        return edition(for: title) ?? Genome.floor(for: title)
     }
+
+    #if DEBUG
+    /// `-proof "disc=14,bars=3"`: pull a proof over every release that has none yet, those already printed at launch
+    /// and the rest as they are printed, so a take can be screenshotted without hands (ADR-009: `DebugDrive`, not a
+    /// third mechanism).
+    private func pullDebugProof(over edition: Edition) {
+        guard let spec = DebugDrive.proofSpec, proofs[edition.release] == nil else { return }
+        let (proof, unread) = Proof.parsing(spec, over: edition)
+        if !unread.isEmpty { Self.log.error("-proof: could not read \(unread.joined(separator: ", ")) for \(edition.movement.rawValue)") }
+        pull(proof)
+        let json = proofs[edition.release].map { String(decoding: $0.json, as: UTF8.self) } ?? "nothing (it differs in nothing)"
+        Self.log.info("Edition '\(edition.release)': pulled from -proof: \(json)")
+    }
+    #endif
 
     private struct Impatient: Error {}
 

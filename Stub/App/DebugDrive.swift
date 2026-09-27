@@ -33,6 +33,16 @@ final class DebugDrive {
         return CGPoint(x: parts[0], y: parts[1])
     }()
 
+    /// `-keeps`: with `-edition`, open "What the press keeps" in the detail and scroll to it.
+    static var wantsKeeps: Bool { ProcessInfo.processInfo.arguments.contains("-keeps") }
+    /// `-proof "disc=14,bars=3"`: a proof pulled over each release as it is first printed (ADR-016). Parts are named
+    /// by their last word or their whole id; `movement=`, `inks=` and `stock=` choose from the genome.
+    static let proofSpec: String? = {
+        let args = ProcessInfo.processInfo.arguments
+        guard let i = args.firstIndex(of: "-proof"), i + 1 < args.count else { return nil }
+        return args[i + 1]
+    }()
+
     /// The card the driver is pressing, if any. `StubCard` treats it as a touch.
     var pressedID: UUID?
     /// The edition's tilt while the driver is turning it in the light; `nil` leaves it to the gyroscope and the finger.

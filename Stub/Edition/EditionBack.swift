@@ -71,7 +71,7 @@ struct EditionBack: View {
             Text(composition.edition.described)
                 .font(Face.groteskMedium.font(12))
                 .foregroundStyle(words.opacity(0.7))
-            Text(composition.edition.directedBy == .model ? "Chosen by the on-device model." : "Drawn from the title.")
+            Text(composition.edition.directedBy.sentence)
                 .font(Face.serifItalic.font(14))
                 .foregroundStyle(words.opacity(0.7))
         }
