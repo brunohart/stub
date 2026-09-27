@@ -15,6 +15,7 @@ struct StubDetailView: View {
     @State private var tilt: Double
     @State private var turned: Bool
     @State private var showRaw = false
+    @State private var showProof = false
     @State private var shareable: Image?
     @Environment(\.dynamicTypeSize) private var typeSize
     private let editions = Editions.shared
@@ -32,62 +33,95 @@ struct StubDetailView: View {
     var body: some View {
         ZStack {
             Paper()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    Keepsake(stub: stub, copy: copy, turned: $turned)
-                        .rotationEffect(.degrees(reduceMotion ? 0 : tilt))
+            ScrollViewReader { scroller in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) {
+                        Keepsake(stub: stub, copy: copy, turned: $turned)
+                            .rotationEffect(.degrees(reduceMotion ? 0 : tilt))
 
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(stub.title).displayText(34).fixedSize(horizontal: false, vertical: true)
-                        if let cinema = stub.cinema {
-                            Text(cinema).font(Type.reading(20)).foregroundStyle(Ink.ink.opacity(0.8))
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(stub.title).displayText(34).fixedSize(horizontal: false, vertical: true)
+                            if let cinema = stub.cinema {
+                                Text(cinema).font(Type.reading(20)).foregroundStyle(Ink.ink.opacity(0.8))
+                            }
                         }
-                    }
 
-                    // Four figures in a row; at the accessibility sizes they would not fit, so they stack.
-                    let figures = AnyLayout(typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 16)) : AnyLayout(HStackLayout(alignment: .top, spacing: 26)))
-                    figures {
-                        if let d = stub.displayDate { Figure("Date", d, spoken: stub.spokenDate) }
-                        if let s = stub.seat { Figure("Seat", s) }
-                        if let sc = stub.screen { Figure("Screen", sc.replacingOccurrences(of: "Screen ", with: "")) }
-                        if let p = stub.displayPrice { Figure("Paid", p) }
-                    }
+                        // Four figures in a row; at the accessibility sizes they would not fit, so they stack.
+                        let figures = AnyLayout(typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 16)) : AnyLayout(HStackLayout(alignment: .top, spacing: 26)))
+                        figures {
+                            if let d = stub.displayDate { Figure("Date", d, spoken: stub.spokenDate) }
+                            if let s = stub.seat { Figure("Seat", s) }
+                            if let sc = stub.screen { Figure("Screen", sc.replacingOccurrences(of: "Screen ", with: "")) }
+                            if let p = stub.displayPrice { Figure("Paid", p) }
+                        }
 
-                    Divider().overlay(Ink.ink.opacity(0.15))
+                        Divider().overlay(Ink.ink.opacity(0.15))
 
-                    Text("Read by \(stub.readBy == "foundation-models" ? "the on-device model" : stub.readBy) · confidence \(Int(stub.confidence * 100))%")
-                        .font(Type.numbers(11)).foregroundStyle(Ink.grey)
-                        .accessibilityLabel("Read by \(stub.readBy == "foundation-models" ? "the on-device model" : stub.readBy), \(Int(stub.confidence * 100)) percent confident.")
-
-                    // Honest machinery for the edition too: what it is, and who chose it (DESIGN.md rule 7).
-                    if let edition = editions.edition(for: stub.title) {
-                        Text("Edition: \(edition.described.lowercased()) · \(edition.directedBy == .model ? "chosen by the on-device model" : "drawn from the title")")
+                        Text("Read by \(stub.readBy == "foundation-models" ? "the on-device model" : stub.readBy) · confidence \(Int(stub.confidence * 100))%")
                             .font(Type.numbers(11)).foregroundStyle(Ink.grey)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+                            .accessibilityLabel("Read by \(stub.readBy == "foundation-models" ? "the on-device model" : stub.readBy), \(Int(stub.confidence * 100)) percent confident.")
 
-                    if !stub.rawText.isEmpty {
-                        DisclosureGroup(isExpanded: $showRaw) {
-                            Text(stub.rawText).font(Type.numbers(12)).foregroundStyle(Ink.ink.opacity(0.7)).padding(.top, 8)
-                        } label: {
-                            Text("What the reader saw").font(Type.words(14)).foregroundStyle(Ink.grey)
+                        // Honest machinery for the edition too: what it is, and who chose it (DESIGN.md rule 7).
+                        if let edition = editions.edition(for: stub.title) {
+                            Text("Edition: \(edition.described.lowercased()) · \(edition.directedBy.words)")
+                                .font(Type.numbers(11)).foregroundStyle(Ink.grey)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
-                        .tint(Ink.grey)
-                    }
 
-                    Button(role: .destructive) {
-                        context.delete(stub)
-                        dismiss()
-                    } label: {
-                        Text("Throw this stub away").font(Type.words(14)).foregroundStyle(Ink.rust)
-                            .frame(minHeight: 44)
-                            .contentShape(Rectangle())
+                        // What the press keeps: the whole difference between this card and the title's, as it is stored
+                        // (ADR-016). A poster in about sixty bytes is the best evidence that a proof is not an image.
+                        if let proof = editions.proof(for: stub.title) {
+                            DisclosureGroup(isExpanded: $showProof) {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text(String(decoding: proof.json, as: UTF8.self))
+                                        .font(Type.numbers(12)).foregroundStyle(Ink.ink.opacity(0.7))
+                                        .fixedSize(horizontal: false, vertical: true)
+                                        .textSelection(.enabled)
+                                    Text("\(proof.json.count) bytes")
+                                        .font(Type.numbers(11)).foregroundStyle(Ink.grey)
+                                }
+                                .padding(.top, 8)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            } label: {
+                                Text("What the press keeps").font(Type.words(14)).foregroundStyle(Ink.grey)
+                            }
+                            .tint(Ink.grey)
+                            .id("keeps")
+                        }
+
+                        if !stub.rawText.isEmpty {
+                            DisclosureGroup(isExpanded: $showRaw) {
+                                Text(stub.rawText).font(Type.numbers(12)).foregroundStyle(Ink.ink.opacity(0.7)).padding(.top, 8)
+                            } label: {
+                                Text("What the reader saw").font(Type.words(14)).foregroundStyle(Ink.grey)
+                            }
+                            .tint(Ink.grey)
+                        }
+
+                        Button(role: .destructive) {
+                            context.delete(stub)
+                            dismiss()
+                        } label: {
+                            Text("Throw this stub away").font(Type.words(14)).foregroundStyle(Ink.rust)
+                                .frame(minHeight: 44)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.top, 12)
                     }
-                    .buttonStyle(.plain)
-                    .padding(.top, 12)
+                    .padding(20)
+                    .padding(.bottom, 80)
                 }
-                .padding(20)
-                .padding(.bottom, 80)
+                #if DEBUG
+                .task {
+                    // `-keeps`: open what the press keeps and bring it on screen, so it can be screenshotted.
+                    guard DebugDrive.wantsKeeps else { return }
+                    do { try await Task.sleep(for: .seconds(1.5)) } catch { return }
+                    showProof = true
+                    do { try await Task.sleep(for: .milliseconds(300)) } catch { return }
+                    withAnimation(Motion.settle) { scroller.scrollTo("keeps", anchor: .center) }
+                }
+                #endif
             }
         }
         .navigationBarTitleDisplayMode(.inline)
