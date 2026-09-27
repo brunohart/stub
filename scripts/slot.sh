@@ -12,8 +12,12 @@ if [ -f "$marker" ] && [ "${1:-}" != "--force" ]; then echo "slot already ran $t
 touch "$marker"
 log="build/slots/$today.log"
 echo "== stub slot $today $(date +%T) ==" | tee -a "$log"
+# Nobody watches the slot, and it holds Bash and a push to main, so it never reads the open web: a fetched page or
+# a search result can carry instructions, and there is no one to refuse them. A day's work is in this repo, in the
+# SDKs Xcode ships, and in Linear. The deny wins over any allow in ~/.claude/settings.json (BEDIP-146).
 claude -p "/stub-build" \
   --permission-mode acceptEdits \
-  --allowedTools "Bash,Read,Edit,Write,Glob,Grep,WebFetch,WebSearch,mcp__linear__list_issues,mcp__linear__get_issue,mcp__linear__save_issue,mcp__linear__save_comment,mcp__linear__save_document,mcp__linear__list_projects" \
+  --allowedTools "Bash,Read,Edit,Write,Glob,Grep,mcp__linear__list_issues,mcp__linear__get_issue,mcp__linear__save_issue,mcp__linear__save_comment,mcp__linear__save_document,mcp__linear__list_projects" \
+  --disallowedTools "WebFetch,WebSearch" \
   --output-format text 2>&1 | tee -a "$log"
 echo "== slot end $(date +%T) exit ${PIPESTATUS[0]} ==" | tee -a "$log"
