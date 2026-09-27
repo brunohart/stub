@@ -27,7 +27,8 @@ struct Composition: Sendable {
     var isMetallic: Bool { edition.stock == .foil || edition.stock == .holographic }
 }
 
-/// Draws the marks. One method per movement, in `Movements/`.
+/// Draws the marks. One method per movement, in `Movements/`, each a line-for-line port of its function in
+/// `docs/editions/edition.js` so the two roll the same dice in the same order.
 struct Composer {
     let edition: Edition
     let inks: EditionInks
@@ -48,7 +49,8 @@ struct Composer {
         case .cutout: cutout()
         case .riso: riso()
         case .letterpress: letterpress()
-        default: swiss()
+        case .blueprint: blueprint()
+        case .noir: noir()
         }
     }
 
