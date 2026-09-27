@@ -82,6 +82,13 @@ struct TableView: View {
                 DebugDrive.shared.run(stubs: stubs) { selected = $0 }
             }
             .task(id: stubs.count) {
+                // `-edition`: open the newest stub once the drawer has sat still after the seed, so its edition (and
+                // with `-turned`, its back) can be screenshotted (ADR-015).
+                guard DebugDrive.wantsEdition, !DebugDrive.requested, !stubs.isEmpty else { return }
+                do { try await Task.sleep(for: .seconds(2)) } catch { return }
+                selected = stubs.first
+            }
+            .task(id: stubs.count) {
                 // `-season`: open the season sheet once the drawer has sat still for a moment after the seed.
                 guard DebugDrive.wantsSeason, !stubs.isEmpty else { return }
                 do { try await Task.sleep(for: .seconds(2)) } catch { return }
