@@ -54,9 +54,7 @@ struct EditionFace: View {
             plate(.second, depth: depth)
 
             if c.isMetallic {
-                Canvas { context, _ in
-                    Printer(composition: c).foil(into: context)
-                }
+                PlateArt(composition: c, plate: nil).equatable()
                 .modifier(FoilEffect(light: light, metal: c.inks.foilBase, holographic: stock == .holographic,
                                      lightGround: c.inks.groundIsLight))
                 .opacity(printed >= Plate.foil ? 1 : 0)
@@ -75,12 +73,28 @@ struct EditionFace: View {
 
 extension EditionFace {
     fileprivate func plate(_ plate: Plate, depth: Double) -> some View {
+        PlateArt(composition: composition, plate: plate).equatable()
+            .modifier(ReliefEffect(light: light, depth: depth, reach: composition.edition.stock.reach))
+            .opacity(printed >= plate.rawValue ? 1 : 0)
+    }
+}
+
+/// One plate's marks, or the foil's (`plate` nil). Equatable on the composition, so a card that tilts sixty
+/// times a second redraws its light, not its artwork: the shaders take the new light, the canvas is left alone.
+private struct PlateArt: View, Equatable {
+    let composition: Composition
+    let plate: Plate?
+
+    var body: some View {
         let c = composition
-        return Canvas { context, _ in
-            Printer(composition: c).inks(into: context, plates: plate ... plate)
+        let plate = plate
+        Canvas { context, _ in
+            if let plate {
+                Printer(composition: c).inks(into: context, plates: plate ... plate)
+            } else {
+                Printer(composition: c).foil(into: context)
+            }
         }
-        .modifier(ReliefEffect(light: light, depth: depth, reach: c.edition.stock.reach))
-        .opacity(printed >= plate.rawValue ? 1 : 0)
     }
 }
 

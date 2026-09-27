@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 import SwiftData
 import Observation
 import OSLog
@@ -17,8 +18,26 @@ final class DebugDrive {
     /// `-import`: open the import sheet once the seed has settled, so the sheet can be screenshotted.
     static var wantsImport: Bool { ProcessInfo.processInfo.arguments.contains("-import") }
 
+    /// `-edition`: open the first stub's detail once the seed has settled, so its edition can be screenshotted.
+    static var wantsEdition: Bool { ProcessInfo.processInfo.arguments.contains("-edition") }
+    /// `-turned`: with `-edition`, show the back: the stub as scanned.
+    static var wantsTurned: Bool { ProcessInfo.processInfo.arguments.contains("-turned") }
+    /// `-tilt x,y`: the edition's tilt, held. The simulator has no gyroscope, so this is where a screenshot's light
+    /// comes from (ADR-015).
+    static let heldTilt: CGPoint? = {
+        let args = ProcessInfo.processInfo.arguments
+        guard let i = args.firstIndex(of: "-tilt"), i + 1 < args.count else { return nil }
+        let parts = args[i + 1].split(separator: ",").compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
+        guard parts.count == 2 else { return nil }
+        return CGPoint(x: parts[0], y: parts[1])
+    }()
+
     /// The card the driver is pressing, if any. `StubCard` treats it as a touch.
     var pressedID: UUID?
+    /// The edition's tilt while the driver is turning it in the light; `nil` leaves it to the gyroscope and the finger.
+    var tilt: CGPoint? = DebugDrive.heldTilt
+    /// Whether the driver has turned the edition over.
+    var turned = false
     /// Whether the driver is holding the photograph in the detail view.
     var holding = false
     private(set) var hasRun = false
