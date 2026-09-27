@@ -46,6 +46,8 @@ struct Composer {
         case .constructivist: constructivist()
         case .deco: deco()
         case .cutout: cutout()
+        case .riso: riso()
+        case .letterpress: letterpress()
         default: swiss()
         }
     }
