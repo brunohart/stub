@@ -1,0 +1,44 @@
+<!doctype html><meta charset="utf-8">
+<!-- The edition specimen: every movement drawn in the browser from the same dice, marks and coordinates as Stub/Edition. ?mode=movements (one of each) or ?mode=floor (what the hash picks); &palette= and &stock= force one. A design tool, not a proof of the app. -->
+<style>
+@font-face { font-family: 'Host Grotesk'; src: url('../../Stub/Resources/Fonts/HostGrotesk-Variable.ttf'); font-weight: 300 800; }
+@font-face { font-family: 'Newsreader'; src: url('../../Stub/Resources/Fonts/Newsreader-Variable.ttf'); font-weight: 200 800; }
+@font-face { font-family: 'Newsreader'; src: url('../../Stub/Resources/Fonts/Newsreader-Italic-Variable.ttf'); font-weight: 200 800; font-style: italic; }
+@font-face { font-family: 'Fragment Mono'; src: url('../../Stub/Resources/Fonts/FragmentMono-Regular.ttf'); }
+body { margin: 0; background: #F0EDE6; padding: 36px; font-family: 'Host Grotesk'; }
+#grid { display: grid; grid-template-columns: repeat(4, 330px); gap: 40px 36px; }
+figure { margin: 0; } figcaption { font: 12px 'Fragment Mono'; color: #8A8578; margin-top: 10px; }
+svg { filter: drop-shadow(6px 10px 14px rgba(40,30,20,.22)) drop-shadow(1px 2px 2px rgba(40,30,20,.25)); }
+</style>
+<div id="grid"></div>
+<script src="edition.js"></script>
+<script>
+const FILMS = [
+  { title: 'The Brutalist', cinema: 'Embassy Theatre', date: '08 MAR 2024', time: '19:30', screen: '1', seat: 'H12', price: '$22.00', year: 2024 },
+  { title: 'Perfect Days', cinema: 'Lighthouse Cinema Cuba', date: '15 MAR 2024', time: '18:15', screen: '2', seat: 'F7', price: '$18.50', year: 2024 },
+  { title: 'Dune Part Two', cinema: 'The Roxy Cinema', date: '22 MAR 2024', time: '20:00', screen: '2', seat: 'D4', price: '$26.00', year: 2024 },
+  { title: 'Past Lives', cinema: 'Penthouse Cinema', date: '05 APR 2024', time: '20:15', screen: '3', seat: 'K9', price: '€12.50', year: 2024 },
+  { title: 'No Other Land', cinema: 'Academy Cinemas', date: '14 FEB 2025', time: '18:00', screen: '1', seat: 'J14', price: '$19.00', year: 2025 },
+  { title: 'Aftersun', cinema: 'Rialto Cinemas Newmarket', date: '09 FEB 2024', time: '21:00', screen: '4', seat: 'E11', price: '$17.00', year: 2024 },
+  { title: 'Anora', cinema: 'Event Cinemas Queen St', date: '01 NOV 2024', time: '21:30', screen: '7', seat: 'C8', price: '$21.50', year: 2024 },
+  { title: 'Everything Everywhere All at Once', cinema: 'Cinéma du Panthéon', date: '24 MAR 2024', time: '16:45', screen: '2', seat: 'F12', price: '€12.50', year: 2024 },
+];
+const ORD = ['First','Second','Third'];
+const params = new URLSearchParams(location.search);
+const mode = params.get('mode') || 'movements';
+const grid = document.getElementById('grid');
+document.fonts.ready.then(() => {
+  FILMS.forEach((f, i) => {
+    const copy = { ...f, viewing: 1, viewings: i === 2 ? 2 : 1, viewingWords: 'First viewing', when: `${f.date} · ${f.time}`, place: `Screen ${f.screen} · ${f.seat}` };
+    let ed = floorEdition(f.title);
+    if (mode === 'movements') ed = { ...ed, movement: MOVEMENTS[i] };
+    if (params.get('palette')) ed.palette = params.get('palette');
+    if (params.get('stock')) ed.stock = params.get('stock');
+    const fig = document.createElement('figure');
+    fig.appendChild(render(ed, copy));
+    const cap = document.createElement('figcaption'); cap.textContent = `${ed.movement} · ${ed.palette} · ${ed.stock}`; fig.appendChild(cap);
+    grid.appendChild(fig);
+  });
+  document.body.dataset.ready = '1';
+});
+</script>
