@@ -19,7 +19,7 @@ struct EditionTests {
 
     @Test func seedIsStable() {
         // FNV-1a of "the brutalist". Pinned: an edition that reprinted itself on relaunch would not be an edition.
-        #expect(Release.seed(for: "the brutalist") == 0x915efa9ae0edb7b8)
+        #expect(Release.seed(for: "the brutalist") == UInt64(0x915efa9ae0edb7b8))
     }
 
     @Test func diceIsSplitMix() {
