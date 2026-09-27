@@ -113,7 +113,9 @@ Shipped: both bullets. It compiled first time with one deprecation (`sampling` �
 - `scripts/build.sh`, fix every compile error in the editions, then `scripts/test.sh` green. Log what the compiler found.
 - Day 21's proof shots: `scripts/run.sh --seed --reset --edition --tilt 0.35,-0.25 --wait-for "Edition '" --shot docs/screenshots/day-21-edition.png` (with `STUB_AFTER=4` so the press has run), and the same with `--turned`.
 
-## Day 23 — Tue 29 Sep — Parts, takes and the proof
+## Day 23 — Tue 29 Sep — Parts, takes and the proof ✅
+
+Shipped (on 28 Sep, straight after Day 22): all five bullets. Frames only where something hangs (swiss, constructivist, deco, blueprint); a proof is 122 bytes; 79 tests. See `docs/LOG.md` and ADR-016.
 
 Data only, no new UI (brief §4).
 
