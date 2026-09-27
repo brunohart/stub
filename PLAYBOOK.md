@@ -88,3 +88,16 @@ Shipped: all four bullets. README, `docs/post.md`, `docs/device.md`, tag `v0.1.0
 ## After Day 7
 
 The launchd agent keeps firing; the skill exits cleanly with "playbook complete" until this file grows. Add Day 8+ entries here to keep going.
+
+## Day 21 — Sun 27 Sep — Editions
+
+Every stub comes back as two things: the stub as scanned, and an edition designed for its film's release (ADR-015, DESIGN.md › Editions). Written on a container without a Swift toolchain, so the first Mac slot after this one builds it before anything else (the rule at the top of this file).
+
+- The release key and the genome: a title folded to the name its editions share, hashed, and a seeded generator that picks the floor edition and every composition choice. Tests pin the floor for three titles.
+- Eight movements drawn in SwiftUI (swiss, constructivist, deco, cutout, riso, letterpress, blueprint, noir), twelve palettes, four stocks. A perforated strip with the stub's own facts and a punched perforation; an Aztec code on the back.
+- Metal: `relief` (the ink pressed into the stock), `foil` (metal and holographic film), `stock` (the paper's surface), all lit from one light.
+- The on-device model art-directs each release from the closed vocabulary through `@Guide(.anyOf(…))`, judged on the way out and cached per release. The hash is the floor.
+- The keepsake in the detail: the edition in front, tilting with the phone (Core Motion) or a finger, the stock under the finger (Core Haptics), a tap turns it over to the stub as scanned.
+- The print run after Keep: plate by plate, the foil last, a haptic per pass.
+- Proof, next Mac slot: `scripts/run.sh --seed --reset --edition --tilt 0.35,-0.25 --wait-for "written|hand-counted" --shot docs/screenshots/day-21-edition.png`, and the same with `--turned`.
+

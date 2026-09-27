@@ -18,6 +18,18 @@ One intent, then rules. The intent decides how the constraints are used; the con
 8. **Respect the platform.** Reduce Motion removes tilt and overshoot. Dynamic Type is honoured. Touch targets are 44pt. Haptics punctuate, they do not decorate.
 9. **When in doubt, remove.** The empty drawer has a blank stub, one sentence, one button.
 
+## Editions
+
+Every stub also comes back as an **edition**: a ticket designed for its film's release. The edition is the image layer, not the app, so the rules above bend for it in exactly these ways and no others.
+
+1. **One edition per release, one copy per stub.** The design is the film's; the seat, the date, the cinema and the viewing number are yours.
+2. **The model chooses, the code draws.** Eight movements, twelve palettes, four stocks. The on-device model picks from them; it never picks a colour, a position or a word. The hash picks when the model is absent, and picks the composition always.
+3. **Surface is allowed on its type.** An edition is a printed object: ink is pressed into the stock, foil catches the light, the stock has a grain. That is surface, not grit on words; the app's own type stays clean.
+4. **One light, and it is the phone's.** Every surface on the card is lit from the same place. Tilt the phone and the light moves; put it down and it stays. Nothing shimmers on its own.
+5. **Weight is allowed, the faces are not.** Host Grotesk from Light to ExtraBold, Newsreader, Fragment Mono. No fourth face, even for a Deco title.
+6. **Nothing invented.** No taglines, no plot, no stars, no fake barcode. The Aztec code on the back says what the strip says.
+7. **You can feel it.** A finger dragged across the card feels the stock (cotton is soft, foil is slick) and clicks once at the perforation.
+
 ## Inks
 
 | Token | Hex | Use |
