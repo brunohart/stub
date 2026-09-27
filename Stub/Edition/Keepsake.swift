@@ -186,7 +186,7 @@ struct Keepsake: View {
                 if p == Plate.foil, !metallic { break }
                 withAnimation(p == Plate.foil ? Motion.stamp : Motion.settle) { printed = p }
                 pass = p
-                try await Task.sleep(for: .milliseconds(p == Plate.type ? 520 : 420))
+                try await Task.sleep(for: .milliseconds(p == Plate.type.rawValue ? 520 : 420))
             }
         } catch {
             // Left mid-run: whatever is left of the card is printed at once.
