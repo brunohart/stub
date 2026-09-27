@@ -1,15 +1,32 @@
 import SwiftUI
 
+extension Parts {
+    /// Blueprint's parts. `circle` is the frame: the drawing's radius and centre. The radius to the seat and the
+    /// dimension under the circle hang from it; the radius rolls its own angle, the dimension rolls nothing. The grid
+    /// and the title block are set by the sheet's edges and hang from nothing.
+    enum Blueprint {
+        static let grid = Part.set("blueprint/grid", "the grid")
+        static let circle = Part.frame("blueprint/circle", "the circle")
+        static let radius = Part.piece("blueprint/radius", "the radius", hangs: true)
+        static let dimension = Part.set("blueprint/dimension", "the dimension", hangs: true)
+        static let block = Part.set("blueprint/block", "the title block")
+        static let all = [grid, circle, radius, dimension, block]
+    }
+}
+
 extension Composer {
     /// A technical drawing. A fine grid with every fifth line heavier; a circle drawn with its centre lines and
     /// an inner dashed ring; a radius to the seat, labelled with it; a dimension line under the circle, labelled
     /// with the time; and a title block, as on any drawing, that says which viewing of how many and which screen.
     /// Everything in the mono.
+    ///
+    /// Parts: the grid (set), the circle (frame), the radius, the dimension (set), the title block (set).
     func blueprint() -> [Mark] {
-        var d = dice("blueprint")
-        var m: [Mark] = []
+        typealias P = Parts.Blueprint
+        var m = Sheet()
         let line = inks.strong(.primary)
 
+        m.part = P.grid
         var x: CGFloat = 11, i = 1
         while x < w {
             let major = i % 5 == 0
@@ -24,6 +41,8 @@ extension Composer {
             y += 11; i += 1
         }
 
+        m.part = P.circle
+        var d = dice(P.circle)
         let r = d.span(84, 112)
         let cx = w / 2 + d.span(-36, 36)
         let cy = ph * 0.38 + d.span(-20, 16)
@@ -33,7 +52,9 @@ extension Composer {
         m.append(Mark(.line(CGPoint(cx - r - 16, cy), CGPoint(cx + r + 16, cy), width: 0.75, dash: [10, 3, 2, 3]), line, .second))
         m.append(Mark(.line(CGPoint(cx, cy - r - 16), CGPoint(cx, cy + r + 16), width: 0.75, dash: [10, 3, 2, 3]), line, .second))
 
-        let a = d.between(-2.4, -0.7)
+        m.part = P.radius
+        var radius = dice(P.radius)
+        let a = radius.between(-2.4, -0.7)
         let tip = CGPoint(cx + CGFloat(cos(a)) * r, cy + CGFloat(sin(a)) * r)
         m.append(Mark(.line(centre, tip, width: 1), .secondary, .second))
         m.append(Mark(.circle(tip, radius: 3), .secondary, .second, foil: true))
@@ -43,6 +64,7 @@ extension Composer {
                             anchor: right ? .leading : .trailing))
         }
 
+        m.part = P.dimension
         let dy = cy + r + 26
         m.append(Mark(.line(CGPoint(cx - r, dy), CGPoint(cx + r, dy), width: 0.75), line, .second))
         for (end, s) in [(cx - r, CGFloat(1)), (cx + r, CGFloat(-1))] {
@@ -56,6 +78,7 @@ extension Composer {
         }
 
         // The title block.
+        m.part = P.block
         let block = CGRect(x: pad, y: ph - 92, width: w - 2 * pad, height: 70)
         m.append(Mark(.rect(block), .ground, .second))
         m.append(Mark(.frame(block, width: 1), line, .second))
@@ -68,6 +91,6 @@ extension Composer {
             let words = screen.allSatisfy(\.isNumber) ? "SCREEN \(screen)" : screen.uppercased()
             m.append(.words(words, .mono, 8.5, at: CGPoint(block.midX + 8, block.maxY - 6.5), line))
         }
-        return m
+        return m.marks
     }
 }

@@ -1,19 +1,40 @@
 import SwiftUI
 
+extension Parts {
+    /// Cutout's parts. No frame: every scrap of paper is cut on its own and laid on the field wherever it fell. The
+    /// field is the whole poster and rolls nothing; the title is set on the label and turns with it.
+    enum Cutout {
+        static let field = Part.set("cutout/field", "the field")
+        static let strip = Part.piece("cutout/strip", "the torn strip")
+        static let block = Part.piece("cutout/block", "the block")
+        static let scrap = Part.piece("cutout/scrap", "the scrap")
+        static let label = Part.piece("cutout/label", "the label")
+        static let all = [field, strip, block, scrap, label]
+    }
+}
+
 extension Composer {
     /// Cut paper, after Saul Bass. The whole poster one bold field of the first plate; a strip torn down it, a
     /// hand-cut block and a scrap of the second plate; the title in lower case on a paper label stuck on a little
     /// crooked.
+    ///
+    /// Parts: the field (set), the torn strip, the block, the scrap, the label (the title rides on it).
     func cutout() -> [Mark] {
-        var d = dice("cutout")
-        var m: [Mark] = []
+        typealias P = Parts.Cutout
+        var m = Sheet()
+
+        m.part = P.field
         m.append(Mark(.rect(Card.posterRect), .primary, .first))
 
-        let x0 = d.span(40, w - 60)
-        let x1 = x0 + d.span(-70, 70)
-        let width = d.span(34, 58)
-        m.append(Mark(.polygon(torn(&d, from: CGPoint(x0, -20), to: CGPoint(x1, ph + 20), width: width, jag: 4)), .ink, .second))
+        m.part = P.strip
+        var strip = dice(P.strip)
+        let x0 = strip.span(40, w - 60)
+        let x1 = x0 + strip.span(-70, 70)
+        let width = strip.span(34, 58)
+        m.append(Mark(.polygon(torn(&strip, from: CGPoint(x0, -20), to: CGPoint(x1, ph + 20), width: width, jag: 4)), .ink, .second))
 
+        m.part = P.block
+        var d = dice(P.block)
         let bx = d.span(30, 140), by = d.span(40, 140)
         let corners = [
             CGPoint(bx, by),
@@ -29,18 +50,22 @@ extension Composer {
         }
         m.append(Mark(.polygon(cut), .ink, .second, foil: true))
 
-        let scrapX = d.span(60, w - 60), scrapY = d.span(180, 250), scrapR = d.span(24, 40)
-        m.append(Mark(.polygon(scrap(&d, center: CGPoint(scrapX, scrapY), radius: scrapR, corners: 9, jag: 0.18)), .secondary, .second))
+        m.part = P.scrap
+        var s = dice(P.scrap)
+        let scrapX = s.span(60, w - 60), scrapY = s.span(180, 250), scrapR = s.span(24, 40)
+        m.append(Mark(.polygon(scrap(&s, center: CGPoint(scrapX, scrapY), radius: scrapR, corners: 9, jag: 0.18)), .secondary, .second))
 
+        m.part = P.label
+        var label = dice(P.label)
         let title = Setting.fit(copy.title, width: w - 2 * pad - 28, height: 120, maxSize: 44, face: .groteskBold, lead: 0.95,
                                 maxLines: 3, casing: .lower)
         let block = title.size * 0.95 * CGFloat(title.lines.count)
         let labelY = ph - 34 - block
-        let turn = Mark.Turn(degrees: d.between(-3, 3), around: CGPoint(w / 2, labelY + block / 2))
+        let turn = Mark.Turn(degrees: label.between(-3, 3), around: CGPoint(w / 2, labelY + block / 2))
         m.append(Mark(.rect(CGRect(x: pad, y: labelY - 12, width: w - 2 * pad, height: block + 24)), .ground, .second, turn: turn))
         m += title.marks(x: pad + 14, y: labelY + title.size * 0.8, face: .groteskBold, lead: 0.95, tracking: -0.03,
                          turn: turn, maxWidth: w - 2 * pad - 28, from: .first)
-        return m
+        return m.marks
     }
 
     /// A strip torn along both long edges, from `a` to `b`. Each edge point is jittered in x and then in y,

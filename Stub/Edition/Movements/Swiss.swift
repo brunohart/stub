@@ -1,12 +1,29 @@
 import SwiftUI
 
+extension Parts {
+    /// Swiss's parts. `grid` is the frame: which hero shape the grid holds (a bar, a circle off the corner, a block
+    /// across the top) and its size, which decides where the hairline falls. The columns and the title are set from
+    /// the hairline down, so they roll nothing and move with the grid.
+    enum Swiss {
+        static let grid = Part.frame("swiss/grid", "the grid")
+        static let columns = Part.set("swiss/columns", "the columns", hangs: true)
+        static let title = Part.set("swiss/title", "the title", hangs: true)
+        static let all = [grid, columns, title]
+    }
+}
+
 extension Composer {
     /// International Typographic Style. One hero shape in the first plate (a bar, a circle off the corner, or a
     /// block across the top), a hairline and three columns of the night, and the title in lower case, huge,
     /// flush left, sitting on the perforation.
+    ///
+    /// Parts: the grid (frame), the columns (set), the title (set).
     func swiss() -> [Mark] {
-        var d = dice("swiss")
-        var m: [Mark] = []
+        typealias P = Parts.Swiss
+        var m = Sheet()
+
+        m.part = P.grid
+        var d = dice(P.grid)
         let variant = d.index(3)
         var infoY: CGFloat
         switch variant {
@@ -29,6 +46,7 @@ extension Composer {
         infoY = min(infoY, 238)
 
         // The grid: a hairline, then three columns of what the night was.
+        m.part = P.columns
         m.append(Mark(.line(CGPoint(pad, infoY - 14), CGPoint(w - pad, infoY - 14), width: 0.75), .ink, .second))
         let columns = [copy.year.map { String($0) }, copy.time, copy.seat].compactMap { $0 }
         for (i, text) in columns.enumerated() {
@@ -37,9 +55,10 @@ extension Composer {
         let square: CGFloat = 11
         m.append(Mark(.rect(CGRect(x: w - pad - square, y: infoY - 9, width: square, height: square)), .secondary, .second))
 
+        m.part = P.title
         let title = Setting.fit(copy.title, width: w - 2 * pad, height: ph - infoY - 50, maxSize: 88, face: .groteskBold,
                                 lead: 0.9, maxLines: 4, casing: .lower)
         m += title.marks(x: pad - 2, y: ph - 26, face: .groteskBold, lead: 0.9, tracking: -0.045, maxWidth: w - 2 * pad)
-        return m
+        return m.marks
     }
 }

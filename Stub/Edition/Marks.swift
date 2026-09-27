@@ -48,9 +48,10 @@ enum Plate: Int, Comparable, Sendable {
     static let foil = 4
 }
 
-/// One thing printed on the card: a shape or a line of words, an ink, a plate.
-struct Mark: Sendable {
-    enum Shape: Sendable {
+/// One thing printed on the card: a shape or a line of words, an ink, a plate, and the part of the poster it
+/// belongs to. Equatable, so a test can say which marks a take moved and which it left alone (ADR-016).
+struct Mark: Sendable, Equatable {
+    enum Shape: Sendable, Equatable {
         case rect(CGRect)
         case frame(CGRect, width: CGFloat)
         case circle(CGPoint, radius: CGFloat)
@@ -64,7 +65,7 @@ struct Mark: Sendable {
     }
 
     /// A line of type. `at` is on the baseline; `anchor` says which end of the line it is.
-    struct Words: Sendable {
+    struct Words: Sendable, Equatable {
         var text: String
         var face: Face
         var size: CGFloat
@@ -80,7 +81,7 @@ struct Mark: Sendable {
     enum Blend: Sendable { case normal, multiply, screen }
 
     /// A rotation about a point, in degrees, clockwise on screen.
-    struct Turn: Sendable {
+    struct Turn: Sendable, Equatable {
         var degrees: Double
         var around: CGPoint
     }
@@ -93,6 +94,9 @@ struct Mark: Sendable {
     var foil = false
     var turn: Turn? = nil
     var blend: Blend = .normal
+    /// The part of the poster this mark belongs to. Set by the movement's `Sheet`; the strip's marks have none,
+    /// because the strip prints facts and facts have no takes.
+    var part: Part.ID?
 
     init(_ shape: Shape, _ role: Role, _ plate: Plate, opacity: Double = 1, foil: Bool = false, turn: Turn? = nil, blend: Blend = .normal) {
         self.shape = shape; self.role = role; self.plate = plate; self.opacity = opacity

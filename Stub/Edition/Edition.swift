@@ -39,12 +39,33 @@ enum Palette: String, CaseIterable, Codable, Sendable {
     case sand, night, ember, tide, moss, chalk, bruise, oxide, cobalt, citrus, blush, smoke
 }
 
-/// Who chose the movement, the palette and the stock.
+/// Who chose the movement, the palette and the stock, and the takes.
 enum Director: String, Codable, Sendable {
     /// The release's hash. Always there, the same on every phone.
     case hash
     /// The on-device model, choosing from the same lists, judged on the way out.
     case model
+    /// The person who kept the stub, choosing between drawings at the press (ADR-016). Only an applied `Proof`
+    /// directs this way; the edition underneath keeps its own director, so going back is exact.
+    case you
+
+    /// The detail's machinery line: "drawn from the title".
+    var words: String {
+        switch self {
+        case .hash: "drawn from the title"
+        case .model: "chosen by the on-device model"
+        case .you: "pulled by you"
+        }
+    }
+
+    /// The colophon on the back of the card: "Drawn from the title."
+    var sentence: String {
+        switch self {
+        case .hash: "Drawn from the title."
+        case .model: "Chosen by the on-device model."
+        case .you: "Pulled by you."
+        }
+    }
 }
 
 /// The design of one release. Every stub of the release prints this; each copy adds its own facts.
@@ -57,15 +78,18 @@ struct Edition: Equatable, Codable, Sendable {
     var seed: UInt64
     var directedBy: Director
     var version: Int = Genome.version
+    /// Which take of each part is drawn: part id to take, absent meaning take 0, the drawing the title rolls. Only a
+    /// proof sets these (ADR-016); an edition as the hash or the model printed it has none.
+    var takes: [Part.ID: Int] = [:]
 
     init(release: String, movement: Movement, palette: Palette, stock: Stock, seed: UInt64, directedBy: Director,
-         version: Int = Genome.version) {
+         version: Int = Genome.version, takes: [Part.ID: Int] = [:]) {
         self.release = release; self.movement = movement; self.palette = palette; self.stock = stock
-        self.seed = seed; self.directedBy = directedBy; self.version = version
+        self.seed = seed; self.directedBy = directedBy; self.version = version; self.takes = takes
     }
 
     private enum CodingKeys: String, CodingKey {
-        case release, movement, palette, stock, seed, directedBy, version
+        case release, movement, palette, stock, seed, directedBy, version, takes
     }
 
     // The seed is kept as hex: a UInt64 past 2^53 is a number JSON readers are allowed to round, and a rounded
@@ -83,6 +107,7 @@ struct Edition: Equatable, Codable, Sendable {
         self.seed = seed
         directedBy = try c.decode(Director.self, forKey: .directedBy)
         version = try c.decode(Int.self, forKey: .version)
+        takes = try c.decodeIfPresent([Part.ID: Int].self, forKey: .takes) ?? [:]
     }
 
     func encode(to encoder: any Encoder) throws {
@@ -94,11 +119,16 @@ struct Edition: Equatable, Codable, Sendable {
         try c.encode(String(seed, radix: 16), forKey: .seed)
         try c.encode(directedBy, forKey: .directedBy)
         try c.encode(version, forKey: .version)
+        if !takes.isEmpty { try c.encode(takes, forKey: .takes) }
     }
 
-    /// A die for one part of the drawing (`"title"`, `"rays"`, …). See `Dice.fork`.
-    func dice(_ part: String) -> Dice {
-        Dice(seed: seed).fork(part)
+    /// The die for one take of one part, and the only way a part gets a die, so no movement can roll it differently
+    /// (ADR-016). Take 0 is the part's own die, forked from the release's seed by the part's id: the drawing that
+    /// comes from the title. Take n is that die forked again by "take n", so every take of a part is a die of its
+    /// own and no take of one part can move another.
+    func dice(_ part: Part.ID, take: Int) -> Dice {
+        let own = Dice(seed: seed).fork(part)
+        return take == 0 ? own : own.fork("take \(take)")
     }
 
     /// "Constructivist, on holographic stock": the colophon's words for what this is.
@@ -117,8 +147,13 @@ struct Edition: Equatable, Codable, Sendable {
 ///
 /// The lists are frozen at `version`. Growing the vocabulary means a new version, so that an edition already
 /// printed never reprints itself (ADR-015). They are also the model's vocabulary, word for word.
+///
+/// Version 2 split every movement into parts, each rolled from its own die (ADR-016). The lists and `floor` did not
+/// change, so every release kept its movement, palette and stock; the compositions under them did. Version 1's
+/// arrangement was retired rather than frozen, because nothing had shipped: a v1 edition in the cache is redrawn
+/// at version 2 on first sight (`Editions`).
 enum Genome {
-    static let version = 1
+    static let version = 2
 
     static let movements: [Movement] = [.swiss, .constructivist, .deco, .cutout, .riso, .letterpress, .blueprint, .noir]
     static let palettes: [Palette] = [.sand, .night, .ember, .tide, .moss, .chalk, .bruise, .oxide, .cobalt, .citrus, .blush, .smoke]

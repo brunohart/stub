@@ -1,13 +1,32 @@
 import SwiftUI
 
+extension Parts {
+    /// Deco's parts. `sunburst` is the frame: how low the sun sits and how many rays it throws. The sun hangs from
+    /// the sunburst's centre and rolls its own size; the year sits in the sun. The border and the title panel are set
+    /// by the poster's edges and hang from nothing.
+    enum Deco {
+        static let sunburst = Part.frame("deco/sunburst", "the sunburst")
+        static let sun = Part.piece("deco/sun", "the sun", hangs: true)
+        static let border = Part.set("deco/border", "the border")
+        static let title = Part.set("deco/title", "the title")
+        static let year = Part.set("deco/year", "the year", hangs: true)
+        static let all = [sunburst, sun, border, title, year]
+    }
+}
+
 extension Composer {
     /// Art Deco. A sunburst from low on the poster, alternate wedges in a wash of the first plate and fine rays
     /// between them, a sun ringed twice, a stepped double frame, and the title in light capitals, widely spaced,
     /// on a panel of the ground between two rules. Rays, rings, rules, frame and title are the foil.
+    ///
+    /// Parts: the sunburst (frame), the sun, the border (set), the title (set), the year (set).
     func deco() -> [Mark] {
-        var d = dice("deco")
-        var m: [Mark] = []
+        typealias P = Parts.Deco
+        var m = Sheet()
         let cx = w / 2
+
+        m.part = P.sunburst
+        var d = dice(P.sunburst)
         let cy = ph * d.pick([0.66, 0.72])
         let n = d.pick([24, 28, 32, 36])
         let reach: CGFloat = 700
@@ -23,14 +42,19 @@ extension Composer {
             let inner = CGPoint(cx + CGFloat(cos(a)) * 58, cy + CGFloat(sin(a)) * 58)
             m.append(Mark(.line(inner, ray(i), width: 1), .primary, .first, opacity: 0.55, foil: true))
         }
-        let sun = d.span(40, 52)
+
+        m.part = P.sun
+        var sunDie = dice(P.sun)
+        let sun = sunDie.span(40, 52)
         m.append(Mark(.circle(CGPoint(cx, cy), radius: sun), .ground, .first))
         m.append(Mark(.ring(CGPoint(cx, cy), radius: sun, width: 2), .primary, .first, foil: true))
         m.append(Mark(.ring(CGPoint(cx, cy), radius: sun - 6, width: 0.75), .primary, .first, foil: true))
 
+        m.part = P.border
         m.append(Mark(.outline(steppedFrame(inset: 12, step: 10), width: 1.5), .primary, .first, foil: true))
         m.append(Mark(.outline(steppedFrame(inset: 18, step: 10), width: 0.75), .primary, .first, foil: true))
 
+        m.part = P.title
         let title = Setting.fit(copy.title, width: w - 90, height: 120, maxSize: 40, face: .groteskLight, lead: 1.08,
                                 maxLines: 3, casing: .upper, tracking: 0.16)
         let block = title.size * 1.08 * CGFloat(title.lines.count)
@@ -41,10 +65,12 @@ extension Composer {
         m.append(Mark(.line(CGPoint(44, top + block + 6), CGPoint(w - 44, top + block + 6), width: 0.75), .primary, .first, foil: true))
         m += title.marks(x: cx, y: top + title.size * 0.86, face: .groteskLight, anchor: .center, lead: 1.08, tracking: 0.16,
                          foil: true, maxWidth: w - 90, from: .first)
+
+        m.part = P.year
         if let year = copy.year {
             m.append(.words(String(year), .mono, 12, at: CGPoint(cx, cy + 4), .ink, anchor: .center))
         }
-        return m
+        return m.marks
     }
 
     /// A rectangle `inset` from the poster's edges with each corner stepped in by `step`.

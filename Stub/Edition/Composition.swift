@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// An edition, composed for one copy: the poster's marks and the strip's. A pure function of the edition and
-/// the copy, so the same film and the same seat draw the same card in the detail, in the print run and in a
-/// share. `docs/editions/edition.js` rolls the same dice in the same order; the movements were designed there.
+/// An edition, composed for one copy: the poster's marks and the strip's. A pure function of the edition (its takes
+/// included) and the copy, so the same film and the same seat draw the same card in the detail, in the print run and
+/// in a share. Every poster mark carries the part it belongs to (ADR-016). `docs/editions/edition.js` rolls the same
+/// dice in the same order; the movements were designed there.
 struct Composition: Sendable, Equatable {
     let edition: Edition
     let inks: EditionInks
@@ -43,8 +44,11 @@ struct Composer {
     var ph: CGFloat { Card.poster }
     var pad: CGFloat { Card.pad }
 
-    /// A die for one movement's drawing. See `Dice.fork`.
-    func dice(_ part: String) -> Dice { edition.dice(part) }
+    /// The die for one part, at the take the edition asks for (take 0 unless a proof says otherwise). A part that
+    /// is `set` rolls nothing and never asks.
+    func dice(_ part: Part) -> Dice {
+        edition.dice(part.id, take: edition.takes[part.id] ?? 0)
+    }
 
     func poster() -> [Mark] {
         switch edition.movement {

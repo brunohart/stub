@@ -53,7 +53,7 @@ struct EditionTests {
         #expect(brutalist.palette == .sand)
         #expect(brutalist.stock == .foil)
         #expect(brutalist.directedBy == .hash)
-        #expect(brutalist.version == 1)
+        #expect(brutalist.version == 2, "version 2 split the movements into parts (ADR-016); the floor did not move")
 
         let dune = Genome.floor(for: "DUNE PART TWO IMAX")
         #expect(dune.movement == .riso && dune.palette == .moss && dune.stock == .holographic)
