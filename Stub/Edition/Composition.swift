@@ -3,7 +3,7 @@ import SwiftUI
 /// An edition, composed for one copy: the poster's marks and the strip's. A pure function of the edition and
 /// the copy, so the same film and the same seat draw the same card in the detail, in the print run and in a
 /// share. `docs/editions/edition.js` rolls the same dice in the same order; the movements were designed there.
-struct Composition: Sendable {
+struct Composition: Sendable, Equatable {
     let edition: Edition
     let inks: EditionInks
     let copy: Copy
@@ -25,6 +25,11 @@ struct Composition: Sendable {
     }
 
     var isMetallic: Bool { edition.stock == .foil || edition.stock == .holographic }
+
+    /// The marks are a function of the edition and the copy, so two compositions of the same are the same.
+    static func == (a: Composition, b: Composition) -> Bool {
+        a.edition == b.edition && a.copy == b.copy
+    }
 }
 
 /// Draws the marks. One method per movement, in `Movements/`, each a line-for-line port of its function in
