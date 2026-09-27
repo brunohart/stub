@@ -30,7 +30,7 @@ extension Composer {
 
         // The grid: a hairline, then three columns of what the night was.
         m.append(Mark(.line(CGPoint(pad, infoY - 14), CGPoint(w - pad, infoY - 14), width: 0.75), .ink, .second))
-        let columns = [copy.year.map(String.init), copy.time, copy.seat].compactMap { $0 }
+        let columns = [copy.year.map { String($0) }, copy.time, copy.seat].compactMap { $0 }
         for (i, text) in columns.enumerated() {
             m.append(.words(text, .mono, 11, at: CGPoint(pad + CGFloat(i) * ((w - 2 * pad) / 3), infoY), .ink))
         }

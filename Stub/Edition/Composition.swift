@@ -43,6 +43,7 @@ struct Composer {
     func poster() -> [Mark] {
         switch edition.movement {
         case .swiss: swiss()
+        case .constructivist: constructivist()
         default: swiss()
         }
     }
