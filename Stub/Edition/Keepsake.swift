@@ -10,7 +10,7 @@ struct Keepsake: View {
     /// The back is showing.
     @Binding var turned: Bool
     /// Run the press even when the release has been printed before: a stub just kept gets its copy printed.
-    var pressesOnAppear = false
+    var pressesOnAppear: Bool
 
     private let editions = Editions.shared
     @State private var attitude = Attitude()
@@ -18,7 +18,9 @@ struct Keepsake: View {
     @State private var memo = CompositionMemo()
     @State private var photo: UIImage?
     @State private var code: CGImage?
-    @State private var printed = 0
+    /// Whole from the first frame unless a press is coming: a detail that opened on bare stock and filled in a frame
+    /// later would flash.
+    @State private var printed: Int
     @State private var pass = 0
     @State private var choosing = false
     @State private var finger: CGPoint = .zero
@@ -27,6 +29,14 @@ struct Keepsake: View {
     @State private var touchedAt: Date?
     @State private var lastY: CGFloat?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    init(stub: Stub, copy: Copy, turned: Binding<Bool>, pressesOnAppear: Bool = false) {
+        self.stub = stub
+        self.copy = copy
+        _turned = turned
+        self.pressesOnAppear = pressesOnAppear
+        _printed = State(initialValue: pressesOnAppear ? 0 : Plate.foil)
+    }
 
     var body: some View {
         let edition = editions.edition(for: stub.title)
@@ -37,7 +47,9 @@ struct Keepsake: View {
                     .scaleEffect(scale, anchor: .topLeading)
                     .frame(width: proxy.size.width, height: Card.height * scale, alignment: .topLeading)
                     .contentShape(Rectangle())
-                    .gesture(handle(scale: scale, stock: edition?.stock ?? .coated))
+                    // Alongside the scroll, never instead of it: a drag that starts on the card still scrolls the page,
+                    // and the card leans with it and settles when the finger lifts.
+                    .simultaneousGesture(handle(scale: scale, stock: edition?.stock ?? .coated))
             }
             .aspectRatio(Card.width / Card.height, contentMode: .fit)
             .accessibilityElement(children: .ignore)
@@ -61,7 +73,11 @@ struct Keepsake: View {
         }
         .task(id: stub.id) { await press() }
         .task(id: copy.message) { code = Aztec.mask(for: copy.message) }
-        .onAppear { if !reduceMotion { attitude.start() } }
+        .onAppear {
+            // A card asked to open turned over (`-turned`) is already turned: no turn to watch, no onChange to fire.
+            angle = turned ? 180 : 0
+            if !reduceMotion { attitude.start() }
+        }
         .onDisappear {
             attitude.stop()
             texture.end()
