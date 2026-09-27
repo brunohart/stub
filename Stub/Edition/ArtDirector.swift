@@ -93,9 +93,9 @@ enum ArtDirector {
 
     /// The model's edition for the release `floor` belongs to: its choice, judged, over the floor's seed.
     static func direct(_ floor: Edition, title: String, year: Int?, screen: String?) async throws -> Edition {
-        var options = GenerationOptions()
-        // Greedy: the same film, the same model, the same choice, on every phone.
-        options.sampling = .greedy
+        // Greedy: the same film, the same model, the same choice, on every phone. `samplingMode` is the iOS 27 SDK's
+        // name for `sampling`, back-deployed to 26.
+        let options = GenerationOptions(samplingMode: .greedy)
         let response: LanguageModelSession.Response<Direction>
         do {
             response = try await session().respond(to: prompt(title: title, year: year, screen: screen),
