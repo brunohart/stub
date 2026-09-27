@@ -47,15 +47,17 @@ struct Keepsake: View {
             .accessibilityAction { turned.toggle() }
             .accessibilityAction(named: "Lift the print") { hold(!holding) }
 
-            if choosing {
-                HStack(spacing: 10) {
-                    ProgressView().tint(Ink.orange)
-                    Text("Choosing an edition for \(stub.title)…")
-                        .font(Type.italic(16)).foregroundStyle(Ink.navy)
-                }
-                .transition(.opacity)
-                .accessibilityElement(children: .combine)
+            // The one italic sentence under the card: what the press is doing, or what the card will do.
+            HStack(spacing: 10) {
+                if choosing { ProgressView().tint(Ink.orange) }
+                Text(choosing ? "Choosing an edition for \(stub.title)…"
+                     : turned ? "Hold it to lift the print." : "Turn it over for the one you were handed.")
+                    .font(Type.italic(16)).foregroundStyle(Ink.navy)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .contentTransition(.opacity)
+                    .animation(Motion.place, value: turned)
             }
+            .accessibilityHidden(!choosing)
         }
         .task(id: stub.id) { await press() }
         .task(id: copy.message) { code = Aztec.mask(for: copy.message) }
@@ -88,7 +90,7 @@ struct Keepsake: View {
 
     @ViewBuilder
     private func card(_ edition: Edition?) -> some View {
-        let tilt = tilt
+        let tilt = self.tilt
         let light = Light(tilt: tilt)
         // Under Reduce Motion the light still moves under a finger; the card itself does not.
         let lean = reduceMotion ? 0 : 11.0
