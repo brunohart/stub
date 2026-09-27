@@ -180,7 +180,8 @@ struct Keepsake: View {
     /// The press. A release printed before shows whole, unless this copy has just been kept; a release never seen
     /// is chosen first (the model, or the floor after its patience), then printed a plate at a time.
     private func press() async {
-        photo = stub.imageData.flatMap { UIImage(data: $0) }
+        // Decoded once, at the size the back draws it, and kept (PlateImage): never `UIImage(data:)` in a body.
+        photo = PlateImage.image(for: stub.id, in: .detail, data: stub.imageData)
         let known = editions.edition(for: stub.title) != nil
         if known, !pressesOnAppear {
             printed = Plate.foil

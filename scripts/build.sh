@@ -9,12 +9,13 @@ xcodegen generate --quiet
 # stamps every .app package under it with FinderInfo (even inside a `.nosync` folder, and faster than it can
 # be stripped), after which codesign refuses it: "resource fork, Finder information, or similar detritus".
 DD="${STUB_DERIVED_DATA:-$HOME/Library/Developer/Xcode/DerivedData/Stub-scripts}"
-mkdir -p "$DD"
+mkdir -p build "$DD"
 for attempt in 1 2 3; do
-  if xcodebuild -project Stub.xcodeproj -scheme Stub -destination 'generic/platform=iOS Simulator' \
-       -derivedDataPath "$DD" build 2>&1 | tee build/last-build.log | grep -E "error:|BUILD (SUCCEEDED|FAILED)"; then
-    grep -q "BUILD SUCCEEDED" build/last-build.log && exit 0
-  fi
+  # As in test.sh: the log, not the pipeline's status, tells a compile error (stop) from a run that never started (retry).
+  xcodebuild -project Stub.xcodeproj -scheme Stub -destination 'generic/platform=iOS Simulator' \
+       -derivedDataPath "$DD" build 2>&1 | tee build/last-build.log | grep -E "error:|BUILD (SUCCEEDED|FAILED)" || true
+  grep -q "BUILD SUCCEEDED" build/last-build.log && exit 0
+  grep -q "BUILD FAILED" build/last-build.log && exit 1
   echo "build attempt $attempt failed; retrying" >&2
   sleep 5
 done

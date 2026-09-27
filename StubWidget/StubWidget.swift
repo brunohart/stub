@@ -44,7 +44,8 @@ struct LastStubWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: LastStubProvider()) { entry in
-            LastStubView(entry: entry)
+            // A film, a date and a seat are the owner's: redacted on a locked phone (Lock Screen, Always-On, StandBy).
+            LastStubView(entry: entry).privacySensitive()
         }
         .configurationDisplayName("Last stub")
         .description("The last film you kept.")
