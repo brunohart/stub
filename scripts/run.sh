@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 # Install and launch the last build on the simulator, then screenshot it.
-# Usage: scripts/run.sh [--seed] [--reset] [--drive] [--season] [--import] [--type size] [--look metal|swiftui] [--wait-for regex] [--shot path.png]
+# Usage: scripts/run.sh [--seed] [--reset] [--drive] [--season] [--import] [--edition] [--turned] [--tilt x,y]
+#                       [--type size] [--look metal|swiftui] [--wait-for regex] [--shot path.png]
 # --drive: after the seed, press, open, hold and close on a timer (see DebugDrive) so the run can be filmed.
 # --season: open the season sheet once the seed has settled.
 # --import: open the import sheet once the seed has settled (Day 6).
+# --edition: open the newest stub once the seed has settled, so its edition is printed and can be screenshotted
+#   (Day 21, ADR-015); --turned shows its back; --tilt x,y holds the light there (the simulator has no gyroscope).
+#   The edition is chosen and printed on first sight: wait for "Edition '" and give the press STUB_AFTER=4 seconds.
 # --type: set the simulator's Dynamic Type size for the run (medium, extra-extra-large, accessibility-extra-large …)
 #   and put it back to medium afterwards.
 # --wait-for: instead of sleeping STUB_SETTLE seconds, poll the app's log for a line matching the regex
@@ -16,6 +20,7 @@ ARGS=(); SHOT=""; WAIT=""; TYPE=""
 while [ $# -gt 0 ]; do case "$1" in
   --seed) ARGS+=(-seed);; --reset) ARGS+=(-reset);; --drive) ARGS+=(-drive);; --season) ARGS+=(-season);;
   --import) ARGS+=(-import);; --type) TYPE="$2"; shift;;
+  --edition) ARGS+=(-edition);; --turned) ARGS+=(-turned);; --tilt) ARGS+=(-tilt "$2"); shift;;
   --look) ARGS+=(-look "$2"); shift;; --wait-for) WAIT="$2"; shift;;
   --shot) SHOT="$2"; shift;; *) echo "unknown $1" >&2; exit 2;; esac; shift; done
 SIM="$(scripts/sim.sh)"
@@ -35,7 +40,7 @@ if [ -n "$WAIT" ]; then
     if [ "$(date +%s)" -ge "$deadline" ]; then echo "gave up waiting for /$WAIT/" >&2; break; fi
     sleep 5
   done
-  sleep 2
+  sleep "${STUB_AFTER:-2}"
 else
   sleep "${STUB_SETTLE:-12}"
 fi
