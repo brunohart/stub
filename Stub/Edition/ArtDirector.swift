@@ -2,6 +2,7 @@ import Foundation
 import FoundationModels
 import Observation
 import OSLog
+import Synchronization
 
 /// The words the model chooses between: the genome's lists, spelled out. A test holds them to `Genome`, so the
 /// model can never choose a thing the code cannot draw.
@@ -172,6 +173,43 @@ final class Editions {
 
     private struct Impatient: Error {}
 
+    /// The model's answer or the end of the press's patience, whichever comes first. Unstructured on purpose: a task
+    /// group waits for every child before it returns, so a model slow to notice it was cancelled would keep the press
+    /// waiting past its patience. Here the loser is cancelled and nobody waits for it.
+    private static func race(patience: Duration, _ work: @escaping @Sendable () async throws -> Edition) async throws -> Edition {
+        let once = Once()
+        return try await withCheckedThrowingContinuation { continuation in
+            let job = Task {
+                do {
+                    let edition = try await work()
+                    if once.claim() { continuation.resume(returning: edition) }
+                } catch {
+                    if once.claim() { continuation.resume(throwing: error) }
+                }
+            }
+            Task {
+                try? await Task.sleep(for: patience)
+                if once.claim() {
+                    job.cancel()
+                    continuation.resume(throwing: Impatient())
+                }
+            }
+        }
+    }
+
+    /// True for the first caller only: a continuation is resumed exactly once.
+    private final class Once: Sendable {
+        private let done = Mutex(false)
+
+        func claim() -> Bool {
+            done.withLock { done in
+                if done { return false }
+                done = true
+                return true
+            }
+        }
+    }
+
     private static func choose(title: String, year: Int?, screen: String?) async -> Edition {
         let floor = Genome.floor(for: title)
         let summary = { (e: Edition) in "\(e.movement.rawValue), \(e.palette.rawValue), \(e.stock.rawValue)" }
@@ -182,19 +220,10 @@ final class Editions {
         let patience = Self.patience
         let started = ContinuousClock.now
         do {
-            let edition = try await withThrowingTaskGroup(of: Edition.self) { group in
-                group.addTask {
-                    // The reader has the model's attention first, as the season waits for it (ADR-011).
-                    while StubReader.isBusy { try await Task.sleep(for: .milliseconds(500)) }
-                    return try await ArtDirector.direct(floor, title: title, year: year, screen: screen)
-                }
-                group.addTask {
-                    try await Task.sleep(for: patience)
-                    throw Impatient()
-                }
-                guard let first = try await group.next() else { throw Impatient() }
-                group.cancelAll()
-                return first
+            let edition = try await Self.race(patience: patience) {
+                // The reader has the model's attention first, as the season waits for it (ADR-011).
+                while StubReader.isBusy { try await Task.sleep(for: .milliseconds(500)) }
+                return try await ArtDirector.direct(floor, title: title, year: year, screen: screen)
             }
             let ms = Int(started.duration(to: .now) / .milliseconds(1))
             log.info("Edition '\(floor.release)': chosen by the model in \(ms) ms (\(summary(edition))); the floor was \(summary(floor))")
