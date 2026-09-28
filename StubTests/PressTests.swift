@@ -218,3 +218,104 @@ struct PressTests {
         expect(pastLives[4], "blueprint/radius", [188.147275557841, 142.275198608154, 232.948546189874, 62.3982976499578])
     }
 }
+
+/// The press room's arithmetic (Day 24): in-betweens, the finger on the card, the words.
+struct PressRoomTests {
+    private let copy = Copy(title: "The Brutalist", cinema: "Embassy Theatre", date: "06 SEP 2026", time: "19:30", screen: "1",
+                            seat: "H12", price: "$18.50", year: 2026)
+
+    private func composition(_ movement: Movement, takes: [Part.ID: Int] = [:]) -> Composition {
+        var edition = Genome.floor(for: copy.title)
+        edition.movement = movement
+        edition.takes = takes
+        return Composition(edition: edition, copy: copy)
+    }
+
+    /// `between(a, b, 0)` is a's poster and `between(a, b, 1)` is b's, exactly; halfway, only the turned part moves.
+    @Test(arguments: Movement.allCases)
+    func inBetweensMeetTheirEnds(_ movement: Movement) {
+        for part in movement.parts where part.turns {
+            let a = composition(movement, takes: [part.id: 13])
+            let b = composition(movement, takes: [part.id: 14])
+            #expect(Composition.between(a, b, t: 0) == a.poster)
+            #expect(Composition.between(a, b, t: 1) == b.poster)
+            let half = Composition.between(a, b, t: 0.5)
+            let exempt = part.kind == .frame ? Set(movement.parts.filter { $0.hangs || $0.id == part.id }.map(\.id)) : [part.id]
+            #expect(half.filter { !exempt.contains($0.part ?? "") } == a.poster.filter { !exempt.contains($0.part ?? "") },
+                    "\(part.id): halfway, a part that was not turned moved")
+        }
+    }
+
+    @Test func aDiscGlides() throws {
+        let a = composition(.constructivist, takes: ["constructivist/disc": 13])
+        let b = composition(.constructivist, takes: ["constructivist/disc": 14])
+        let half = Composition.between(a, b, t: 0.5)
+        #expect(half.count == a.poster.count, "one disc, interpolated, not two cross-fading")
+        let i = try #require(a.poster.firstIndex { $0.part == "constructivist/disc" })
+        guard case .circle(let ca, let ra) = a.poster[i].shape, case .circle(let cb, let rb) = b.poster[i].shape,
+              case .circle(let ch, let rh) = half[i].shape else { Issue.record("the disc is a circle"); return }
+        #expect(abs(rh - (ra + rb) / 2) < 1e-9)
+        #expect(abs(ch.y - (ca.y + cb.y) / 2) < 1e-9)
+    }
+
+    @Test func theHalftoneCrossFades() {
+        let a = composition(.riso, takes: ["riso/screen": 1])
+        let b = composition(.riso, takes: ["riso/screen": 2])
+        let half = Composition.between(a, b, t: 0.25)
+        let screens = half.filter { if case .halftone = $0.shape { true } else { false } }
+        #expect(screens.count == 2)
+        #expect(screens.map(\.opacity) == [0.75, 0.25])
+    }
+
+    /// A finger on the disc picks up the disc; on bare stock, nothing; on the strip, nothing.
+    @Test func theFingerFindsThePart() throws {
+        let c = composition(.constructivist)
+        let disc = try #require(c.poster.first { $0.part == "constructivist/disc" })
+        guard case .circle(let centre, let radius) = disc.shape else { Issue.record("the disc is a circle"); return }
+        #expect(c.part(at: centre) == "constructivist/disc")
+        #expect(c.part(at: CGPoint(x: centre.x + radius * 0.9, y: centre.y)) == "constructivist/disc")
+        #expect(c.part(at: CGPoint(x: 165, y: Card.poster + 60)) == nil, "the strip has no parts")
+        // The band's centre is covered by the title set in it: the title is on top, and it is set.
+        let band = try #require(c.poster.first { $0.part == "constructivist/diagonal" })
+        let centreOfBand = band.turn?.around ?? .zero
+        #expect(["constructivist/title", "constructivist/diagonal"].contains(c.part(at: centreOfBand)))
+        #expect(c.bounds(of: "constructivist/disc").map { $0.contains(centre) } == true)
+    }
+
+    @Test func aTurnedMarkIsHitWhereItIsDrawn() {
+        let mark = Mark(.rect(CGRect(x: 0, y: -5, width: 100, height: 10)), .ink, .second,
+                        turn: Mark.Turn(degrees: 90, around: .zero))
+        // Turned a quarter clockwise about the origin, the bar runs down the y axis.
+        #expect(mark.contains(CGPoint(x: 0, y: 50), slop: 0))
+        #expect(!mark.contains(CGPoint(x: 50, y: 0), slop: 0))
+    }
+
+    @MainActor @Test func theSentenceSpellsTheTake() {
+        #expect(PressSession.spelled(14) == "fourteen")
+        #expect(PressSession.spelled(99) == "ninety-nine")
+        let session = PressSession(title: "The Brutalist", copy: copy, editions: Editions(defaults: UserDefaults(suiteName: "press-room-\(UUID().uuidString)")!))
+        #expect(session.sentence(at: 0) == "Touch a part of the card to turn it.")
+        let disc = Parts.Constructivist.disc
+        session.pickUp(disc)
+        #expect(session.sentence(at: 0) == "The disc, as the title drew it.")
+        #expect(session.sentence(at: 14) == "The disc. Take fourteen.")
+        session.pickUp(Parts.Constructivist.diagonal)
+        #expect(session.sentence(at: 3) == "The diagonal. Everything on it moves with it.")
+    }
+
+    /// Leaving the room keeps the work on the press; the detail goes on showing the last pulled proof.
+    @MainActor @Test func theWorkStaysOnThePress() throws {
+        let defaults = try #require(UserDefaults(suiteName: "press-room-\(UUID().uuidString)"))
+        defer { EditionCache.clear(in: defaults); ProofCache.clear(in: defaults) }
+        let editions = Editions(defaults: defaults)
+        let floor = Genome.floor(for: "The Brutalist")
+        editions.store(floor)
+        let session = PressSession(title: "The Brutalist", copy: copy, editions: editions)
+        session.pickUp(Parts.Constructivist.disc)
+        session.settle(on: 14)
+        #expect(editions.edition(for: "The Brutalist") == floor, "nothing is pulled until the lever is")
+        #expect(Editions(defaults: defaults).pressProof(for: "The Brutalist").takes == ["constructivist/disc": 14])
+        let again = PressSession(title: "The Brutalist", copy: copy, editions: Editions(defaults: defaults))
+        #expect(again.take(of: Parts.Constructivist.disc) == 14, "the next visit continues where you stopped")
+    }
+}
