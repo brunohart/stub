@@ -367,3 +367,64 @@ struct SeparationTests {
         #expect(session.focus?.id == "constructivist/diagonal")
     }
 }
+
+/// The bench (Day 26): the genome's three choices, and the objects that offer them.
+struct BenchTests {
+    /// Choosing the edition's own movement, inks or stock is not a difference: the proof holds only what differs.
+    @MainActor @Test func aChoiceIsKeptOnlyWhenItDiffers() throws {
+        let defaults = try #require(UserDefaults(suiteName: "bench-\(UUID().uuidString)"))
+        defer { EditionCache.clear(in: defaults); ProofCache.clear(in: defaults) }
+        let editions = Editions(defaults: defaults)
+        let floor = Genome.floor(for: "The Brutalist")
+        editions.store(floor)
+        let session = PressSession(title: "The Brutalist", copy: Copy(title: "The Brutalist"), editions: editions)
+        session.choose(.riso)
+        session.choose(.moss)
+        session.choose(.cotton)
+        #expect(session.proof.movement == .riso && session.proof.palette == .moss && session.proof.stock == .cotton)
+        #expect(Editions(defaults: defaults).pressProof(for: "The Brutalist").movement == .riso, "left on the press")
+        session.choose(floor.movement)
+        session.choose(floor.palette)
+        session.choose(floor.stock)
+        #expect(session.proof.movement == nil && session.proof.palette == nil && session.proof.stock == nil)
+        #expect(session.edition == floor)
+        #expect(session.titlesMovement == .constructivist)
+        #expect(session.modelsMovement == nil, "the hash drew it")
+    }
+
+    @Test func theFanFitsInTheHand() {
+        let fan = FanLayout(focus: 150)
+        let width: CGFloat = 402
+        let centres = (0..<8).map { fan.centre($0, of: 8, width: width) }
+        #expect(centres == centres.sorted(), "left to right")
+        #expect(abs(centres[0] + centres[7] - width) < 1e-9, "symmetric about the middle")
+        let half = fan.cardWidth * 1.18 / 2
+        #expect(centres[0] - half > 0 && centres[7] + half < width, "no card off the edge of a phone")
+        #expect(fan.closeness(150) == 1)
+        #expect(fan.closeness(150 + fan.cardWidth * 3) < 0.01, "three cards away, no lift")
+        #expect(FanLayout(focus: nil).closeness(150) == 0)
+        #expect(FanLayout.angle(0, of: 8) == -FanLayout.angle(7, of: 8))
+    }
+
+    /// At the end of a flood every corner of the card is under the new ink, wherever it started. The shader's edge runs
+    /// from `radius - soft` (fully inked) and the noise moves a point at most `wander` further out, so the farthest
+    /// corner pushed back by the most the noise can manage must still be inside `radius - soft`.
+    @Test func aFloodReachesEveryCorner() {
+        let corners = [CGPoint(x: 0, y: 0), CGPoint(x: Card.width, y: 0), CGPoint(x: 0, y: Card.height), CGPoint(x: Card.width, y: Card.height)]
+        for stock in Stock.allCases {
+            let w = stock.wicking
+            for origin in [CGPoint(x: 0, y: 0), CGPoint(x: Card.width / 2, y: Card.height / 2), CGPoint(x: 99, y: 148), CGPoint(x: Card.width, y: Card.height)] {
+                let radius = FloodEffect.reach(from: origin, on: stock)
+                for corner in corners {
+                    #expect(corner.distance(to: origin) + w.wander <= radius - w.soft + 1e-9, "\(stock) from \(origin)")
+                }
+            }
+        }
+        #expect(Stock.cotton.wicking.soft > Stock.coated.wicking.soft, "cotton wicks wide and soft")
+    }
+
+    @Test func everyChoiceIsSpoken() {
+        for movement in Movement.allCases { #expect(movement.spoken.hasSuffix(".")) }
+        for stock in Stock.allCases { #expect(stock.feel.hasSuffix(".") && !stock.words.isEmpty) }
+    }
+}
