@@ -32,6 +32,18 @@ final class PressSession {
     var flood: Flood?
     /// Where a finger is along the fan, if one is.
     var fanFinger: CGFloat?
+    /// The card on the bed is turned over: the back, where an owner signs.
+    var turned = false
+    /// Counts the pulls: the platen comes down and the ink is wet each time.
+    private(set) var pulls = 0
+    /// The proof was pulled a moment ago and nothing has changed since: the italic line says what next.
+    private(set) var justPulled = false
+    #if DEBUG
+    /// `-wet 0.6`: the ink held that wet, for a screenshot.
+    var heldWet: Double?
+    #endif
+    /// Every change on the press can be undone: shake, or three fingers.
+    @ObservationIgnored weak var undoManager: UndoManager?
     #if DEBUG
     /// `-drive` letting go on a card in the fan, as a finger would.
     var letGo: Movement?
@@ -132,6 +144,7 @@ final class PressSession {
     }
 
     private func touch(_ id: Part.ID?) {
+        guard !turned else { return }
         guard let id, let part = movement.part(id) else {
             putDown()
             return
@@ -165,9 +178,59 @@ final class PressSession {
         let take = min(max(take, Proof.takeRange.lowerBound), Proof.takeRange.upperBound)
         position = Double(take)
         guard self.take(of: focus) != take else { return }
+        remember("Turn \(focus.name.replacingOccurrences(of: "the ", with: ""))")
         proof.takes[focus.id] = take == 0 ? nil : take
+        justPulled = false
         editions.putOnPress(proof)
         Self.log.info("Press '\(self.proof.release)': \(focus.id) take \(take)")
+    }
+
+    // MARK: The lever
+
+    /// The proof on the press, pulled: it becomes the card everywhere, the platen comes down, the ink is wet.
+    func pull() {
+        let before = editions.proof(for: title)
+        let pulling = proof
+        editions.pull(pulling)
+        pulls += 1
+        justPulled = true
+        Self.log.info("Press '\(self.proof.release)': pulled")
+        undoManager?.registerUndo(withTarget: self) { session in session.unpull(back: before, redo: pulling) }
+        undoManager?.setActionName("Pull the Proof")
+    }
+
+    /// Undo a pull: the last pulled proof is the one before it again (or none).
+    private func unpull(back before: Proof?, redo pulling: Proof) {
+        if let before { editions.pull(before) } else { editions.discardProof(release: proof.release) }
+        justPulled = false
+        undoManager?.registerUndo(withTarget: self) { session in
+            session.proof = pulling
+            session.pull()
+        }
+        undoManager?.setActionName("Pull the Proof")
+    }
+
+    /// The proof on the press differs from the last one pulled: there is something to pull.
+    var somethingToPull: Bool {
+        underneath.applying(proof) != underneath.applying(editions.proof(for: title))
+    }
+
+    // MARK: Undo
+
+    /// Keep the proof as it is now, so the change about to be made can be undone.
+    private func remember(_ name: String) {
+        let before = proof
+        undoManager?.registerUndo(withTarget: self) { session in session.restore(before, name: name) }
+        undoManager?.setActionName(name)
+    }
+
+    /// Put `proof` back on the press, and let the putting-back be undone in turn (a redo).
+    private func restore(_ earlier: Proof, name: String) {
+        remember(name)
+        proof = earlier
+        justPulled = false
+        if let focus { position = Double(take(of: focus)) }
+        editions.putOnPress(proof)
     }
 
     // MARK: The genome
@@ -193,23 +256,27 @@ final class PressSession {
     func choose(_ movement: Movement) {
         guard movement != edition.movement else { return }
         putDown()
+        remember("Change the Movement")
         proof.movement = movement == underneath.movement ? nil : movement
         keep("movement \(movement.rawValue)")
     }
 
     func choose(_ palette: Palette) {
         guard palette != edition.palette else { return }
+        remember("Change the Inks")
         proof.palette = palette == underneath.palette ? nil : palette
         keep("inks \(palette.rawValue)")
     }
 
     func choose(_ stock: Stock) {
         guard stock != edition.stock else { return }
+        remember("Change the Stock")
         proof.stock = stock == underneath.stock ? nil : stock
         keep("stock \(stock.rawValue)")
     }
 
     private func keep(_ what: String) {
+        justPulled = false
         editions.putOnPress(proof)
         Self.log.info("Press '\(self.proof.release)': \(what)")
     }
@@ -239,6 +306,12 @@ final class PressSession {
     /// The one italic sentence on the screen: what is in hand and which take, why a part will not turn, or what the
     /// card is.
     func sentence(at position: Double) -> String {
+        if turned {
+            return Signatures.shared.isSigned ? "Signed. Hold the signature to sign it again." : "Sign in the margin with a finger."
+        }
+        if justPulled {
+            return Signatures.shared.isSigned ? "Pulled. This is the card now." : "Sign it on the back."
+        }
         if let explaining, let note = explaining.note { return note }
         if focus == nil {
             switch bench {
@@ -258,6 +331,7 @@ final class PressSession {
             return composition.isMetallic ? "Five sheets: the stock, two plates, the foil and the type."
                 : "Four sheets: the stock, two plates and the type."
         }
+        if somethingToPull { return "Pull it when it is right." }
         if edition == underneath { return "Touch a part of the card to turn it." }
         return edition.described + "."
     }

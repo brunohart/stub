@@ -19,6 +19,13 @@ struct PressRoom: View {
     /// The fan's card on its way to the bed.
     @State private var flying: Movement?
     @Namespace private var fan
+    @Environment(\.undoManager) private var undoManager
+    /// When the last proof was pulled: the ink dries from then, and the timeline stops when it is dry.
+    @State private var wetSince: Date?
+    /// The stub as it was scanned, and its code: the back of the card.
+    @State private var photo: UIImage?
+    @State private var code: CGImage?
+    private let signatures = Signatures.shared
 
     init(stub: Stub, copy: Copy) {
         self.stub = stub
@@ -29,10 +36,18 @@ struct PressRoom: View {
         ZStack {
             Paper()
             VStack(spacing: 0) {
-                bed
-                    .frame(maxHeight: .infinity)
-                    .padding(.horizontal, 20)
-                    .padding(.top, 4)
+                HStack(alignment: .top, spacing: 4) {
+                    bed
+                    // The lever runs down the right of the bed.
+                    Lever { pull() }
+                        .padding(.top, 28)
+                        .opacity(session.turned ? 0.3 : 1)
+                        .disabled(session.turned)
+                }
+                .frame(maxHeight: .infinity)
+                .padding(.leading, 20)
+                .padding(.trailing, 6)
+                .padding(.top, 4)
 
                 // The status line: the only italic on the screen.
                 Text(session.sentence(at: session.position))
@@ -59,8 +74,24 @@ struct PressRoom: View {
             new == Plate.foil && old < Plate.foil ? .impact(weight: .heavy, intensity: 0.8)
                 : new > old && new > 0 ? .impact(weight: .light, intensity: 0.6) : nil
         }
-        .onAppear { if !reduceMotion { attitude.start() } }
+        .onAppear {
+            if !reduceMotion { attitude.start() }
+            session.undoManager = undoManager
+            photo = PlateImage.image(for: stub.id, in: .detail, data: stub.imageData)
+            code = Aztec.mask(for: session.copy.message)
+        }
         .onDisappear { attitude.stop() }
+        .onChange(of: undoManager) { _, now in session.undoManager = now }
+        // A pull: the ink is wet from now, and dries.
+        .onChange(of: session.pulls) {
+            guard !reduceMotion else { return }
+            let since = Date.now
+            wetSince = since
+            Task {
+                try? await Task.sleep(for: .seconds(Self.drying + 0.2))
+                if wetSince == since { wetSince = nil }
+            }
+        }
         #if DEBUG
         .task { await DebugDrive.shared.press(session, reduceMotion: reduceMotion) }
         .onChange(of: session.letGo) { _, movement in
@@ -91,11 +122,36 @@ struct PressRoom: View {
                 if reduceMotion, session.separation > 0 {
                     FlatSheets(session: session, light: light, height: size.height)
                 } else {
-                    ZStack(alignment: .topLeading) {
-                        OnTheBed(session: session, position: session.position, separation: session.separation, light: light,
-                                 reduceMotion: reduceMotion)
-                        if let flood = session.flood {
-                            Flooding(session: session, flood: flood, progress: flood.progress, light: light, reduceMotion: reduceMotion)
+                    // The timeline runs only while the ink is wet; at rest nothing moves on its own.
+                    TimelineView(.animation(paused: wetSince == nil)) { timeline in
+                        let wet = wetness(at: timeline.date)
+                        // The platen: the card pressed a breath smaller, and the impression rising into the stock.
+                        KeyframeAnimator(initialValue: Platen(), trigger: session.pulls) { platen in
+                            Turnover(angle: session.turned ? 180 : 0, flat: reduceMotion) {
+                                ZStack(alignment: .topLeading) {
+                                    OnTheBed(session: session, position: session.position, separation: session.separation,
+                                             light: light, reduceMotion: reduceMotion, impression: platen.impression, wet: wet)
+                                    if let flood = session.flood {
+                                        Flooding(session: session, flood: flood, progress: flood.progress, light: light,
+                                                 reduceMotion: reduceMotion)
+                                    }
+                                }
+                            } back: {
+                                EditionBack(composition: session.composition, photo: photo, tilt: stub.tilt, code: code,
+                                            light: light, pencil: Pencil(edition: session.edition), signature: signatures.image)
+                            }
+                            .frame(width: Card.width, height: Card.height)
+                            .scaleEffect(platen.scale)
+                        } keyframes: { _ in
+                            KeyframeTrack(\.scale) {
+                                CubicKeyframe(0.985, duration: 0.07)
+                                SpringKeyframe(1, duration: 0.45, spring: Spring(response: 0.3, dampingRatio: 0.55))
+                            }
+                            KeyframeTrack(\.impression) {
+                                MoveKeyframe(0)
+                                LinearKeyframe(0, duration: 0.06)
+                                CubicKeyframe(1, duration: 0.6)
+                            }
                         }
                     }
                     .scaleEffect(scale, anchor: .topLeading)
@@ -121,18 +177,78 @@ struct PressRoom: View {
                                 .frame(width: size.width, height: size.height)
                         }
                     }
+                    // The margin on the back: sign it once, and hold the signature to sign again.
+                    .overlay(alignment: .topLeading) { margin(scale: scale) }
                 }
             }
             .simultaneousGesture(pinch)
             .overlay(alignment: .topLeading) { parts(scale: scale) }
             .accessibilityElement(children: .contain)
-            .accessibilityLabel("The card on the press: \(session.edition.described)")
+            .accessibilityLabel(session.turned
+                ? "The back of the card: the stub as it was scanned. " + (Pencil(edition: session.edition)?.spoken(signed: signatures.isSigned) ?? "")
+                : "The card on the press: \(session.edition.colophon)")
             .accessibilityRotor("Parts") {
                 ForEach(session.turnable) { part in
                     AccessibilityRotorEntry(Text(session.spoken(part)), id: part.id, in: rotor)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    /// How wet the ink still is, `drying` seconds after a pull: 1 at the pull, then falling away exponentially.
+    private func wetness(at date: Date) -> Double {
+        #if DEBUG
+        if let held = session.heldWet { return held }
+        #endif
+        guard !reduceMotion, let wetSince else { return 0 }
+        let t = date.timeIntervalSince(wetSince)
+        return t < 0 ? 1 : max(0, exp(-t / (Self.drying / 4)) - 0.018)
+    }
+
+    /// How long wet ink takes to dry, in seconds.
+    static let drying = 2.4
+
+    /// The margin on the back of the card: a pad to sign in until there is a signature, then the signature, held to redo.
+    @ViewBuilder
+    private func margin(scale: CGFloat) -> some View {
+        if session.turned {
+            let r = EditionBack.signatureMargin
+            Group {
+                if signatures.isSigned {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onLongPressGesture { withAnimation(Motion.settle) { signatures.redo() } }
+                        .accessibilityElement()
+                        .accessibilityLabel("Your signature")
+                        .accessibilityAction(named: "Sign again") { signatures.redo() }
+                } else {
+                    SignaturePad(scale: scale) { drawing in withAnimation(Motion.place) { signatures.keep(drawing) } }
+                }
+            }
+            .frame(width: r.width * scale, height: r.height * scale)
+            .offset(x: r.minX * scale, y: r.minY * scale)
+            .transition(.opacity.animation(Motion.settle.delay(0.35)))
+        }
+    }
+
+    /// The lever has given: the proof on the press is pulled.
+    private func pull() {
+        if session.separation > 0 { separate(false) }
+        withAnimation(reduceMotion ? Motion.plain : Motion.settle) {
+            session.putDown()
+            session.bench = .rest
+        }
+        session.pull()
+    }
+
+    /// The card over on the bed, to its back and the margin an owner signs, or back to its front.
+    private func turn() {
+        if session.separation > 0 { separate(false) }
+        withAnimation(reduceMotion ? Motion.plain : Motion.settle) {
+            session.putDown()
+            session.bench = .rest
+            session.turned.toggle()
         }
     }
 
@@ -168,6 +284,19 @@ struct PressRoom: View {
                 let apart = value.velocity > 0.5 || (value.velocity > -0.5 && session.separation > 0.5)
                 separate(apart)
             }
+    }
+
+    private func benchButton(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(Type.words(15))
+                .foregroundStyle(Ink.ink)
+                .padding(.horizontal, 16)
+                .frame(minHeight: 44)
+                .overlay(Capsule().stroke(Ink.ink.opacity(0.25), lineWidth: 0.75))
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
     }
 
     /// New inks spreading across the card from `origin`, about half a second to its far corner (a fifth of a second's
@@ -238,10 +367,13 @@ struct PressRoom: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             VStack(spacing: 18) {
-                HStack(alignment: .top, spacing: 30) {
-                    choice(.movement, "Movement", session.edition.movement.rawValue.capitalized)
-                    choice(.inks, "Inks", session.edition.palette.rawValue.capitalized)
-                    choice(.stock, "Stock", session.edition.stock.words)
+                // The genome's three choices are the front's; on the back there is only the margin.
+                if !session.turned {
+                    HStack(alignment: .top, spacing: 30) {
+                        choice(.movement, "Movement", session.edition.movement.rawValue.capitalized)
+                        choice(.inks, "Inks", session.edition.palette.rawValue.capitalized)
+                        choice(.stock, "Stock", session.edition.stock.words)
+                    }
                 }
                 switch session.bench {
                 case .movement:
@@ -257,17 +389,15 @@ struct PressRoom: View {
                         .frame(height: 130)
                         .transition(Self.benchChange)
                 case .rest:
-                    // Separations are a pinch on the card, and a button for anyone who does not pinch.
-                    Button { separate(session.separation == 0) } label: {
-                        Text(session.separation > 0 ? "Press them together" : "See the plates")
-                            .font(Type.words(15))
-                            .foregroundStyle(Ink.ink)
-                            .padding(.horizontal, 16)
-                            .frame(minHeight: 44)
-                            .overlay(Capsule().stroke(Ink.ink.opacity(0.25), lineWidth: 0.75))
-                            .contentShape(Capsule())
+                    HStack(spacing: 12) {
+                        // Separations are a pinch on the card, and a button for anyone who does not pinch.
+                        if !session.turned {
+                            benchButton(session.separation > 0 ? "Press them together" : "See the plates") {
+                                separate(session.separation == 0)
+                            }
+                        }
+                        benchButton(session.turned ? "Turn it back" : "Turn it over") { turn() }
                     }
-                    .buttonStyle(.plain)
                     .padding(.top, 12)
                     .transition(Self.benchChange)
                 }
@@ -287,6 +417,13 @@ struct PressRoom: View {
     )
 }
 
+/// The platen's two motions after a pull: the card pressed a breath smaller, and the impression's depth rising from
+/// nothing to the stock's own.
+private struct Platen {
+    var scale: CGFloat = 1
+    var impression: Double = 1
+}
+
 /// The card on the bed at a wheel position and a separation. Animatable on both, so the spring that settles the wheel
 /// carries the card through the in-betweens, and the one that spreads the sheets lifts them apart.
 private struct OnTheBed: View, @MainActor Animatable {
@@ -295,6 +432,8 @@ private struct OnTheBed: View, @MainActor Animatable {
     var separation: CGFloat
     let light: Light
     let reduceMotion: Bool
+    var impression: Double = 1
+    var wet: Double = 0
 
     var animatableData: AnimatablePair<Double, CGFloat> {
         get { AnimatablePair(position, separation) }
@@ -303,7 +442,7 @@ private struct OnTheBed: View, @MainActor Animatable {
 
     var body: some View {
         EditionFace(composition: session.drawing(at: position, reduceMotion: reduceMotion), light: light,
-                    printed: session.printed, focus: session.focus?.id, separation: separation)
+                    printed: session.printed, focus: session.focus?.id, separation: separation, impression: impression, wet: wet)
             .accessibilityHidden(true)
     }
 }

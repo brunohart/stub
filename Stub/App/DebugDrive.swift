@@ -46,6 +46,12 @@ final class DebugDrive {
     static let bench: String? = value(after: "-bench")
     /// `-flood 0.4`: in the press room, start the next palette flooding the card and hold it this far across.
     static let flood: CGFloat? = value(after: "-flood").flatMap { Double($0) }.map { CGFloat($0) }
+    /// `-pulled`: in the press room, pull the proof on the press once it is set up (brief §5.7).
+    static var wantsPull: Bool { ProcessInfo.processInfo.arguments.contains("-pulled") }
+    /// `-wet 0.6`: hold the ink that wet after a pull, for a screenshot.
+    static let wet: Double? = value(after: "-wet").flatMap { Double($0) }
+    /// `-signed`: sign with the fixture signature at launch, if there is none (brief §5.8).
+    static var wantsSigned: Bool { ProcessInfo.processInfo.arguments.contains("-signed") }
     /// `-separated 0.8`: in the press room, lift the card's layers this far apart (brief §5.4).
     static let separated: CGFloat? = value(after: "-separated").flatMap { Double($0) }.map { CGFloat($0) }
     /// `-scrub 13.5`: hold the wheel here, between two takes, for a screenshot of an in-between.
@@ -188,7 +194,10 @@ final class DebugDrive {
                 try await beat(0.8)
             }
             let named = Self.part.flatMap { name in session.turnable.first { $0.id == name || $0.id.hasSuffix("/" + name) } }
-            guard let part = named ?? (Self.requested ? session.turnable.first : nil) else { return }
+            guard let part = named ?? (Self.requested ? session.turnable.first : nil) else {
+                try await pullAndTurn(session)
+                return
+            }
             Self.log.info("drive: pick up \(part.id)")
             withAnimation(Motion.settle) { session.pickUp(part) }
             try await beat(0.8)
@@ -209,8 +218,26 @@ final class DebugDrive {
                 withAnimation(Motion.settle) { session.position = Double(take) }
                 session.settle(on: take)
             }
+            try await pullAndTurn(session)
         } catch {
             // The room was left.
+        }
+    }
+
+    /// `-pulled` and `-turned` in the press room: the proof pulled (held as wet as `-wet` says), and the card turned over
+    /// to its back and the margin.
+    private func pullAndTurn(_ session: PressSession) async throws {
+        if Self.wantsPull {
+            try await beat(0.8)
+            Self.log.info("drive: pull the proof")
+            withAnimation(Motion.settle) { session.putDown() }
+            session.heldWet = Self.wet
+            session.pull()
+        }
+        if Self.wantsTurned {
+            try await beat(0.6)
+            Self.log.info("drive: turn it over on the bed")
+            withAnimation(Motion.settle) { session.turned = true }
         }
     }
 
