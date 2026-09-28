@@ -1,4 +1,5 @@
 import SwiftUI
+import Synchronization
 
 /// Where the light is. The card's tilt, from the phone's attitude or a finger: (0, 0) is the card held square,
 /// ±1 as far as it turns. The light comes from the upper left at rest, the way the house's offset shadows fall.
@@ -36,6 +37,8 @@ struct EditionFace: View {
     let composition: Composition
     var light: Light = .rest
     var printed: Int = Plate.foil
+    /// The part the press is holding: every other mark is knocked back to a ghost (ADR-016).
+    var focus: Part.ID? = nil
 
     var body: some View {
         let c = composition
@@ -54,7 +57,7 @@ struct EditionFace: View {
             plate(.second, depth: depth)
 
             if c.isMetallic {
-                PlateArt(composition: c, plate: nil).equatable()
+                PlateArt(composition: c, plate: nil, focus: focus).equatable()
                 .modifier(FoilEffect(light: light, metal: c.inks.foilBase, holographic: stock == .holographic,
                                      lightGround: c.inks.groundIsLight))
                 .opacity(printed >= Plate.foil ? 1 : 0)
@@ -73,7 +76,7 @@ struct EditionFace: View {
 
 extension EditionFace {
     fileprivate func plate(_ plate: Plate, depth: Double) -> some View {
-        PlateArt(composition: composition, plate: plate).equatable()
+        PlateArt(composition: composition, plate: plate, focus: focus).equatable()
             .modifier(ReliefEffect(light: light, depth: depth, reach: composition.edition.stock.reach))
             .opacity(printed >= plate.rawValue ? 1 : 0)
     }
@@ -84,15 +87,16 @@ extension EditionFace {
 private struct PlateArt: View, Equatable {
     let composition: Composition
     let plate: Plate?
+    let focus: Part.ID?
 
     var body: some View {
-        let c = composition
+        let printer = Printer(composition: composition, focus: focus)
         let plate = plate
         Canvas { context, _ in
             if let plate {
-                Printer(composition: c).inks(into: context, plates: plate ... plate)
+                printer.inks(into: context, plates: plate ... plate)
             } else {
-                Printer(composition: c).foil(into: context)
+                printer.foil(into: context)
             }
         }
     }
@@ -123,6 +127,11 @@ struct TicketShape: Shape {
 /// the type lies on top; a foil mark on a stock that has no foil is printed in its ink with the rest.
 struct Printer {
     let composition: Composition
+    /// The part the press is holding. Every mark outside it, the strip's included, is printed as a ghost.
+    var focus: Part.ID? = nil
+
+    /// How much of its ink a knocked-back mark keeps.
+    static let ghost = 0.18
 
     /// The marks on `plates`, less any the foil takes.
     func inks(into context: GraphicsContext, plates: ClosedRange<Plate>) {
@@ -130,10 +139,10 @@ struct Printer {
         var poster = context
         poster.clip(to: Path(Card.posterRect))
         for mark in c.poster where plates.contains(mark.plate) && !(mark.foil && c.isMetallic) {
-            draw(mark, into: poster, colour: c.inks.color(mark.role))
+            lay(mark, on: c.posterField, into: poster)
         }
         for mark in c.strip where plates.contains(mark.plate) {
-            draw(mark, into: context, colour: c.inks.color(mark.role))
+            lay(mark, on: c.stripField, into: context)
         }
     }
 
@@ -142,8 +151,23 @@ struct Printer {
         var poster = context
         poster.clip(to: Path(Card.posterRect))
         for mark in composition.poster where mark.foil {
-            draw(Mark(mark.shape, mark.role, mark.plate, opacity: mark.opacity, turn: mark.turn), into: poster, colour: .white)
+            let opacity = isGhost(mark) ? mark.opacity * Self.ghost : mark.opacity
+            draw(Mark(mark.shape, mark.role, mark.plate, opacity: opacity, turn: mark.turn), into: poster, colour: .white)
         }
+    }
+
+    private func isGhost(_ mark: Mark) -> Bool { focus != nil && mark.part != focus }
+
+    /// A mark in its ink, or, when the press is holding another part, knocked back: a fifth of its ink, its colour
+    /// drained to a grey and drawn toward the stock it lies on. No shader: the same canvas, a paler pass.
+    private func lay(_ mark: Mark, on field: Role, into context: GraphicsContext) {
+        let inks = composition.inks
+        guard isGhost(mark) else {
+            draw(mark, into: context, colour: inks.color(mark.role))
+            return
+        }
+        let grey = EditionInks.grey(inks.hex(mark.role))
+        draw(mark.faded(Self.ghost), into: context, colour: Color(hex: EditionInks.mix(grey, inks.hex(field), 0.3)))
     }
 
     func draw(_ mark: Mark, into context: GraphicsContext, colour: Color) {
@@ -182,7 +206,7 @@ struct Printer {
         case .words(let words):
             Self.set(words, colour: colour, into: g)
         case .halftone(let rect, let step, let focus, let reach, let dot):
-            g.fill(Self.dots(in: rect, step: step, focus: focus, reach: reach, dot: dot), with: shading)
+            g.fill(Self.screen(in: rect, step: step, focus: focus, reach: reach, dot: dot), with: shading)
         }
     }
 
@@ -213,6 +237,22 @@ struct Printer {
         }
         g.draw(text, in: CGRect(x: x, y: words.at.y - baseline, width: size.width, height: size.height))
     }
+
+    /// The dot screen, from the cache when it was drawn lately. A card tilting in the light redraws its canvases and
+    /// the wheel cross-fades between two screens; neither should rebuild a few thousand dots every frame.
+    static func screen(in rect: CGRect, step: CGFloat, focus: CGPoint, reach: CGFloat, dot: CGFloat) -> Path {
+        let key = [rect.minX, rect.minY, rect.width, rect.height, step, focus.x, focus.y, reach, dot]
+        if let path = screens.withLock({ $0.first { $0.key == key }?.path }) { return path }
+        let path = dots(in: rect, step: step, focus: focus, reach: reach, dot: dot)
+        screens.withLock { cache in
+            cache.insert((key, path), at: 0)
+            if cache.count > 6 { cache.removeLast() }
+        }
+        return path
+    }
+
+    /// The last few screens drawn. Canvases draw off the main actor's books, so the cache keeps its own lock.
+    private static let screens = Mutex<[(key: [CGFloat], path: Path)]>([])
 
     /// The dot screen as one path: rows offset by half a step, each dot's area falling off with distance from
     /// `focus` and gone before `reach`. Mirrors the specimen's loop dot for dot.

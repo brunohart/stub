@@ -61,6 +61,14 @@ struct EditionInks: Equatable, Sendable {
         return (max(x, y) + 0.05) / (min(x, y) + 0.05)
     }
 
+    /// The grey with `hex`'s luminance: its colour drained, its weight kept.
+    static func grey(_ hex: UInt32) -> UInt32 {
+        let l = luminance(hex)
+        let v = l <= 0.0031308 ? l * 12.92 : 1.055 * pow(l, 1 / 2.4) - 0.055
+        let c = UInt32((min(max(v, 0), 1) * 255).rounded())
+        return c << 16 | c << 8 | c
+    }
+
     static func mix(_ a: UInt32, _ b: UInt32, _ t: Double) -> UInt32 {
         func channel(_ shift: UInt32) -> UInt32 {
             let x = Double((a >> shift) & 0xFF), y = Double((b >> shift) & 0xFF)
