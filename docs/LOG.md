@@ -2,6 +2,10 @@
 
 Newest at the top. One entry per slot. What shipped, what broke, what the reader did.
 
+## 2026-09-28 — No grain
+
+Not a day; asked for by Bruno. The fake grain is taken out of the whole app (ADR-017): the parchment is flat, the silkscreen pass on the stub photographs has no noise, the blank stub and blank card have no noise plate, the edition's stock has no per-pixel speckle, and the icon is flat parchment with its one orange stub. Cotton keeps its soft fibre, coated card its sheen, foil its brushed lines, and the relief still catches the one light: those are the materials, not noise. `Grain`, `GrainPlate` and the `paper` shader are gone; `silkscreened(strength:)` takes nothing else. `lit.js` mirrors the stock without grain and the lit sheets are redrawn. DESIGN.md rule 2 and Editions rule 3 now say so.
+
 ## 2026-09-28 — Day 26: The fan, draw-downs and the swatch book
 
 Same session, same day (brief §5.5–5.6).

@@ -167,3 +167,14 @@ The person who kept a stub gets the power the model has (ADR-015) and one more: 
 **One exception to "nothing moves on its own" (Day 27).** After a pull the new ink is wet for about two seconds: a gloss that follows the one light and dries away. It is the consequence of an act, it ends, and the timeline driving it stops at zero. Nothing else in the press moves unless a finger moves it.
 
 **Consequences.** A new part, or a new roll inside a part, is a composition change: it lands in the Swift and in `edition.js` together, and it moves the goldens, which is a new version. A part whose marks read another piece's outputs breaks the rule and the test; make the shared geometry the frame or make it set. The model never touches composition and the person never touches coordinates.
+
+## ADR-017 — No grain: the parchment is flat, and so is everything printed on it
+
+**Date:** 2026-09-28 · **Status:** decided (amends DESIGN.md rule 2 and Editions rule 3)
+
+Stub had grain everywhere: per-pixel noise at 6% over the parchment behind every screen, a breath of it in the silkscreen pass over every stub photograph, a noise plate over the blank stub and the blank card, per-pixel speckle in every edition's stock, and 26,000 specks on the icon. All of it is gone. The parchment is `Ink.paper`, flat. The silkscreen keeps what makes it a print (the desaturation, the contrast, the multiply against the paper, the misregistered plate) and loses the noise. The edition's stock keeps what makes it a material: cotton's soft fibre (low-frequency value noise, the difference between rag and coated card), the sheen that follows the one light, the relief, and the brushed lines on metal foil. `Grain`, `GrainPlate` and the `paper` shader are deleted; `silkscreened` takes only a strength.
+
+**Why.** Bruno's call on seeing it in the app: the grain reads as fake grain, and that is not a nice design for an app. Grain is a print cue borrowed for screens, and on a phone, over everything, at every size, it reads as a texture laid on top rather than a quality of the paper. The warmth was always the colour. The designedbybruno taste doc's paper-grain signature is set aside for this app.
+
+**Consequences.** Do not add noise overlays, grain plates or per-pixel hash speckle to any surface, chrome or edition. A material that needs a texture gets one that is a property of the material and responds to the light (fibre, sheen, relief, brush), not speckle. `docs/editions/lit.js` mirrors the stock shader without grain. The day-by-day screenshots before this date show the grain; they are a record, not a spec.
+

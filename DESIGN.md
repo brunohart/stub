@@ -9,7 +9,7 @@ One intent, then rules. The intent decides how the constraints are used; the con
 ## Rules that follow
 
 1. **Type is constant and quiet.** Host Grotesk for the words, Newsreader italic for exactly one sentence per screen, Fragment Mono for numbers. Nothing tracked-out and boxed. No eyebrows.
-2. **All grit lives in the image layer.** The stub photograph is the thing that gets silkscreened, misregistered, grained. The parchment has grain. The type does not.
+2. **All grit lives in the image layer, and none of it is noise.** The stub photograph is the thing that gets silkscreened and misregistered. The parchment is a flat warm colour; nothing is grained, because noise laid over an app reads as fake (ADR-017). The type is clean.
 3. **Nothing sits level.** Each stub has a tilt fixed at creation (between −1.5° and 1.5°, never 0). It sits up straight when touched and lies back down when released.
 4. **Two uneven columns**, 1.15 to 0.85, overlapping by six points, the right column starting lower. Photos pinned to a corkboard, not tiles.
 5. **The silkscreen lifts under pressure.** Hold a stub and the print washes off to reveal the photograph. Let go and it prints again. Reward for attention.
@@ -24,7 +24,7 @@ Every stub also comes back as an **edition**: a ticket designed for its film's r
 
 1. **One edition per release, one copy per stub.** The design is the film's; the seat, the date, the cinema and the viewing number are yours.
 2. **The model chooses, the code draws.** Eight movements, twelve palettes, four stocks. The on-device model picks from them; it never picks a colour, a position or a word. The hash picks when the model is absent, and picks the composition always.
-3. **Surface is allowed on its type.** An edition is a printed object: ink is pressed into the stock, foil catches the light, the stock has a grain. That is surface, not grit on words; the app's own type stays clean.
+3. **Surface is allowed on its type.** An edition is a printed object: ink is pressed into the stock, foil catches the light, cotton has a soft fibre and coated card a sheen. That is surface, not grit on words; the app's own type stays clean.
 4. **One light, and it is the phone's.** Every surface on the card is lit from the same place. Tilt the phone and the light moves; put it down and it stays. Nothing shimmers on its own.
 5. **Weight is allowed, the faces are not.** Host Grotesk from Light to ExtraBold, Newsreader, Fragment Mono. No fourth face, even for a Deco title.
 6. **Nothing invented.** No taglines, no plot, no stars, no fake barcode. The Aztec code on the back says what the strip says.

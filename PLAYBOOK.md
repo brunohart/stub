@@ -155,7 +155,7 @@ Shipped (on 28 Sep, straight after Day 25): the fan, the flood shader, hold-to-f
 
 ## Day 29 — Mon 5 Oct — The room's light
 
-- ADR-017. The card on a real table through the camera (RealityKit), gated on `ARWorldTrackingConfiguration.isSupported`. The entity builds in the simulator; placing it is a device test (`docs/device.md` §3).
+- ADR-018 (the brief's ADR-017; that number went to taking the grain out). The card on a real table through the camera (RealityKit), gated on `ARWorldTrackingConfiguration.isSupported`. The entity builds in the simulator; placing it is a device test (`docs/device.md` §3).
 
 ## Day 30 — Tue 6 Oct — The moving share, and the write-up
 
