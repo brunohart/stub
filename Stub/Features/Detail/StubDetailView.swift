@@ -16,6 +16,9 @@ struct StubDetailView: View {
     @State private var turned: Bool
     @State private var showRaw = false
     @State private var showProof = false
+    /// The card has been taken to the press room.
+    @State private var pressing = false
+    @Namespace private var press
     @State private var shareable: Image?
     @Environment(\.dynamicTypeSize) private var typeSize
     private let editions = Editions.shared
@@ -36,7 +39,7 @@ struct StubDetailView: View {
             ScrollViewReader { scroller in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
-                        Keepsake(stub: stub, copy: copy, turned: $turned)
+                        Keepsake(stub: stub, copy: copy, turned: $turned, takeToPress: { pressing = true }, pressSource: press)
                             .rotationEffect(.degrees(reduceMotion ? 0 : tilt))
 
                         VStack(alignment: .leading, spacing: 6) {
@@ -126,6 +129,11 @@ struct StubDetailView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
+        // The press room: full screen, grown from the card, closed with the system's back.
+        .navigationDestination(isPresented: $pressing) {
+            PressRoom(stub: stub, copy: copy)
+                .navigationTransition(.zoom(sourceID: "press", in: press))
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 if let shareable {
@@ -147,6 +155,15 @@ struct StubDetailView: View {
         }
         #if DEBUG
         .onChange(of: DebugDrive.shared.turned) { _, now in turned = now }
+        .task {
+            // `-press`: carry the card on into the press room once it is printed, as a hold would.
+            guard DebugDrive.wantsPress else { return }
+            do {
+                while editions.edition(for: stub.title) == nil { try await Task.sleep(for: .milliseconds(250)) }
+                try await Task.sleep(for: .seconds(2.2))
+            } catch { return }
+            pressing = true
+        }
         #endif
     }
 

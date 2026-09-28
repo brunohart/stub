@@ -11,6 +11,10 @@ struct Keepsake: View {
     @Binding var turned: Bool
     /// Run the press even when the release has been printed before: a stub just kept gets its copy printed.
     var pressesOnAppear: Bool
+    /// Hold the front and the card lifts and goes to the press room (ADR-016). `nil` where there is no press to go to.
+    var takeToPress: (() -> Void)?
+    /// Where the press room's zoom grows from.
+    var pressSource: Namespace.ID?
 
     private let editions = Editions.shared
     @State private var attitude = Attitude()
@@ -28,13 +32,19 @@ struct Keepsake: View {
     @State private var angle: Double = 0
     @State private var touchedAt: Date?
     @State private var lastY: CGFloat?
+    /// Held long enough on the front: the card has lifted off the table and is on its way to the press.
+    @State private var lifted = false
+    @State private var holdTimer: Task<Void, Never>?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    init(stub: Stub, copy: Copy, turned: Binding<Bool>, pressesOnAppear: Bool = false) {
+    init(stub: Stub, copy: Copy, turned: Binding<Bool>, pressesOnAppear: Bool = false,
+         takeToPress: (() -> Void)? = nil, pressSource: Namespace.ID? = nil) {
         self.stub = stub
         self.copy = copy
         _turned = turned
         self.pressesOnAppear = pressesOnAppear
+        self.takeToPress = takeToPress
+        self.pressSource = pressSource
         _printed = State(initialValue: pressesOnAppear ? 0 : Plate.foil)
     }
 
@@ -46,6 +56,7 @@ struct Keepsake: View {
                 card(edition)
                     .scaleEffect(scale, anchor: .topLeading)
                     .frame(width: proxy.size.width, height: Card.height * scale, alignment: .topLeading)
+                    .modifier(PressSource(namespace: pressSource))
                     .contentShape(Rectangle())
                     // Alongside the scroll, never instead of it: a drag that starts on the card still scrolls the page,
                     // and the card leans with it and settles when the finger lifts.
@@ -58,12 +69,15 @@ struct Keepsake: View {
             .accessibilityAddTraits(.isButton)
             .accessibilityAction { turned.toggle() }
             .accessibilityAction(named: "Lift the print") { hold(!holding) }
+            .accessibilityAction(named: "Take it to the press") { if edition != nil, !choosing { takeToPress?() } }
 
             // The one italic sentence under the card: what the press is doing, or what the card will do.
             HStack(spacing: 10) {
                 if choosing { ProgressView().tint(Ink.orange) }
                 Text(choosing ? "Choosing an edition for \(stub.title)…"
-                     : turned ? "Hold it to lift the print." : "Turn it over for the one you were handed.")
+                     : turned ? "Hold it to lift the print."
+                     : takeToPress != nil && !editions.hasBeenToPress(stub.title) ? "Hold it to take it to the press."
+                     : "Turn it over for the one you were handed.")
                     .font(Type.italic(16)).foregroundStyle(Ink.navy)
                     .fixedSize(horizontal: false, vertical: true)
                     .contentTransition(.opacity)
@@ -91,6 +105,9 @@ struct Keepsake: View {
             new == Plate.foil ? .impact(weight: .heavy, intensity: 0.9) : new > 0 ? .impact(weight: .light, intensity: 0.7) : nil
         }
         .sensoryFeedback(.impact(weight: .light, intensity: 0.5), trigger: turned)
+        // The card lifting off the table on its way to the press.
+        .sensoryFeedback(.impact(weight: .light, intensity: 0.8), trigger: lifted) { _, now in now }
+        .onAppear { lifted = false }
         #if DEBUG
         .onChange(of: DebugDrive.shared.holding) { _, held in if turned { hold(held) } }
         #endif
@@ -135,8 +152,11 @@ struct Keepsake: View {
         .frame(width: Card.width, height: Card.height)
         .rotation3DEffect(.degrees(Double(tilt.x) * lean), axis: (x: 0, y: 1, z: 0), perspective: 0.45)
         .rotation3DEffect(.degrees(Double(-tilt.y) * lean), axis: (x: 1, y: 0, z: 0), perspective: 0.45)
+        // Lifted off the table on its way to the press: a little larger, its shadow deeper and further away.
+        .scaleEffect(lifted ? 1.03 : 1)
         // The shadow falls away from the light, and moves with it.
-        .shadow(color: .black.opacity(0.2), radius: 16, x: 8 - tilt.x * 10, y: 14 - tilt.y * 10)
+        .shadow(color: .black.opacity(lifted ? 0.26 : 0.2), radius: lifted ? 26 : 16,
+                x: 8 - tilt.x * 10, y: (lifted ? 24 : 14) - tilt.y * 10)
         .shadow(color: .black.opacity(0.16), radius: 2, x: 1, y: 2)
     }
 
@@ -149,8 +169,10 @@ struct Keepsake: View {
                     touchedAt = .now
                     lastY = value.startLocation.y / scale
                     texture.begin(on: stock)
-                    if turned { hold(true) }
+                    if turned { hold(true) } else { waitForHold() }
                 }
+                let t = value.translation
+                if (t.width * t.width + t.height * t.height).squareRoot() > 8 { holdTimer?.cancel() }
                 finger = CGPoint(x: max(-1, min(1, value.translation.width / 180)),
                                  y: max(-1, min(1, value.translation.height / 180)))
                 let v = value.velocity
@@ -160,8 +182,16 @@ struct Keepsake: View {
                 lastY = y
             }
             .onEnded { value in
+                holdTimer?.cancel()
                 texture.end()
                 hold(false)
+                if lifted {
+                    // The press has it; the finger lifting is not a tap.
+                    touchedAt = nil
+                    lastY = nil
+                    finger = .zero
+                    return
+                }
                 let t = value.translation
                 let moved = (t.width * t.width + t.height * t.height).squareRoot()
                 let quick = touchedAt.map { Date.now.timeIntervalSince($0) < 0.35 } ?? false
@@ -170,6 +200,20 @@ struct Keepsake: View {
                 withAnimation(reduceMotion ? Motion.plain : Motion.stamp) { finger = .zero }
                 if moved < 8, quick { turned.toggle() }
             }
+    }
+
+    /// A finger held still on the front for a moment lifts the card and takes it to the press.
+    private func waitForHold() {
+        // Only a printed card goes to the press: not a blank one while its edition is being chosen, nor mid-run.
+        guard takeToPress != nil, !choosing, printed == Plate.foil, editions.edition(for: stub.title) != nil else { return }
+        holdTimer?.cancel()
+        holdTimer = Task {
+            do { try await Task.sleep(for: .milliseconds(450)) } catch { return }
+            withAnimation(reduceMotion ? Motion.plain : Motion.stamp) { lifted = true }
+            texture.end()
+            do { try await Task.sleep(for: .milliseconds(reduceMotion ? 60 : 200)) } catch { return }
+            takeToPress?()
+        }
     }
 
     private func hold(_ pressing: Bool) {
@@ -247,6 +291,19 @@ struct Turnover<Front: View, Back: View>: View, @MainActor Animatable {
             back.scaleEffect(x: flat ? 1 : -1, y: 1).opacity(flat ? angle / 180 : (showsBack ? 1 : 0))
         }
         .rotation3DEffect(.degrees(flat ? 0 : angle), axis: (x: 0, y: 1, z: 0), perspective: 0.35)
+    }
+}
+
+/// The keepsake's card as the source of the press room's zoom, when there is a press room.
+private struct PressSource: ViewModifier {
+    let namespace: Namespace.ID?
+
+    func body(content: Content) -> some View {
+        if let namespace {
+            content.matchedTransitionSource(id: "press", in: namespace)
+        } else {
+            content
+        }
     }
 }
 
