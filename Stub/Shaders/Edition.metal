@@ -51,8 +51,9 @@ static float edition_height(half4 s) {
 // The relief. The inks layer as a height field, lit: a highlight on the walls that face the light and a shadow on
 // the walls that do not, and nothing on the flat, so a card is not washed out by its own lighting. The shading
 // falls on the ink's edge and on the paper just beside it. `depth` is how hard the plate was pressed; `reach` is
-// how wide the wall is, in points.
-[[ stitchable ]] half4 relief(float2 position, SwiftUI::Layer layer, float2 light, float depth, float reach) {
+// how wide the wall is, in points. `wet` 1 is ink just pulled: a tight gloss over the inked areas, a narrow band that
+// slides with the one light, drying away to 0 as the press's timeline decays it (ADR-016). At 0 it costs nothing.
+[[ stitchable ]] half4 relief(float2 position, SwiftUI::Layer layer, float4 bounds, float2 light, float depth, float reach, float wet) {
     half4 c = layer.sample(position);
     float l = edition_height(layer.sample(position - float2(reach, 0.0)));
     float r = edition_height(layer.sample(position + float2(reach, 0.0)));
@@ -65,7 +66,15 @@ static float edition_height(half4 s) {
     half4 tone = shade > 0.0
         ? half4(1.0h, 1.0h, 1.0h, 1.0h) * half(shade * 0.5)
         : half4(0.0h, 0.0h, 0.0h, 1.0h) * half(-shade * 0.55);
-    return tone + c * (1.0h - tone.a);
+    half4 out = tone + c * (1.0h - tone.a);
+    if (wet > 0.001) {
+        float2 uv = (position - bounds.xy) / max(bounds.zw, float2(1.0));
+        float3 H = normalize(L + float3(0.0, 0.0, 1.0));
+        float glint = pow(max(dot(n, H), 0.0), 40.0);
+        float gloss = wet * float(c.a) * (edition_sheen(uv, light, 7.0) * 0.5 + glint * 0.18);
+        out.rgb = min(out.rgb + half3(gloss) * out.a, out.a);
+    }
+    return out;
 }
 
 // The foil. The layer is the foil's shape in white; this stamps it in metal. The stamp stands a little proud, so

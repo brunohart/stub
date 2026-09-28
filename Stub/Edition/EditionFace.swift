@@ -40,6 +40,10 @@ struct EditionFace: View {
     var focus: Part.ID? = nil
     /// How far apart the layers are lifted, 0 (the card) to 1 (the separations, brief §5.4).
     var separation: CGFloat = 0
+    /// How deep the impression is, as a share of the stock's: the platen brings it up from 0 after a pull.
+    var impression: Double = 1
+    /// How wet the ink still is after a pull, 1 to 0.
+    var wet: Double = 0
 
     var body: some View {
         if separation > 0 {
@@ -106,7 +110,7 @@ struct EditionFace: View {
             // title nobody could read.
             let plate = layer.plate ?? .type
             PlateArt(composition: c, plate: plate, focus: focus).equatable()
-                .modifier(ReliefEffect(light: light, depth: depth, reach: stock.reach))
+                .modifier(ReliefEffect(light: light, depth: depth * impression, reach: stock.reach, wet: wet))
                 .opacity(printed >= plate.rawValue ? 1 : 0)
         case .foil:
             PlateArt(composition: c, plate: nil, focus: focus).equatable()
@@ -337,11 +341,12 @@ struct ReliefEffect: ViewModifier {
     var light: Light
     var depth: Double
     var reach: Double
+    var wet: Double = 0
 
     func body(content: Content) -> some View {
         if LookEngine.current.isMetal {
             content.layerEffect(
-                ShaderLibrary.relief(.float2(light.vector), .float(depth), .float(reach)),
+                ShaderLibrary.relief(.boundingRect, .float2(light.vector), .float(depth), .float(reach), .float(wet)),
                 maxSampleOffset: CGSize(width: 2, height: 2)
             )
         } else {
