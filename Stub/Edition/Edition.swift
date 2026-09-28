@@ -69,7 +69,7 @@ enum Director: String, Codable, Sendable {
 }
 
 /// The design of one release. Every stub of the release prints this; each copy adds its own facts.
-struct Edition: Equatable, Codable, Sendable {
+struct Edition: Hashable, Codable, Sendable {
     var release: String
     var movement: Movement
     var palette: Palette

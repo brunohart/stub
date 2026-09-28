@@ -13,6 +13,14 @@ struct Composition: Sendable, Equatable {
     /// What shows between the marks: the stock under the poster, and under the strip.
     let posterField: Role
     let stripField: Role
+    /// For a drawing between two takes of one part (the wheel mid-turn), where between them it is; `nil` for a take.
+    let inBetween: InBetween?
+
+    struct InBetween: Equatable, Sendable {
+        var part: Part.ID
+        /// The take, fractional: 13.5 is halfway from take 13 to take 14.
+        var position: Double
+    }
 
     init(edition: Edition, copy: Copy) {
         self.edition = edition
@@ -23,13 +31,23 @@ struct Composition: Sendable, Equatable {
         posterField = edition.movement == .noir ? .dark : .ground
         stripField = edition.movement == .noir ? .dark : .ground
         strip = composer.strip(on: stripField)
+        inBetween = nil
+    }
+
+    /// This composition with another poster: an in-between, drawn by `between`.
+    init(_ c: Composition, poster: [Mark], inBetween: InBetween?) {
+        edition = c.edition; inks = c.inks; copy = c.copy; strip = c.strip
+        posterField = c.posterField; stripField = c.stripField
+        self.poster = poster
+        self.inBetween = inBetween
     }
 
     var isMetallic: Bool { edition.stock == .foil || edition.stock == .holographic }
 
-    /// The marks are a function of the edition and the copy, so two compositions of the same are the same.
+    /// The marks are a function of the edition, the copy and, mid-turn, where between two takes the wheel is, so two
+    /// compositions of the same are the same.
     static func == (a: Composition, b: Composition) -> Bool {
-        a.edition == b.edition && a.copy == b.copy
+        a.edition == b.edition && a.copy == b.copy && a.inBetween == b.inBetween
     }
 }
 
