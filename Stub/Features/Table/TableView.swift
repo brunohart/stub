@@ -78,16 +78,17 @@ struct TableView: View {
             #if DEBUG
             .task(id: stubs.count) {
                 // `-drive`: press, open, hold and close on a timer, so the simulator can be filmed without hands.
-                guard DebugDrive.requested, !stubs.isEmpty, !DebugDrive.shared.hasRun else { return }
+                guard DebugDrive.requested, !DebugDrive.wantsPress, !stubs.isEmpty, !DebugDrive.shared.hasRun else { return }
                 DebugDrive.shared.run(stubs: stubs) { selected = $0 }
             }
             .task(id: stubs.count) {
                 // `-edition`: open the newest stub once the drawer has sat still after the seed, so its edition (and
                 // with `-turned`, its back) can be screenshotted (ADR-015).
-                guard DebugDrive.wantsEdition, !DebugDrive.requested, !stubs.isEmpty else { return }
+                guard DebugDrive.wantsEdition, !DebugDrive.requested || DebugDrive.wantsPress, !stubs.isEmpty else { return }
                 do { try await Task.sleep(for: .seconds(2)) } catch { return }
                 guard !DebugSeed.requested || DebugSeed.finished else { return }
-                selected = stubs.first
+                let named = DebugDrive.openTitle.flatMap { title in stubs.first { Release.key(for: $0.title) == Release.key(for: title) } }
+                selected = named ?? stubs.first
             }
             .task(id: stubs.count) {
                 // `-season`: open the season sheet once the drawer has sat still for a moment after the seed.

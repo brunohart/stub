@@ -3,6 +3,7 @@ import CoreGraphics
 import SwiftData
 import Observation
 import OSLog
+import SwiftUI
 
 #if DEBUG
 /// Launch with `-drive` (with `-seed`) and the table presses, opens, turns the edition in the light, turns it over,
@@ -32,6 +33,23 @@ final class DebugDrive {
         guard parts.count == 2 else { return nil }
         return CGPoint(x: parts[0], y: parts[1])
     }()
+
+    /// `-open "The Brutalist"`: with `-edition`, open this stub rather than the newest.
+    static let openTitle: String? = value(after: "-open")
+    /// `-press`: with `-edition`, carry the card on into the press room once it is printed (ADR-016).
+    static var wantsPress: Bool { ProcessInfo.processInfo.arguments.contains("-press") }
+    /// `-part constructivist/disc`: in the press room, pick up this part (its last word is enough).
+    static let part: String? = value(after: "-part")
+    /// `-take 14`: turn the part in hand to this take and let it settle.
+    static let take: Int? = value(after: "-take").flatMap { Int($0) }
+    /// `-scrub 13.5`: hold the wheel here, between two takes, for a screenshot of an in-between.
+    static let scrub: Double? = value(after: "-scrub").flatMap { Double($0) }
+
+    private static func value(after flag: String) -> String? {
+        let args = ProcessInfo.processInfo.arguments
+        guard let i = args.firstIndex(of: flag), i + 1 < args.count else { return nil }
+        return args[i + 1]
+    }
 
     /// `-keeps`: with `-edition`, open "What the press keeps" in the detail and scroll to it.
     static var wantsKeeps: Bool { ProcessInfo.processInfo.arguments.contains("-keeps") }
@@ -111,6 +129,56 @@ final class DebugDrive {
         Self.log.info("drive: close")
         open(nil);                  try await beat(1.5)
         Self.log.info("drive: done")
+    }
+
+    /// In the press room: pick up `-part`, and set the wheel at `-take` or `-scrub`. With `-drive`, turn the wheel on a
+    /// clock instead, so `recordVideo` can watch the in-betweens: a flick up to take fourteen, a settle, a slower turn
+    /// back to three, a settle, and the part put down.
+    func press(_ session: PressSession, reduceMotion: Bool) async {
+        do {
+            try await beat(0.8)
+            let named = Self.part.flatMap { name in session.turnable.first { $0.id == name || $0.id.hasSuffix("/" + name) } }
+            guard let part = named ?? (Self.requested ? session.turnable.first : nil) else { return }
+            Self.log.info("drive: pick up \(part.id)")
+            withAnimation(Motion.settle) { session.pickUp(part) }
+            try await beat(0.8)
+            if Self.requested {
+                try await turn(session, to: 14, over: 1.6)
+                try await beat(1.4)
+                try await turn(session, to: 3, over: 2.4)
+                try await beat(1.4)
+                Self.log.info("drive: put down")
+                withAnimation(Motion.settle) { session.putDown() }
+                try await beat(1.0)
+                Self.log.info("drive: done")
+            } else if let scrub = Self.scrub {
+                Self.log.info("drive: hold the wheel at \(scrub)")
+                session.position = scrub
+            } else if let take = Self.take {
+                Self.log.info("drive: take \(take)")
+                withAnimation(Motion.settle) { session.position = Double(take) }
+                session.settle(on: take)
+            }
+        } catch {
+            // The room was left.
+        }
+    }
+
+    /// The wheel turned by hand to `take`: fast at first and slowing, as a flick coasts, then the settle spring.
+    private func turn(_ session: PressSession, to take: Int, over seconds: Double) async throws {
+        Self.log.info("drive: turn to \(take)")
+        let start = session.position
+        let frames = Int(seconds * 60)
+        for frame in 1...frames {
+            let t = Double(frame) / Double(frames)
+            let eased = 1 - pow(1 - t, 3)
+            var still = Transaction()
+            still.disablesAnimations = true
+            withTransaction(still) { session.position = start + (Double(take) - 0.18 - start) * eased }
+            try await beat(1.0 / 60)
+        }
+        withAnimation(Motion.settle) { session.position = Double(take) }
+        session.settle(on: take)
     }
 }
 #endif
