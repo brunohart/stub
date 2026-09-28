@@ -369,3 +369,45 @@ struct FoilEffect: ViewModifier {
         }
     }
 }
+
+/// New inks flooding a card from `origin`, `progress` of the way to its far corner. Metal draws the wicking edge; under
+/// `-look swiftui` the new card cross-fades.
+struct FloodEffect: ViewModifier {
+    var origin: CGPoint
+    var progress: CGFloat
+    var stock: Stock
+    var seed: Double
+
+    /// How far the flood's radius runs, from `origin`, for every corner to be under the ink at the end: the farthest
+    /// corner, plus the edge's half-width, plus the most the stock's noise can push the edge back (`wander`).
+    /// Arithmetic, so it belongs to no actor: a `ViewModifier` is main-actor by inference, and without `nonisolated`
+    /// a caller off the main actor (a test) trips Swift 6's runtime isolation check inside the `map`.
+    nonisolated static func reach(from origin: CGPoint, on stock: Stock) -> CGFloat {
+        let corners = [CGPoint(x: 0, y: 0), CGPoint(x: Card.width, y: 0), CGPoint(x: 0, y: Card.height), CGPoint(x: Card.width, y: Card.height)]
+        return (corners.map { $0.distance(to: origin) }.max() ?? Card.height) + stock.wicking.soft + stock.wicking.wander
+    }
+
+    func body(content: Content) -> some View {
+        if LookEngine.current.isMetal {
+            content.colorEffect(ShaderLibrary.flood(
+                .float2(origin), .float(progress * Self.reach(from: origin, on: stock)), .float(stock.wicking.soft),
+                .float(stock.wicking.wander), .float(seed)
+            ))
+        } else {
+            content.opacity(progress)
+        }
+    }
+}
+
+extension Stock {
+    /// How new ink spreads into it: the width of the edge, and how far the paper pushes it in and out. Cotton wicks wide
+    /// and soft; coated card holds a crisp edge.
+    var wicking: (soft: CGFloat, wander: CGFloat) {
+        switch self {
+        case .cotton: (16, 14)
+        case .coated: (3, 8)
+        case .foil: (4, 9)
+        case .holographic: (4, 9)
+        }
+    }
+}

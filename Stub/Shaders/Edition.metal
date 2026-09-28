@@ -106,3 +106,15 @@ static float edition_height(half4 s) {
     colour = clamp(colour, 0.0, 1.0);
     return half4(half3(colour) * m.a, m.a);
 }
+
+// The flood (ADR-016, brief §5.6): new inks spreading outward from where a draw-down was dropped, the way ink wicks
+// into paper. The card in the new inks is revealed where this returns its colour: inside `radius` of `origin`, with an
+// edge `soft` points wide pushed in and out by the stock's own noise, `wander` points either way. Cotton wicks wide and
+// soft; coated card holds a crisper edge. It is the consequence of a drop and it ends; there is no time here either.
+[[ stitchable ]] half4 flood(float2 position, half4 color, float2 origin, float radius, float soft, float wander, float seed) {
+    float n = edition_noise(position * 0.06 + seed) - 0.5;
+    float fine = edition_noise(position * 0.19 + seed * 3.1) - 0.5;
+    float d = distance(position, origin) + (n * 0.75 + fine * 0.25) * 2.0 * wander;
+    float a = 1.0 - smoothstep(radius - soft, radius + soft, d);
+    return color * half(a);
+}
