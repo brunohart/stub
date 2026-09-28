@@ -39,46 +39,84 @@ struct EditionFace: View {
     var printed: Int = Plate.foil
     /// The part the press is holding: every other mark is knocked back to a ghost (ADR-016).
     var focus: Part.ID? = nil
+    /// How far apart the layers are lifted, 0 (the card) to 1 (the separations, brief §5.4).
+    var separation: CGFloat = 0
 
     var body: some View {
+        if separation > 0 {
+            // The layers, each a sheet on its own, lifted apart and seen from above. Each keeps its shaders, so the foil
+            // still catches the light.
+            ZStack(alignment: .topLeading) {
+                ForEach(Array(Separation.layers(metallic: composition.isMetallic).enumerated()), id: \.element) { index, layer in
+                    sheet(layer)
+                        .projectionEffect(ProjectionTransform(Separation.transform(index: index, separation: separation)))
+                }
+            }
+            .frame(width: Card.width, height: Card.height)
+        } else {
+            ZStack(alignment: .topLeading) {
+                ForEach(Separation.layers(metallic: composition.isMetallic), id: \.self) { layer in
+                    layerArt(layer)
+                }
+            }
+            .frame(width: Card.width, height: Card.height)
+            .clipShape(TicketShape())
+        }
+    }
+
+    /// One layer of the card as a sheet of film: its own ink on a clear ground, cut to the ticket, and a hairline edge
+    /// in its ink at a fifth so the film reads as film. The stock is the card itself, opaque.
+    func sheet(_ layer: Separation.Layer) -> some View {
+        layerArt(layer)
+            .frame(width: Card.width, height: Card.height)
+            .clipShape(TicketShape())
+            .overlay {
+                TicketShape().stroke(Color(hex: edge(of: layer)).opacity(layer == .stock ? 0.35 : 0.2), lineWidth: 0.75)
+            }
+    }
+
+    private func edge(of layer: Separation.Layer) -> UInt32 {
+        let inks = composition.inks
+        return switch layer {
+        case .stock: EditionInks.mix(inks.hex(composition.stripField), 0x000000, 0.35)
+        case .first: inks.primary
+        case .second: inks.secondary
+        case .foil: inks.foilBase
+        case .type: inks.ink
+        }
+    }
+
+    /// One layer's art, the size of the card: the stock under everything, a plate's inks with their impression, or
+    /// the foil stamped in its metal. The print run shows each as its pass comes round.
+    @ViewBuilder
+    private func layerArt(_ layer: Separation.Layer) -> some View {
         let c = composition
         let stock = c.edition.stock
         // Letterpress is pressed hardest: it is the movement that is only type and stock.
         let depth = stock.depth * (c.edition.movement == .letterpress ? 1.6 : 1)
-        ZStack(alignment: .topLeading) {
+        switch layer {
+        case .stock:
             Canvas { context, _ in
                 context.fill(Path(Card.posterRect), with: .color(c.inks.color(c.posterField)))
                 context.fill(Path(Card.stripRect), with: .color(c.inks.color(c.stripField)))
             }
             .modifier(StockEffect(light: light, stock: stock, seed: Double(c.edition.seed % 997)))
-
-            // One canvas a plate, so each has its own impression and the print run can lay each down on its own.
-            plate(.first, depth: depth)
-            plate(.second, depth: depth)
-
-            if c.isMetallic {
-                PlateArt(composition: c, plate: nil, focus: focus).equatable()
+        case .first, .second, .type:
+            // One canvas a plate, so each has its own impression and the print run can lay each down on its own. The
+            // type lies over the foil, never under it: stamped last in time, but a title the foil covered would be a
+            // title nobody could read.
+            let plate = layer.plate ?? .type
+            PlateArt(composition: c, plate: plate, focus: focus).equatable()
+                .modifier(ReliefEffect(light: light, depth: depth, reach: stock.reach))
+                .opacity(printed >= plate.rawValue ? 1 : 0)
+        case .foil:
+            PlateArt(composition: c, plate: nil, focus: focus).equatable()
                 .modifier(FoilEffect(light: light, metal: c.inks.foilBase, holographic: stock == .holographic,
                                      lightGround: c.inks.groundIsLight))
                 .opacity(printed >= Plate.foil ? 1 : 0)
                 // The foil lands: a breath larger, then pressed flat.
                 .scaleEffect(printed >= Plate.foil ? 1 : 1.04)
-            }
-
-            // The type lies over the foil, never under it: stamped last in time, but a title the foil covered would
-            // be a title nobody could read.
-            plate(.type, depth: depth)
         }
-        .frame(width: Card.width, height: Card.height)
-        .clipShape(TicketShape())
-    }
-}
-
-extension EditionFace {
-    fileprivate func plate(_ plate: Plate, depth: Double) -> some View {
-        PlateArt(composition: composition, plate: plate, focus: focus).equatable()
-            .modifier(ReliefEffect(light: light, depth: depth, reach: composition.edition.stock.reach))
-            .opacity(printed >= plate.rawValue ? 1 : 0)
     }
 }
 
