@@ -96,3 +96,84 @@ extension Stock {
         }
     }
 }
+
+/// The press wheel's detents (ADR-016): one click per take, at the stock's own sharpness, so the wheel feels like the
+/// paper it is printing on. The faster the wheel turns, the harder each click. Past one detent every 28 ms single clicks
+/// would blur into mush, so the wheel plays a short continuous buzz at the same sharpness instead: a ratchet.
+///
+/// Here, beside `Texture`, so everything the stock says to a finger is in one file.
+@MainActor
+final class Detents {
+    /// Closer than this, clicks become a ratchet.
+    nonisolated static let blur: Duration = .milliseconds(28)
+
+    private var engine: CHHapticEngine?
+    private var ratchet: CHHapticAdvancedPatternPlayer?
+    private var last: ContinuousClock.Instant?
+    private var quiet: Task<Void, Never>?
+
+    /// Clicks from 0.5 at a crawl to 0.9 at `fast` degrees a millisecond.
+    nonisolated static func intensity(speed: Double, fast: Double = 1.2) -> Float {
+        Float(0.5 + 0.4 * min(max(abs(speed) / fast, 0), 1))
+    }
+
+    /// Whether a detent this soon after the last one should ratchet rather than click.
+    nonisolated static func ratchets(after interval: Duration) -> Bool { interval < blur }
+
+    func prepare() {
+        guard Texture.isSupported, engine == nil else { return }
+        do {
+            let engine = try CHHapticEngine()
+            engine.isAutoShutdownEnabled = true
+            try engine.start()
+            self.engine = engine
+        } catch {
+            Texture.log.error("Detents could not start: \(error.localizedDescription)")
+        }
+    }
+
+    /// The wheel has passed a take, turning at `speed` degrees a millisecond, on `stock`.
+    func detent(on stock: Stock, speed: Double) {
+        guard Texture.isSupported else { return }
+        prepare()
+        guard let engine else { return }
+        let now = ContinuousClock.now
+        defer { last = now }
+        let intensity = Self.intensity(speed: speed)
+        do {
+            if let last, Self.ratchets(after: last.duration(to: now)) {
+                if ratchet == nil {
+                    let buzz = CHHapticEvent(eventType: .hapticContinuous, parameters: [
+                        CHHapticEventParameter(parameterID: .hapticIntensity, value: 1),
+                        CHHapticEventParameter(parameterID: .hapticSharpness, value: stock.sharpness),
+                    ], relativeTime: 0, duration: 30)
+                    let player = try engine.makeAdvancedPlayer(with: CHHapticPattern(events: [buzz], parameters: []))
+                    try player.start(atTime: CHHapticTimeImmediate)
+                    ratchet = player
+                }
+                try ratchet?.sendParameters([CHHapticDynamicParameter(parameterID: .hapticIntensityControl, value: intensity * 0.8, relativeTime: 0)],
+                                            atTime: CHHapticTimeImmediate)
+            } else {
+                let click = CHHapticEvent(eventType: .hapticTransient, parameters: [
+                    CHHapticEventParameter(parameterID: .hapticIntensity, value: intensity),
+                    CHHapticEventParameter(parameterID: .hapticSharpness, value: stock.sharpness),
+                ], relativeTime: 0)
+                try engine.makePlayer(with: CHHapticPattern(events: [click], parameters: [])).start(atTime: CHHapticTimeImmediate)
+            }
+        } catch {
+            Texture.log.error("Detent failed: \(error.localizedDescription)")
+        }
+        // The ratchet stops when the detents slow down again.
+        quiet?.cancel()
+        quiet = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(60))
+            guard !Task.isCancelled else { return }
+            self?.stopRatchet()
+        }
+    }
+
+    func stopRatchet() {
+        try? ratchet?.stop(atTime: CHHapticTimeImmediate)
+        ratchet = nil
+    }
+}

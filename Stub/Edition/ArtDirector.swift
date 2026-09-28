@@ -154,6 +154,8 @@ final class Editions {
     private(set) var printed: [String: Edition]
     /// Every release's last pulled proof.
     private(set) var proofs: [String: Proof]
+    /// Every release's proof still on the press, where the person left it.
+    private(set) var onPress: [String: Proof]
     private var deciding: [String: Task<Edition, Never>] = [:]
     @ObservationIgnored private let defaults: UserDefaults
 
@@ -170,7 +172,8 @@ final class Editions {
             Self.log.notice("Edition '\(key)': printed at version \(edition.version), redrawn at version \(Genome.version)")
         }
         self.printed = printed
-        proofs = ProofCache.all(in: defaults)
+        proofs = ProofCache.all(.pulled, in: defaults)
+        onPress = ProofCache.all(.press, in: defaults)
         #if DEBUG
         for edition in printed.values { pullDebugProof(over: edition) }
         #endif
@@ -210,6 +213,26 @@ final class Editions {
     func discardProof(release: String) {
         proofs[release] = nil
         ProofCache.remove(release: release, in: defaults)
+    }
+
+    /// The proof on the press for the release: where the person left it, or the last pulled proof, or nothing yet.
+    func pressProof(for title: String) -> Proof {
+        let key = Release.key(for: title)
+        return onPress[key] ?? proofs[key] ?? Proof(release: key, version: printed[key]?.version ?? Genome.version)
+    }
+
+    /// Leave `proof` on the press, unpulled. The card everywhere else goes on showing the last pulled proof.
+    func putOnPress(_ proof: Proof) {
+        var kept = proof
+        kept.pulledAt = nil
+        onPress[proof.release] = kept
+        ProofCache.store(kept, on: .press, in: defaults)
+    }
+
+    /// Whether the release's card has ever been to the press: the detail stops teaching the way there once it has.
+    func hasBeenToPress(_ title: String) -> Bool {
+        let key = Release.key(for: title)
+        return onPress[key] != nil || proofs[key] != nil
     }
 
     /// Keep an edition as printed. The model and the floor come in through `decide`; this is for a test, and for a

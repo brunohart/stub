@@ -102,32 +102,43 @@ extension Proof {
 
 /// Every pulled proof, one per release, in one dictionary in `UserDefaults` (declared in the privacy manifest under
 /// CA92.1, as the printed editions are). Never pruned: deleting one is going back, and only the person does that.
+///
+/// The proofs still on the press, not yet pulled, are kept the same way under their own key (`Shelf.press`): leaving the
+/// press room keeps the work, and the detail goes on showing the last pulled proof.
 enum ProofCache {
-    static let keyName = "edition.proofs"
+    enum Shelf: String {
+        /// The last pulled proof of each release: what the card shows everywhere.
+        case pulled = "edition.proofs"
+        /// The proof on the press, where the person left it.
+        case press = "edition.press"
+    }
 
-    static func all(in defaults: UserDefaults = .standard) -> [String: Proof] {
-        guard let data = defaults.data(forKey: keyName),
+    static let keyName = Shelf.pulled.rawValue
+
+    static func all(_ shelf: Shelf = .pulled, in defaults: UserDefaults = .standard) -> [String: Proof] {
+        guard let data = defaults.data(forKey: shelf.rawValue),
               let proofs = try? Proof.decoder.decode([String: Proof].self, from: data) else { return [:] }
         return proofs
     }
 
-    static func store(_ proof: Proof, in defaults: UserDefaults = .standard) {
-        var proofs = all(in: defaults)
+    static func store(_ proof: Proof, on shelf: Shelf = .pulled, in defaults: UserDefaults = .standard) {
+        var proofs = all(shelf, in: defaults)
         proofs[proof.release] = proof
-        save(proofs, in: defaults)
+        save(proofs, on: shelf, in: defaults)
     }
 
-    static func remove(release: String, in defaults: UserDefaults = .standard) {
-        var proofs = all(in: defaults)
+    static func remove(release: String, from shelf: Shelf = .pulled, in defaults: UserDefaults = .standard) {
+        var proofs = all(shelf, in: defaults)
         proofs[release] = nil
-        save(proofs, in: defaults)
+        save(proofs, on: shelf, in: defaults)
     }
 
     static func clear(in defaults: UserDefaults = .standard) {
-        defaults.removeObject(forKey: keyName)
+        defaults.removeObject(forKey: Shelf.pulled.rawValue)
+        defaults.removeObject(forKey: Shelf.press.rawValue)
     }
 
-    private static func save(_ proofs: [String: Proof], in defaults: UserDefaults) {
-        if let data = try? Proof.encoder.encode(proofs) { defaults.set(data, forKey: keyName) }
+    private static func save(_ proofs: [String: Proof], on shelf: Shelf, in defaults: UserDefaults) {
+        if let data = try? Proof.encoder.encode(proofs) { defaults.set(data, forKey: shelf.rawValue) }
     }
 }
