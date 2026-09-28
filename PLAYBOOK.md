@@ -138,7 +138,9 @@ Shipped (on 28 Sep, straight after Day 24): the pinch, the sheets, the unproject
 
 - The pinch, per-sheet projection, unprojected hit-testing, the flat Reduce Motion row (brief §5.4). Flag: `--separated 0.8`. Proof: the shot, and a clip of the card coming apart and pressing back together.
 
-## Day 26 — Fri 2 Oct — The fan, draw-downs and the swatch book
+## Day 26 — Fri 2 Oct — The fan, draw-downs and the swatch book ✅
+
+Shipped (on 28 Sep, straight after Day 25): the fan, the flood shader, hold-to-feel, the fast print run. See `docs/LOG.md`.
 
 - `FanLayout`, the flood shader, hold-to-feel, the fast print run (brief §5.5–5.6). Flags: `--bench movement|inks|stock`, `--flood 0.4`. Proof: one shot per bench, and the flood held at 0.4.
 
