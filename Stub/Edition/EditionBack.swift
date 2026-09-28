@@ -12,6 +12,13 @@ struct EditionBack: View {
     var light: Light = .rest
     /// 1 printed on the card, 0 the photograph as taken.
     var silkscreen: Double = 1
+    /// The owner's pencil in the margin: A/P, the takes, the signature. Only a proof has it (ADR-016).
+    var pencil: Pencil? = nil
+    /// The signature as it was drawn, in card points; `nil` leaves the margin bare.
+    var signature: UIImage? = nil
+
+    /// The margin the signature is drawn in, in card points: below the colophon, clear of the strip.
+    static let signatureMargin = CGRect(x: 172, y: 338, width: 136, height: 58)
 
     var body: some View {
         let c = composition
@@ -26,13 +33,15 @@ struct EditionBack: View {
             VStack(alignment: .leading, spacing: 0) {
                 mount(corner: corner)
                     .frame(width: Card.width - 2 * Card.pad, height: 190)
-                    .padding(.top, 40)
+                    .padding(.top, 28)
                 colophon(words: words)
-                    .padding(.top, 34)
+                    .padding(.top, 22)
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, Card.pad)
             .frame(width: Card.width, height: Card.poster, alignment: .top)
+
+            if let pencil { margin(pencil) }
 
             strip(words: words)
                 .frame(width: Card.width, height: Card.height - Card.poster)
@@ -76,6 +85,40 @@ struct EditionBack: View {
                 .foregroundStyle(words.opacity(0.7))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// The owner's pencil, in graphite, multiplied into the stock so it sits in the paper rather than on it: the
+    /// printmaker's notation on the left, the signature on the right.
+    private func margin(_ pencil: Pencil) -> some View {
+        let graphite = Color(uiColor: Signatures.graphite)
+        return ZStack(alignment: .topLeading) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("A/P").font(Face.mono.font(12))
+                if let takes = pencil.takes {
+                    Text(takes).font(Face.mono.font(9.5)).lineLimit(2).minimumScaleFactor(0.7)
+                }
+            }
+            .foregroundStyle(graphite.opacity(0.85))
+            .frame(width: 140, alignment: .leading)
+            .offset(x: Card.pad, y: Self.signatureMargin.minY + 18)
+
+            if let signature {
+                Image(uiImage: signature)
+                    .resizable()
+                    .frame(width: Self.signatureMargin.width, height: Self.signatureMargin.height)
+                    .opacity(0.9)
+                    .offset(x: Self.signatureMargin.minX, y: Self.signatureMargin.minY)
+            } else {
+                // Where to sign: a faint pencil line, as a printer leaves for the artist.
+                Rectangle()
+                    .fill(graphite.opacity(0.28))
+                    .frame(width: Self.signatureMargin.width - 12, height: 0.75)
+                    .offset(x: Self.signatureMargin.minX + 6, y: Self.signatureMargin.maxY - 12)
+            }
+        }
+        .blendMode(.multiply)
+        .frame(width: Card.width, height: Card.poster, alignment: .topLeading)
+        .allowsHitTesting(false)
     }
 
     private func strip(words: Color) -> some View {

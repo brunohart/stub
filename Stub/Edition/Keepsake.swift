@@ -134,7 +134,8 @@ struct Keepsake: View {
                     EditionFace(composition: composition, light: light, printed: printed)
                 } back: {
                     EditionBack(composition: composition, photo: photo, tilt: stub.tilt, code: code, light: light,
-                                silkscreen: holding ? 0 : 1)
+                                silkscreen: holding ? 0 : 1, pencil: Pencil(edition: edition),
+                                signature: Signatures.shared.image)
                 }
                 // The card's edge: a sliver of darker stock showing on the side away from the light.
                 .background(
@@ -256,8 +257,11 @@ struct Keepsake: View {
 
     private func spoken(_ edition: Edition?) -> String {
         guard let edition else { return "A blank card. The edition for \(stub.title) is being chosen." }
-        if turned { return "The stub for \(stub.title) as it was scanned, on the back of its edition." }
-        return "The edition of \(stub.title): \(edition.described). \(copy.viewingWords)."
+        if turned {
+            let pencil = Pencil(edition: edition).map { " " + $0.spoken(signed: Signatures.shared.isSigned) } ?? ""
+            return "The stub for \(stub.title) as it was scanned, on the back of its edition.\(pencil)"
+        }
+        return "The edition of \(stub.title): \(edition.colophon) \(copy.viewingWords)."
     }
 }
 

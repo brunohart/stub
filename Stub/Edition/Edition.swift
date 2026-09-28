@@ -63,7 +63,7 @@ enum Director: String, Codable, Sendable {
         switch self {
         case .hash: "Drawn from the title."
         case .model: "Chosen by the on-device model."
-        case .you: "Pulled by you."
+        case .you: "Artist's proof, pulled by you."
         }
     }
 }
@@ -130,6 +130,10 @@ struct Edition: Hashable, Codable, Sendable {
         let own = Dice(seed: seed).fork(part)
         return take == 0 ? own : own.fork("take \(take)")
     }
+
+    /// The colophon: what it is and who chose it. "Constructivist, sand inks, foil on coated card. Artist's proof,
+    /// pulled by you."
+    var colophon: String { described + ". " + directedBy.sentence }
 
     /// "Constructivist, on holographic stock": the colophon's words for what this is.
     var described: String {
