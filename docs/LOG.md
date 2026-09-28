@@ -2,6 +2,20 @@
 
 Newest at the top. One entry per slot. What shipped, what broke, what the reader did.
 
+## 2026-09-28 — Day 25: Separations
+
+Same session, same day (brief §5.4).
+
+**Shipped.** Pinch the card outward and it comes apart into the layers it was printed in: the stock at the bottom, then the first plate, the second, the foil and the type, each a sheet of film with only its own ink on it and a hairline edge in that ink at a fifth, lifted apart in depth, turned in its plane and tilted back (`Separation`: 52° about x, −24° about z, `m34` −1/900, up to 38 points a sheet, the stack drawn a fifth smaller fully apart). Each sheet keeps its shaders, so the foil still catches the light as the phone turns. Pinch in, or let go short of halfway, and the sheets press back together with one heavy impact. `EditionFace` takes a `separation` from 0 to 1 and the card on the bed animates on it with the wheel's position (`AnimatablePair`). A touch is carried back through each sheet's projection onto its own plane, from the top sheet down (`Separation.unproject`, the inverse of the plane's homography), and hit-tested against that layer's marks (`Composition.part(at:on:)`); clear film lets the finger through to the sheet below. So the constructivist band, whose middle the title covers on the flat card, can be picked up on its own sheet. "See the plates" / "Press them together" on the bench does the same without a pinch. The italic line counts the sheets ("Five sheets: the stock, two plates, the foil and the type."). Under Reduce Motion the sheets lie side by side in a flat row that scrolls, each touched on its own. `run.sh --separated 0.8`; with `--drive`, the card is pinched apart, turned in the light, a part picked up on its sheet, and pressed back together. Eighty-nine tests (three new in `SeparationTests`: a point projected onto any sheet at any separation comes back to itself, the sheets lift well clear of the stock, and the band is reachable apart).
+
+Screenshots: `day-25-separated.png` (The Brutalist at 0.8, five sheets), `day-25-reduce-motion.png` (the flat row, with Reduce Motion on in the simulator through `defaults write com.apple.Accessibility ReduceMotionEnabled`, and off again afterwards) and `day-25-separations.mov` (apart, the light across the sheets, the disc picked up on its sheet, pressed together; 3.9 MB).
+
+**Reader.** No new seed; the drawer from Day 24.
+
+**Broke and fixed.** Nothing broke. The first flat row of sheets under Reduce Motion drew each sheet at three-quarters of the bed and showed one and a half of them; at half the bed's height three are in view, and the row scrolls to the rest.
+
+**Still rough.** The heavy impact on closing and the look between the sheets while tilting are device tests. With the sheets apart, VoiceOver's per-part elements still sit where the parts are on the flat card; the rotor reaches every part, which is all the brief asks, but the outlines are in the wrong place while the card is apart. The sheets are not shaded by one another: each keeps its own light, but no sheet casts a shadow on the one below.
+
 ## 2026-09-28 — Day 24: The press room, isolation, the wheel
 
 Same session, same day (brief §5.1–5.3).

@@ -132,7 +132,9 @@ Shipped (on 28 Sep, straight after Day 23): both bullets. The halftone cross-fad
 - Hold the keepsake to take it to the press; the room (the bed, the bench, the italic line), ghosting the parts you are not holding, the wheel and its detents, in-betweens (`Composition.between`), the rotor and the adjustable wheel (brief §5.1–5.3).
 - Test 3. Flags: `--press`, `--part constructivist/disc`, `--take 14`, `--scrub 13.5`. Proof: shots at 13, 13.5 and 14, and `docs/screenshots/day-24-press.mov`.
 
-## Day 25 — Thu 1 Oct — Separations
+## Day 25 — Thu 1 Oct — Separations ✅
+
+Shipped (on 28 Sep, straight after Day 24): the pinch, the sheets, the unprojected touch, the flat row. See `docs/LOG.md`.
 
 - The pinch, per-sheet projection, unprojected hit-testing, the flat Reduce Motion row (brief §5.4). Flag: `--separated 0.8`. Proof: the shot, and a clip of the card coming apart and pressing back together.
 
