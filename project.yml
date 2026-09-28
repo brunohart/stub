@@ -40,6 +40,8 @@ targets:
         NSPhotoLibraryUsageDescription: Stub reads ticket stubs from your library. Nothing is uploaded.
         # No network, no crypto of our own (ADR-005): answers App Store Connect's export question for every upload.
         ITSAppUsesNonExemptEncryption: false
+        # ProMotion at its full 120 Hz, so the press wheel's in-betweens are not capped at 60 (ADR-016).
+        CADisableMinimumFrameDurationOnPhone: true
     # The drawer lives in an App Group so the widget can read it (Day 5). Generated, like Info.plist.
     entitlements:
       path: Stub/Stub.entitlements
