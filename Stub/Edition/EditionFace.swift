@@ -13,8 +13,7 @@ struct Light: Equatable, Sendable {
 }
 
 extension Stock {
-    /// How the stock shows through: grain on all of them, a long fibre in cotton, a satin gloss on coated card.
-    var grain: Double { self == .cotton ? 0.05 : 0.025 }
+    /// How the stock shows through: a long soft fibre in cotton, a satin gloss on coated card.
     var fibre: Double { self == .cotton ? 0.045 : 0 }
     var gloss: Double {
         switch self {
@@ -326,10 +325,10 @@ struct StockEffect: ViewModifier {
     func body(content: Content) -> some View {
         if LookEngine.current.isMetal {
             content.colorEffect(ShaderLibrary.stock(
-                .boundingRect, .float2(light.vector), .float(stock.grain), .float(stock.fibre), .float(stock.gloss), .float(seed)
+                .boundingRect, .float2(light.vector), .float(stock.fibre), .float(stock.gloss), .float(seed)
             ))
         } else {
-            content.overlay { Grain(opacity: stock.grain * 2) }
+            content
         }
     }
 }

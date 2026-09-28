@@ -146,7 +146,6 @@ struct Keepsake: View {
                 // Bare card while the edition is being chosen.
                 TicketShape()
                     .fill(Ink.cream)
-                    .overlay(Grain(opacity: 0.08).clipShape(TicketShape()))
             }
         }
         .frame(width: Card.width, height: Card.height)

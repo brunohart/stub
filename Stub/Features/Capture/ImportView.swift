@@ -36,7 +36,7 @@ struct ImportView: View {
                                 Image(uiImage: image)
                                     .resizable().scaledToFit()
                                     .frame(maxHeight: 260)
-                                    .silkscreened(strength: stage == .done ? 1 : 0.4, seed: 2)
+                                    .silkscreened(strength: stage == .done ? 1 : 0.4)
                                     .clipShape(RoundedRectangle(cornerRadius: 3))
                                     .animation(reduceMotion ? Motion.plain : Motion.settle, value: stage)
                                     .accessibilityLabel(stage == .done ? "The stub, printed on parchment." : "The photograph of the stub, being read.")

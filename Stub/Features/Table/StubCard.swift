@@ -60,7 +60,7 @@ struct StubCard: View {
                 .aspectRatio(aspect, contentMode: .fit)
                 .overlay(Image(uiImage: ui).resizable().scaledToFill())
                 .clipped()
-                .silkscreened(strength: pressed ? 0.15 : 1, seed: stub.tilt)
+                .silkscreened(strength: pressed ? 0.15 : 1)
                 .animation(Motion.settle, value: pressed)
                 .clipShape(RoundedRectangle(cornerRadius: 3))
                 .background(
@@ -84,7 +84,6 @@ struct BlankStub: View {
         ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: 3)
                 .fill(Ink.cream)
-                .overlay(Grain(opacity: 0.08).clipShape(RoundedRectangle(cornerRadius: 3)))
                 .overlay(perforation, alignment: .trailing)
                 .background(RoundedRectangle(cornerRadius: 3).fill(Ink.orange.opacity(0.12)).offset(x: 5, y: 6))
             VStack(alignment: .leading, spacing: 6) {

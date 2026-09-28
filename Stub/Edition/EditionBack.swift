@@ -50,7 +50,7 @@ struct EditionBack: View {
                 Image(uiImage: photo)
                     .resizable()
                     .aspectRatio(aspect, contentMode: .fit)
-                    .silkscreened(strength: silkscreen, seed: tilt)
+                    .silkscreened(strength: silkscreen)
                     .overlay { PhotoCorners().fill(corner.opacity(0.92)) }
                     .shadow(color: .black.opacity(0.18), radius: 1.5, x: 1, y: 2)
             } else {

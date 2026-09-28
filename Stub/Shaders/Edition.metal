@@ -36,15 +36,15 @@ static float edition_height(half4 s) {
     return float(s.a) - 0.6 * float(dot(s.rgb, half3(0.299h, 0.587h, 0.114h)));
 }
 
-// The stock. Grain on every card; cotton adds a long fibre; coated card has a satin gloss that follows the light.
-[[ stitchable ]] half4 stock(float2 position, half4 color, float4 bounds, float2 light, float grain, float fibre, float gloss, float seed) {
+// The stock. Cotton has a long soft fibre; coated card has a satin gloss that follows the light. No per-pixel grain:
+// speckle over a whole card reads as noise on a screen, not as paper (ADR-017).
+[[ stitchable ]] half4 stock(float2 position, half4 color, float4 bounds, float2 light, float fibre, float gloss, float seed) {
     float2 uv = (position - bounds.xy) / max(bounds.zw, float2(1.0));
-    float n = edition_hash(floor(position) + seed) - 0.5;
     // Cotton rag: short fibres, a little longer across than down, two octaves so it reads as paper, not grain.
     float f = edition_noise(position * float2(0.11, 0.32) + seed * 13.0) * 0.65
         + edition_noise(position * float2(0.31, 0.9) + seed * 7.0) * 0.35 - 0.5;
     float s = edition_sheen(uv, light, 2.2) * gloss;
-    float3 rgb = float3(color.rgb) + n * grain + f * fibre + s;
+    float3 rgb = float3(color.rgb) + f * fibre + s;
     return half4(half3(clamp(rgb, 0.0, 1.0)) * color.a, color.a);
 }
 
@@ -69,7 +69,7 @@ static float edition_height(half4 s) {
 }
 
 // The foil. The layer is the foil's shape in white; this stamps it in metal. The stamp stands a little proud, so
-// its edges catch the light; a fine brushed grain runs across the card; a broad sheen slides over it as the card
+// its edges catch the light; fine brush lines run across the metal; a broad sheen slides over it as the card
 // turns. `holographic` 1 lays a thin-film rainbow over the metal whose colour depends on where the light is.
 // `lightGround` 1 keeps the film darker, so holographic foil reads on pale card as well as dark.
 [[ stitchable ]] half4 foil(float2 position, SwiftUI::Layer layer, float4 bounds, float2 light, half4 metal, float holographic, float lightGround) {
