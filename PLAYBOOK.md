@@ -144,7 +144,9 @@ Shipped (on 28 Sep, straight after Day 25): the fan, the flood shader, hold-to-f
 
 - `FanLayout`, the flood shader, hold-to-feel, the fast print run (brief §5.5–5.6). Flags: `--bench movement|inks|stock`, `--flood 0.4`. Proof: one shot per bench, and the flood held at 0.4.
 
-## Day 27 — Sat 3 Oct — The lever, wet ink and the back
+## Day 27 — Sat 3 Oct — The lever, wet ink and the back ✅
+
+Shipped (on 28 Sep, straight after Day 26): lever and platen, the `wet` uniform, undo, the signature, A/P and takes in pencil, the colophon. See `docs/LOG.md`.
 
 - Lever and platen, the `wet` uniform, `UndoManager`, the signature, A/P and takes in pencil, the colophon and the detail's line (brief §5.7–5.9). Flags: `--pulled`, `--wet 0.6`. Proof: the wet shot, and the back signed (a fixture signature drawn by `DebugSeed`).
 
