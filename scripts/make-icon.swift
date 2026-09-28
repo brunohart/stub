@@ -21,18 +21,9 @@ guard let ctx = CGContext(data: nil, width: Int(side), height: Int(side), bitsPe
                           space: CGColorSpace(name: CGColorSpace.displayP3)!,
                           bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue) else { exit(1) }
 
-// Parchment, with grain. The grain is the only grit; the silhouette is a flat plate.
+// Parchment, flat, as the app is (ADR-017); the silhouette is a flat plate.
 ctx.setFillColor(paper.cgColor)
 ctx.fill(CGRect(x: 0, y: 0, width: side, height: side))
-srand48(6)
-ctx.setBlendMode(.multiply)
-for _ in 0..<26000 {
-    let x = CGFloat(drand48()) * side, y = CGFloat(drand48()) * side
-    let a = 0.02 + CGFloat(drand48()) * 0.05
-    ctx.setFillColor(NSColor(calibratedWhite: 0.2, alpha: a).cgColor)
-    ctx.fill(CGRect(x: x, y: y, width: 2.5, height: 2.5))
-}
-ctx.setBlendMode(.normal)
 
 /// A ticket stub: a landscape rectangle with a semicircular notch bitten out of each short side, and a
 /// perforation line a third of the way in. Drawn about the origin, so it can be tilted.
