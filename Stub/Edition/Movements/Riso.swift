@@ -8,7 +8,7 @@ extension Parts {
         static let screen = Part.piece("riso/screen", "the screen")
         static let disc = Part.piece("riso/disc", "the disc")
         static let register = Part.piece("riso/register", "the register")
-        static let title = Part.set("riso/title", "the title")
+        static let title = Part.set("riso/title", "the title", note: "The title is the key plate. Turn the register.")
         static let all = [screen, disc, register, title]
     }
 }

@@ -6,8 +6,8 @@ extension Parts {
     /// the hairline down, so they roll nothing and move with the grid.
     enum Swiss {
         static let grid = Part.frame("swiss/grid", "the grid")
-        static let columns = Part.set("swiss/columns", "the columns", hangs: true)
-        static let title = Part.set("swiss/title", "the title", hangs: true)
+        static let columns = Part.set("swiss/columns", "the columns", hangs: true, note: "The columns are set under the grid. Turn the grid.")
+        static let title = Part.set("swiss/title", "the title", hangs: true, note: "The title fills what the grid leaves. Turn the grid.")
         static let all = [grid, columns, title]
     }
 }

@@ -5,10 +5,10 @@ extension Parts {
     /// and the short rule are set in the middle of them. The ornament is the one thing on the poster the press can
     /// turn; the rest is type and stock, which is the movement.
     enum Letterpress {
-        static let rules = Part.set("letterpress/rules", "the rules")
+        static let rules = Part.set("letterpress/rules", "the rules", note: "The rules are set by the edge of the card.")
         static let ornament = Part.piece("letterpress/ornament", "the ornament")
-        static let title = Part.set("letterpress/title", "the title")
-        static let year = Part.set("letterpress/year", "the year")
+        static let title = Part.set("letterpress/title", "the title", note: "The type is set in the middle. Turn the ornament.")
+        static let year = Part.set("letterpress/year", "the year", note: "The year is set at the foot.")
         static let all = [rules, ornament, title, year]
     }
 }

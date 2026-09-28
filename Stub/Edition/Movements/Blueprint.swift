@@ -5,11 +5,11 @@ extension Parts {
     /// dimension under the circle hang from it; the radius rolls its own angle, the dimension rolls nothing. The grid
     /// and the title block are set by the sheet's edges and hang from nothing.
     enum Blueprint {
-        static let grid = Part.set("blueprint/grid", "the grid")
+        static let grid = Part.set("blueprint/grid", "the grid", note: "The grid is the paper. Turn the circle.")
         static let circle = Part.frame("blueprint/circle", "the circle")
         static let radius = Part.piece("blueprint/radius", "the radius", hangs: true)
-        static let dimension = Part.set("blueprint/dimension", "the dimension", hangs: true)
-        static let block = Part.set("blueprint/block", "the title block")
+        static let dimension = Part.set("blueprint/dimension", "the dimension", hangs: true, note: "The dimension is measured off the circle. Turn the circle.")
+        static let block = Part.set("blueprint/block", "the title block", note: "The title block is set by the edge of the sheet.")
         static let all = [grid, circle, radius, dimension, block]
     }
 }

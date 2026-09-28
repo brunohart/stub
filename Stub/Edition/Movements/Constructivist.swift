@@ -8,8 +8,8 @@ extension Parts {
         static let diagonal = Part.frame("constructivist/diagonal", "the diagonal")
         static let disc = Part.piece("constructivist/disc", "the disc", hangs: true)
         static let bars = Part.piece("constructivist/bars", "the bars", hangs: true)
-        static let title = Part.set("constructivist/title", "the title", hangs: true)
-        static let year = Part.set("constructivist/year", "the year", hangs: true)
+        static let title = Part.set("constructivist/title", "the title", hangs: true, note: "The title is set by the band. Turn the diagonal.")
+        static let year = Part.set("constructivist/year", "the year", hangs: true, note: "The year sits where the diagonal leaves room. Turn the diagonal.")
         static let all = [diagonal, disc, bars, title, year]
     }
 }

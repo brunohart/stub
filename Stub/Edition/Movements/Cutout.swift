@@ -4,7 +4,7 @@ extension Parts {
     /// Cutout's parts. No frame: every scrap of paper is cut on its own and laid on the field wherever it fell. The
     /// field is the whole poster and rolls nothing; the title is set on the label and turns with it.
     enum Cutout {
-        static let field = Part.set("cutout/field", "the field")
+        static let field = Part.set("cutout/field", "the field", note: "The field is the whole poster. Turn a scrap of paper on it.")
         static let strip = Part.piece("cutout/strip", "the torn strip")
         static let block = Part.piece("cutout/block", "the block")
         static let scrap = Part.piece("cutout/scrap", "the scrap")

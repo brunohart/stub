@@ -4,10 +4,10 @@ extension Parts {
     /// Noir's parts. No frame: the night is the whole poster and rolls nothing, the blind rolls its own slats, and the
     /// title and the time are set low on the poster by the title's own size.
     enum Noir {
-        static let night = Part.set("noir/night", "the night")
+        static let night = Part.set("noir/night", "the night", note: "The night is the whole poster. Turn the blind.")
         static let blind = Part.piece("noir/blind", "the blind")
-        static let title = Part.set("noir/title", "the title")
-        static let time = Part.set("noir/time", "the time")
+        static let title = Part.set("noir/title", "the title", note: "The title is set low, by its own size.")
+        static let time = Part.set("noir/time", "the time", note: "The time sits over the title.")
         static let all = [night, blind, title, time]
     }
 }

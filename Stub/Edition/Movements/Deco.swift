@@ -7,9 +7,9 @@ extension Parts {
     enum Deco {
         static let sunburst = Part.frame("deco/sunburst", "the sunburst")
         static let sun = Part.piece("deco/sun", "the sun", hangs: true)
-        static let border = Part.set("deco/border", "the border")
-        static let title = Part.set("deco/title", "the title")
-        static let year = Part.set("deco/year", "the year", hangs: true)
+        static let border = Part.set("deco/border", "the border", note: "The border is set by the edge of the card.")
+        static let title = Part.set("deco/title", "the title", note: "The title is set on its panel, on the centre line.")
+        static let year = Part.set("deco/year", "the year", hangs: true, note: "The year sits in the sun. Turn the sunburst.")
         static let all = [sunburst, sun, border, title, year]
     }
 }

@@ -28,13 +28,18 @@ struct Part: Sendable, Equatable, Identifiable {
     let kind: Kind
     /// Reads the frame's outputs, so turning the frame may move it.
     let hangs: Bool
+    /// For a set part, the press's one sentence on why it has no other take, and what to turn instead: "The title is
+    /// set by the band. Turn the diagonal."
+    var note: String? = nil
 
     /// Whether the press can turn it.
     var turns: Bool { kind != .set }
 
     static func frame(_ id: ID, _ name: String) -> Part { Part(id: id, name: name, kind: .frame, hangs: false) }
     static func piece(_ id: ID, _ name: String, hangs: Bool = false) -> Part { Part(id: id, name: name, kind: .piece, hangs: hangs) }
-    static func set(_ id: ID, _ name: String, hangs: Bool = false) -> Part { Part(id: id, name: name, kind: .set, hangs: hangs) }
+    static func set(_ id: ID, _ name: String, hangs: Bool = false, note: String) -> Part {
+        Part(id: id, name: name, kind: .set, hangs: hangs, note: note)
+    }
 }
 
 /// Every movement's parts, one namespace a movement. The lists are in the order the marks are drawn.
