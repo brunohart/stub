@@ -177,3 +177,74 @@ final class Detents {
         ratchet = nil
     }
 }
+
+/// The press's lever (ADR-016, brief §5.7). Pulled down, it pushes back harder the further it goes: one continuous
+/// haptic whose strength follows the travel, from 0.1 to 0.8, at a dull 0.2. Near the bottom it gives and the platen
+/// comes down: `Platen.ahap`, a heavy dull knock and the press settling, kept in the bundle so the feel is a versioned
+/// asset rather than numbers in code.
+@MainActor
+final class LeverFeel {
+    private var engine: CHHapticEngine?
+    private var resistance: CHHapticAdvancedPatternPlayer?
+
+    /// How hard the lever pushes back at `travel` (0 at rest, 1 at the bottom).
+    nonisolated static func resistance(at travel: Double) -> Float {
+        Float(0.1 + 0.7 * min(max(travel, 0), 1))
+    }
+
+    /// The platen, as the bundle keeps it.
+    nonisolated static var platen: URL? { Bundle.main.url(forResource: "Platen", withExtension: "ahap") }
+
+    private func start() -> CHHapticEngine? {
+        guard Texture.isSupported else { return nil }
+        if let engine { return engine }
+        do {
+            let engine = try CHHapticEngine()
+            engine.isAutoShutdownEnabled = true
+            try engine.start()
+            self.engine = engine
+            return engine
+        } catch {
+            Texture.log.error("The lever could not start: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    /// The lever is at `travel` of the way down.
+    func resist(at travel: Double) {
+        guard let engine = start() else { return }
+        do {
+            if resistance == nil {
+                let push = CHHapticEvent(eventType: .hapticContinuous, parameters: [
+                    CHHapticEventParameter(parameterID: .hapticIntensity, value: 1),
+                    CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.2),
+                ], relativeTime: 0, duration: 30)
+                let player = try engine.makeAdvancedPlayer(with: CHHapticPattern(events: [push], parameters: []))
+                try player.start(atTime: CHHapticTimeImmediate)
+                resistance = player
+            }
+            try resistance?.sendParameters([CHHapticDynamicParameter(parameterID: .hapticIntensityControl,
+                                                                     value: Self.resistance(at: travel), relativeTime: 0)],
+                                           atTime: CHHapticTimeImmediate)
+        } catch {
+            Texture.log.error("Lever resistance failed: \(error.localizedDescription)")
+        }
+    }
+
+    /// The platen comes down. Played whether the lever was pulled by hand or by VoiceOver's action.
+    func platen() {
+        release()
+        guard let engine = start(), let url = Self.platen else { return }
+        do {
+            try engine.playPattern(from: url)
+        } catch {
+            Texture.log.error("The platen failed: \(error.localizedDescription)")
+        }
+    }
+
+    /// The hand has let go.
+    func release() {
+        try? resistance?.stop(atTime: CHHapticTimeImmediate)
+        resistance = nil
+    }
+}
