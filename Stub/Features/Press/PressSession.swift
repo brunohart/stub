@@ -22,6 +22,36 @@ final class PressSession {
     var position: Double = 0
     /// How far apart the card's layers are lifted: 0 the card, 1 the separations (brief §5.4).
     var separation: CGFloat = 0
+    /// What is open on the bench when nothing is in hand.
+    var bench: Bench = .rest
+    /// How much of the card on the bed is printed: a new movement or stock is reprinted a pass at a time.
+    private(set) var printed = Plate.foil
+    /// Counts the passes of a reprint, for the haptic each one lands with.
+    private(set) var pass = 0
+    /// New inks spreading across the card, when a draw-down has been dropped on it.
+    var flood: Flood?
+    /// Where a finger is along the fan, if one is.
+    var fanFinger: CGFloat?
+    #if DEBUG
+    /// `-drive` letting go on a card in the fan, as a finger would.
+    var letGo: Movement?
+    #endif
+
+    /// The three choices the genome offers, each with its object on the bench (brief §5.5, §5.6).
+    enum Bench: String, CaseIterable, Sendable {
+        case rest, movement, inks, stock
+    }
+
+    /// A palette flooding the card from where it was dropped, `progress` of the way across.
+    struct Flood: Equatable {
+        var palette: Palette
+        var origin: CGPoint
+        var progress: CGFloat = 0
+    }
+
+    /// A pass of the press's print run: quicker than an edition's first printing, because a proof is pulled, not
+    /// published.
+    static let passTime: Duration = .milliseconds(180)
 
     /// Compositions drawn lately, by edition: a scrub between two takes draws the same two over and over.
     @ObservationIgnored private var memo: [Edition: Composition] = [:]
@@ -119,6 +149,7 @@ final class PressSession {
     func pickUp(_ part: Part) {
         guard part.turns else { return }
         explaining = nil
+        bench = .rest
         focus = part
         position = Double(take(of: part))
     }
@@ -139,12 +170,84 @@ final class PressSession {
         Self.log.info("Press '\(self.proof.release)': \(focus.id) take \(take)")
     }
 
+    // MARK: The genome
+
+    /// The movement the title's hash chose, and the one the model chose if it did: the fan says which is which.
+    var titlesMovement: Movement { Genome.floor(for: title).movement }
+    var modelsMovement: Movement? { underneath.directedBy == .model ? underneath.movement : nil }
+
+    /// The edition as it would be in `movement`, with everything else on the press as it is: a card in the fan.
+    func edition(in movement: Movement) -> Edition {
+        var trial = proof
+        trial.movement = movement
+        return underneath.applying(trial)
+    }
+
+    /// The edition as it would be in `palette`: the card a flood reveals.
+    func edition(in palette: Palette) -> Edition {
+        var trial = proof
+        trial.palette = palette
+        return underneath.applying(trial)
+    }
+
+    func choose(_ movement: Movement) {
+        guard movement != edition.movement else { return }
+        putDown()
+        proof.movement = movement == underneath.movement ? nil : movement
+        keep("movement \(movement.rawValue)")
+    }
+
+    func choose(_ palette: Palette) {
+        guard palette != edition.palette else { return }
+        proof.palette = palette == underneath.palette ? nil : palette
+        keep("inks \(palette.rawValue)")
+    }
+
+    func choose(_ stock: Stock) {
+        guard stock != edition.stock else { return }
+        proof.stock = stock == underneath.stock ? nil : stock
+        keep("stock \(stock.rawValue)")
+    }
+
+    private func keep(_ what: String) {
+        editions.putOnPress(proof)
+        Self.log.info("Press '\(self.proof.release)': \(what)")
+    }
+
+    /// The card on the bed printed again, a pass at a time and quickly: after a new movement or a new stock, because
+    /// what it is printed on or in has changed. Under Reduce Motion it is simply whole.
+    func reprint(reduceMotion: Bool) async {
+        guard !reduceMotion else { printed = Plate.foil; return }
+        printed = 0
+        let metallic = composition.isMetallic
+        do {
+            try await Task.sleep(for: .milliseconds(120))
+            for p in 1...Plate.foil {
+                if p == Plate.foil, !metallic { break }
+                printed = p
+                pass += 1
+                try await Task.sleep(for: Self.passTime)
+            }
+        } catch {
+            // Left mid-run: the card is printed whole.
+        }
+        printed = Plate.foil
+    }
+
     // MARK: Words
 
     /// The one italic sentence on the screen: what is in hand and which take, why a part will not turn, or what the
     /// card is.
     func sentence(at position: Double) -> String {
         if let explaining, let note = explaining.note { return note }
+        if focus == nil {
+            switch bench {
+            case .movement: return "One film in eight movements. Let go on the one you want."
+            case .inks: return "Twelve inks. Drag one onto the card, or tap it."
+            case .stock: return "Hold a swatch and rub it to feel it. Tap it to print on it."
+            case .rest: break
+            }
+        }
         if let focus {
             let name = Self.capitalised(focus.name)
             if focus.kind == .frame { return "\(name). Everything on it moves with it." }

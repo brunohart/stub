@@ -42,6 +42,10 @@ final class DebugDrive {
     static let part: String? = value(after: "-part")
     /// `-take 14`: turn the part in hand to this take and let it settle.
     static let take: Int? = value(after: "-take").flatMap { Int($0) }
+    /// `-bench movement|inks|stock`: in the press room, open that choice's object on the bench (brief §5.5–5.6).
+    static let bench: String? = value(after: "-bench")
+    /// `-flood 0.4`: in the press room, start the next palette flooding the card and hold it this far across.
+    static let flood: CGFloat? = value(after: "-flood").flatMap { Double($0) }.map { CGFloat($0) }
     /// `-separated 0.8`: in the press room, lift the card's layers this far apart (brief §5.4).
     static let separated: CGFloat? = value(after: "-separated").flatMap { Double($0) }.map { CGFloat($0) }
     /// `-scrub 13.5`: hold the wheel here, between two takes, for a screenshot of an in-between.
@@ -139,6 +143,41 @@ final class DebugDrive {
     func press(_ session: PressSession, reduceMotion: Bool) async {
         do {
             try await beat(0.8)
+            if let open = Self.bench.flatMap(PressSession.Bench.init(rawValue:)) {
+                Self.log.info("drive: open the bench at \(open.rawValue)")
+                withAnimation(Motion.settle) { session.bench = open }
+                try await beat(0.8)
+                if open == .movement, Self.requested {
+                    // A finger slid along the fan, left to right and back a little, and let go on a card.
+                    Self.log.info("drive: slide along the fan")
+                    for frame in 0...90 {
+                        let t = Double(frame) / 90
+                        session.fanFinger = CGFloat(30 + 300 * sin(t * .pi * 0.62))
+                        try await beat(1.0 / 60)
+                    }
+                    try await beat(0.6)
+                    let chosen = Genome.movements[5]
+                    Self.log.info("drive: let go on \(chosen.rawValue)")
+                    session.fanFinger = nil
+                    session.letGo = chosen
+                    try await beat(2.4)
+                    Self.log.info("drive: done")
+                    return
+                }
+                if open == .movement, let finger = Self.scrub {
+                    // With the fan open, `-scrub` is where along it the finger rests.
+                    session.fanFinger = CGFloat(finger)
+                }
+            }
+            if let across = Self.flood {
+                let palettes = Genome.palettes
+                let next = palettes[((palettes.firstIndex(of: session.edition.palette) ?? 0) + 1) % palettes.count]
+                Self.log.info("drive: flood \(next.rawValue) to \(Double(across))")
+                session.bench = .inks
+                session.flood = PressSession.Flood(palette: next, origin: CGPoint(x: Card.width * 0.3, y: Card.height * 0.28),
+                                                   progress: across)
+                return
+            }
             if let apart = Self.separated {
                 if Self.requested {
                     try await separations(session, to: apart)

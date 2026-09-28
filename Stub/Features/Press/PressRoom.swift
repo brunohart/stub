@@ -16,6 +16,9 @@ struct PressRoom: View {
     @State private var pinchedFrom: CGFloat?
     /// Counts the times the sheets were pressed back together: one heavy impact each, the press closing.
     @State private var closings = 0
+    /// The fan's card on its way to the bed.
+    @State private var flying: Movement?
+    @Namespace private var fan
 
     init(stub: Stub, copy: Copy) {
         self.stub = stub
@@ -44,16 +47,27 @@ struct PressRoom: View {
                     .accessibilityAddTraits(.updatesFrequently)
 
                 bench
-                    .frame(height: 214)
+                    .frame(height: session.bench == .rest || session.focus != nil ? 214 : 262)
+                    .animation(reduceMotion ? Motion.plain : Motion.settle, value: session.bench)
             }
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
         .sensoryFeedback(.impact(weight: .heavy, intensity: 1), trigger: closings)
+        // A light tap for each plate of a reprint, a heavy one for the foil: the press, felt.
+        .sensoryFeedback(trigger: session.printed) { old, new in
+            new == Plate.foil && old < Plate.foil ? .impact(weight: .heavy, intensity: 0.8)
+                : new > old && new > 0 ? .impact(weight: .light, intensity: 0.6) : nil
+        }
         .onAppear { if !reduceMotion { attitude.start() } }
         .onDisappear { attitude.stop() }
         #if DEBUG
         .task { await DebugDrive.shared.press(session, reduceMotion: reduceMotion) }
+        .onChange(of: session.letGo) { _, movement in
+            guard let movement else { return }
+            session.letGo = nil
+            take(movement)
+        }
         #endif
     }
 
@@ -77,17 +91,36 @@ struct PressRoom: View {
                 if reduceMotion, session.separation > 0 {
                     FlatSheets(session: session, light: light, height: size.height)
                 } else {
-                    OnTheBed(session: session, position: session.position, separation: session.separation, light: light,
-                             reduceMotion: reduceMotion)
-                        .scaleEffect(scale, anchor: .topLeading)
-                        .frame(width: size.width, height: size.height, alignment: .topLeading)
-                        .shadow(color: .black.opacity(0.18 * (1 - session.separation)), radius: 14, x: 6 - tilt.x * 8, y: 12 - tilt.y * 8)
-                        .shadow(color: .black.opacity(0.14), radius: 2, x: 1, y: 2)
-                        .contentShape(Rectangle())
-                        .gesture(SpatialTapGesture().onEnded { value in
-                            let point = CGPoint(x: value.location.x / scale, y: value.location.y / scale)
-                            withAnimation(reduceMotion ? Motion.plain : Motion.settle) { session.touch(at: point) }
-                        })
+                    ZStack(alignment: .topLeading) {
+                        OnTheBed(session: session, position: session.position, separation: session.separation, light: light,
+                                 reduceMotion: reduceMotion)
+                        if let flood = session.flood {
+                            Flooding(session: session, flood: flood, progress: flood.progress, light: light, reduceMotion: reduceMotion)
+                        }
+                    }
+                    .scaleEffect(scale, anchor: .topLeading)
+                    .frame(width: size.width, height: size.height, alignment: .topLeading)
+                    .shadow(color: .black.opacity(0.18 * (1 - session.separation)), radius: 14, x: 6 - tilt.x * 8, y: 12 - tilt.y * 8)
+                    .shadow(color: .black.opacity(0.14), radius: 2, x: 1, y: 2)
+                    .contentShape(Rectangle())
+                    .gesture(SpatialTapGesture().onEnded { value in
+                        let point = CGPoint(x: value.location.x / scale, y: value.location.y / scale)
+                        withAnimation(reduceMotion ? Motion.plain : Motion.settle) { session.touch(at: point) }
+                    })
+                    // A draw-down dropped on the card floods it from where it landed.
+                    .dropDestination(for: String.self) { items, location in
+                        guard let palette = items.first.flatMap(Palette.init(rawValue:)) else { return false }
+                        flood(palette, from: CGPoint(x: location.x / scale, y: location.y / scale))
+                        return true
+                    }
+                    // The fan's card, flying to the bed.
+                    .overlay(alignment: .topLeading) {
+                        if let flying {
+                            CardThumb(composition: session.composition(session.edition(in: flying)), light: light)
+                                .matchedGeometryEffect(id: flying, in: fan, isSource: false)
+                                .frame(width: size.width, height: size.height)
+                        }
+                    }
                 }
             }
             .simultaneousGesture(pinch)
@@ -137,6 +170,55 @@ struct PressRoom: View {
             }
     }
 
+    /// New inks spreading across the card from `origin`, about half a second to its far corner (a fifth of a second's
+    /// cross-fade under Reduce Motion); when they have covered it, they are the card's.
+    private func flood(_ palette: Palette, from origin: CGPoint) {
+        guard palette != session.edition.palette, session.flood == nil else { return }
+        if session.separation > 0 { separate(false) }
+        session.flood = PressSession.Flood(palette: palette, origin: origin)
+        withAnimation(reduceMotion ? .linear(duration: 0.2) : .easeOut(duration: 0.55)) {
+            session.flood?.progress = 1
+        } completion: {
+            session.choose(palette)
+            session.flood = nil
+        }
+    }
+
+    /// The fan's card flies to the bed, lands, and the bed prints it, a pass at a time.
+    private func take(_ movement: Movement) {
+        guard movement != session.edition.movement else {
+            withAnimation(Motion.settle) { session.bench = .rest }
+            return
+        }
+        if reduceMotion {
+            session.choose(movement)
+            session.bench = .rest
+            Task { await session.reprint(reduceMotion: true) }
+            return
+        }
+        withAnimation(Motion.place) {
+            session.bench = .rest
+            flying = movement
+        }
+        Task {
+            try? await Task.sleep(for: .milliseconds(480))
+            var still = Transaction()
+            still.disablesAnimations = true
+            withTransaction(still) {
+                session.choose(movement)
+                flying = nil
+            }
+            await session.reprint(reduceMotion: false)
+        }
+    }
+
+    /// A new stock: the card is printed again on it.
+    private func printAgain(on stock: Stock) {
+        guard stock != session.edition.stock else { return }
+        session.choose(stock)
+        Task { await session.reprint(reduceMotion: reduceMotion) }
+    }
+
     /// Spread the sheets, or press them back together with one heavy impact.
     private func separate(_ apart: Bool) {
         let wasApart = session.separation > 0
@@ -155,25 +237,44 @@ struct PressRoom: View {
                 .transition(Self.benchChange)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            VStack(spacing: 26) {
+            VStack(spacing: 18) {
                 HStack(alignment: .top, spacing: 30) {
-                    Choice("Movement", session.edition.movement.rawValue.capitalized)
-                    Choice("Inks", session.edition.palette.rawValue.capitalized)
-                    Choice("Stock", session.edition.stock.words)
+                    choice(.movement, "Movement", session.edition.movement.rawValue.capitalized)
+                    choice(.inks, "Inks", session.edition.palette.rawValue.capitalized)
+                    choice(.stock, "Stock", session.edition.stock.words)
                 }
-                // Separations are a pinch on the card, and a button for anyone who does not pinch.
-                Button { separate(session.separation == 0) } label: {
-                    Text(session.separation > 0 ? "Press them together" : "See the plates")
-                        .font(Type.words(15))
-                        .foregroundStyle(Ink.ink)
-                        .padding(.horizontal, 16)
-                        .frame(minHeight: 44)
-                        .overlay(Capsule().stroke(Ink.ink.opacity(0.25), lineWidth: 0.75))
-                        .contentShape(Capsule())
+                switch session.bench {
+                case .movement:
+                    Fan(session: session, light: light, namespace: fan) { take($0) }
+                        .frame(height: 176)
+                        .transition(Self.benchChange)
+                case .inks:
+                    DrawDowns(session: session) { palette in flood(palette, from: CGPoint(x: Card.width / 2, y: Card.height / 2)) }
+                        .frame(height: 130)
+                        .transition(Self.benchChange)
+                case .stock:
+                    SwatchBook(session: session, light: light) { printAgain(on: $0) }
+                        .frame(height: 130)
+                        .transition(Self.benchChange)
+                case .rest:
+                    // Separations are a pinch on the card, and a button for anyone who does not pinch.
+                    Button { separate(session.separation == 0) } label: {
+                        Text(session.separation > 0 ? "Press them together" : "See the plates")
+                            .font(Type.words(15))
+                            .foregroundStyle(Ink.ink)
+                            .padding(.horizontal, 16)
+                            .frame(minHeight: 44)
+                            .overlay(Capsule().stroke(Ink.ink.opacity(0.25), lineWidth: 0.75))
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 12)
+                    .transition(Self.benchChange)
                 }
-                .buttonStyle(.plain)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // The three words stay where they are whatever is open, so opening and closing moves nothing but the object.
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .padding(.top, 22)
             .transition(Self.benchChange)
         }
     }
@@ -202,7 +303,7 @@ private struct OnTheBed: View, @MainActor Animatable {
 
     var body: some View {
         EditionFace(composition: session.drawing(at: position, reduceMotion: reduceMotion), light: light,
-                    focus: session.focus?.id, separation: separation)
+                    printed: session.printed, focus: session.focus?.id, separation: separation)
             .accessibilityHidden(true)
     }
 }
@@ -240,19 +341,55 @@ private struct FlatSheets: View {
     }
 }
 
-/// One of the edition's three choices, at rest on the bench: the word, and what it is now.
-private struct Choice: View {
-    let label: String
-    let value: String
-    init(_ label: String, _ value: String) { self.label = label; self.value = value }
+extension PressRoom {
+    /// One of the edition's three choices on the bench: what it is now, and the word for it. Tapped, it opens its
+    /// object; tapped again, it closes.
+    fileprivate func choice(_ bench: PressSession.Bench, _ label: String, _ value: String) -> some View {
+        let open = session.bench == bench
+        let other = session.bench != .rest && !open
+        return Button {
+            if session.separation > 0 { separate(false) }
+            withAnimation(reduceMotion ? Motion.plain : Motion.settle) {
+                session.putDown()
+                session.bench = open ? .rest : bench
+            }
+        } label: {
+            VStack(spacing: 4) {
+                Text(value).font(Type.words(17)).foregroundStyle(other ? Ink.grey : Ink.ink)
+                Text(label).font(Type.words(12)).foregroundStyle(Ink.grey)
+            }
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(label), \(value)")
+        .accessibilityHint(open ? "Closes it." : "Opens the choices.")
+        .accessibilityAddTraits(open ? .isSelected : [])
+    }
+}
+
+/// The card in new inks, revealed where the flood has reached: the stock's own noise pushes the edge in and out.
+private struct Flooding: View, @MainActor Animatable {
+    let session: PressSession
+    let flood: PressSession.Flood
+    var progress: CGFloat
+    let light: Light
+    let reduceMotion: Bool
+
+    var animatableData: CGFloat {
+        get { progress }
+        set { progress = newValue }
+    }
 
     var body: some View {
-        VStack(spacing: 4) {
-            Text(value).font(Type.words(17)).foregroundStyle(Ink.ink)
-            Text(label).font(Type.words(12)).foregroundStyle(Ink.grey)
+        let edition = session.edition(in: flood.palette)
+        let face = EditionFace(composition: session.composition(edition), light: light)
+        if reduceMotion {
+            face.opacity(progress)
+        } else {
+            face.modifier(FloodEffect(origin: flood.origin, progress: progress, stock: edition.stock,
+                                      seed: Double(edition.seed % 101)))
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(label), \(value)")
     }
 }
 
