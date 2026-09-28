@@ -75,6 +75,8 @@ Every number here was set on purpose, and most were tuned by eye and thumb. The 
 | Detents | a ratchet when they come faster than one per 28 ms | Single clicks at that speed blur into mush *(device)* |
 | A ghosted part | 18% of its ink, drawn toward the stock | Only the part in hand reads |
 | Separations | 52° back, −24° turned, 38 pt a sheet | A printer's view of the card's layers |
+| The lever | 150 pt of travel, gives at 92%, resistance 0.1 → 0.8 | Committing is physical; there is no Save button *(device)* |
+| Wet ink | dries over 2.4 s, then the timeline stops | The one thing that moves on its own, and it ends |
 | A proof | about 120 bytes | A few numbers laid over an edition, not a picture of one |
 
 ## How it's built
@@ -113,6 +115,8 @@ One day at a time, each day proved by a screenshot of the real app running in th
 | 23 | Parts, takes and the proof ([the brief](docs/briefs/the-press.md)) | <img src="docs/screenshots/day-23-keeps.png" width="96"> |
 | 24 | The press room, the wheel, the in-betweens | <img src="docs/screenshots/day-24-take-14.png" width="96"> |
 | 25 | Separations | <img src="docs/screenshots/day-25-separated.png" width="96"> |
+| 26 | The fan of movements, the draw-downs that flood the card, the swatch book | <img src="docs/screenshots/day-26-flood.png" width="96"> |
+| 27 | The lever and the platen, wet ink, undo, and the back: signed, A/P, the takes in pencil | <img src="docs/screenshots/day-27-signed.png" width="96"> |
 
 ## Run it
 
@@ -121,7 +125,7 @@ You need Xcode 27 with an iOS 27 simulator (the app still targets iOS 26; [ADR-0
 ```bash
 git clone https://github.com/brunohart/stub && cd stub
 scripts/build.sh      # xcodegen, then a simulator build
-scripts/test.sh       # 89 tests on an iPhone 18 Pro; the eval suite asks the model for a couple of minutes
+scripts/test.sh       # 98 tests on an iPhone 18 Pro; the eval suite asks the model for a couple of minutes
 scripts/run.sh --seed --reset --wait-for "written|hand-counted" --shot docs/screenshots/now.png
 ```
 
@@ -135,6 +139,8 @@ The simulator has no camera, no gyroscope and no hands, so `run.sh` stands in fo
 | `--press --part disc --take 14` | Carries the card into the press and turns a part; `--scrub 13.5` holds an in-between |
 | `--separated 0.8` | Pulls the card's layers apart |
 | `--proof "disc=14,bars=3"` | Pulls a proof; `--keeps` shows what the press keeps |
+| `--bench movement` · `--flood 0.4` | Opens the fan, the draw-downs or the swatch book; holds a flood part-way |
+| `--pulled --wet 0.6` · `--signed` | Pulls the proof on the press and holds the ink wet; signs with a fixture signature |
 | `--drive [--record out.mov]` | Plays the interactions on a clock, and films them |
 | `--type accessibility-extra-large` | Sets Dynamic Type for the run |
 
