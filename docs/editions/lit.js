@@ -39,7 +39,8 @@ function drawMarks(g, marks, pal, { foilOnly = false, metallic, printed = 9, col
     g.restore();
   }
 }
-const STOCK = { cotton: { grain: 0.05, fibre: 0.045, gloss: 0.02, depth: 2.2, reach: 1.2 }, coated: { grain: 0.025, fibre: 0, gloss: 0.10, depth: 1, reach: 0.8 }, foil: { grain: 0.025, fibre: 0, gloss: 0.08, depth: 1, reach: 0.8 }, holographic: { grain: 0.025, fibre: 0, gloss: 0.10, depth: 1, reach: 0.8 } };
+// No per-pixel grain, as the stock shader has none (ADR-017).
+const STOCK = { cotton: { fibre: 0.045, gloss: 0.02, depth: 2.2, reach: 1.2 }, coated: { fibre: 0, gloss: 0.10, depth: 1, reach: 0.8 }, foil: { fibre: 0, gloss: 0.08, depth: 1, reach: 0.8 }, holographic: { fibre: 0, gloss: 0.10, depth: 1, reach: 0.8 } };
 const fract = x => x - Math.floor(x);
 const hash2 = (x, y) => fract(Math.sin(x * 127.1 + y * 311.7) * 43758.5453);
 function vnoise(x, y) { const ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy; const ux = fx * fx * (3 - 2 * fx), uy = fy * fy * (3 - 2 * fy); const a = hash2(ix, iy), b = hash2(ix + 1, iy), c = hash2(ix, iy + 1), d = hash2(ix + 1, iy + 1); return (a + (b - a) * ux) * (1 - uy) + (c + (d - c) * ux) * uy; }
@@ -79,10 +80,9 @@ function litCard(edition, copy, tilt = [0, 0], scale = 2) {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const i = (y * w + x) * 4, pos = [x / scale, y / scale], u = pos[0] / W, v = pos[1] / H;
     // stock
-    const n = hash2(Math.floor(pos[0]) + seed, Math.floor(pos[1]) + seed) - 0.5;
     const f = vnoise(pos[0] * 0.11 + seed * 13, pos[1] * 0.32 + seed * 13) * 0.65 + vnoise(pos[0] * 0.31 + seed * 7, pos[1] * 0.9 + seed * 7) * 0.35 - 0.5;
     const s = sheen(u, v, lx, ly, 2.2) * S.gloss;
-    let c = [0, 1, 2].map(k => Math.min(1, Math.max(0, G[i + k] / 255 + n * S.grain + f * S.fibre + s)));
+    let c = [0, 1, 2].map(k => Math.min(1, Math.max(0, G[i + k] / 255 + f * S.fibre + s)));
     c = over(relief(I, x, y), c);
     // foil
     const fa = F[i + 3] / 255;
