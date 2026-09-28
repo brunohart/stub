@@ -20,6 +20,8 @@ final class PressSession {
     private(set) var explaining: Part?
     /// The wheel, in takes, for the part in hand. Fractional mid-turn; a whole number at rest.
     var position: Double = 0
+    /// How far apart the card's layers are lifted: 0 the card, 1 the separations (brief §5.4).
+    var separation: CGFloat = 0
 
     /// Compositions drawn lately, by edition: a scrub between two takes draws the same two over and over.
     @ObservationIgnored private var memo: [Edition: Composition] = [:]
@@ -76,9 +78,31 @@ final class PressSession {
     // MARK: The hand
 
     /// A finger on the card at `point` (card points): picks up the part there, puts down the part in hand if it is
-    /// touched again or the finger lands on bare stock, and explains a part that rolls nothing.
+    /// touched again or the finger lands on bare stock, and explains a part that rolls nothing. With the layers apart,
+    /// the finger is carried through each sheet from the top down: a part hidden under another on the flat card is
+    /// reachable on its own sheet, and clear film lets the finger through to the sheet below.
     func touch(at point: CGPoint) {
-        guard let id = composition.part(at: point), let part = movement.part(id) else {
+        guard separation > 0 else {
+            touch(composition.part(at: point))
+            return
+        }
+        let layers = Separation.layers(metallic: composition.isMetallic)
+        for (index, layer) in layers.enumerated().reversed() {
+            guard let onSheet = Separation.unproject(point, index: index, separation: separation),
+                  let id = composition.part(at: onSheet, on: layer) else { continue }
+            touch(id)
+            return
+        }
+        putDown()
+    }
+
+    /// A finger on one sheet of the separations laid flat (Reduce Motion), at `point` on that sheet.
+    func touch(at point: CGPoint, on layer: Separation.Layer) {
+        touch(composition.part(at: point, on: layer))
+    }
+
+    private func touch(_ id: Part.ID?) {
+        guard let id, let part = movement.part(id) else {
             putDown()
             return
         }
@@ -126,6 +150,10 @@ final class PressSession {
             if focus.kind == .frame { return "\(name). Everything on it moves with it." }
             let take = Int(min(max(position, 0), 99).rounded())
             return take == 0 ? "\(name), as the title drew it." : "\(name). Take \(Self.spelled(take))."
+        }
+        if separation > 0.5 {
+            return composition.isMetallic ? "Five sheets: the stock, two plates, the foil and the type."
+                : "Four sheets: the stock, two plates and the type."
         }
         if edition == underneath { return "Touch a part of the card to turn it." }
         return edition.described + "."

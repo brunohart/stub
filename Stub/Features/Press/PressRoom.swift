@@ -12,6 +12,10 @@ struct PressRoom: View {
     @State private var attitude = Attitude()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Namespace private var rotor
+    /// Where the separation stood when the pinch began.
+    @State private var pinchedFrom: CGFloat?
+    /// Counts the times the sheets were pressed back together: one heavy impact each, the press closing.
+    @State private var closings = 0
 
     init(stub: Stub, copy: Copy) {
         self.stub = stub
@@ -45,6 +49,7 @@ struct PressRoom: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
+        .sensoryFeedback(.impact(weight: .heavy, intensity: 1), trigger: closings)
         .onAppear { if !reduceMotion { attitude.start() } }
         .onDisappear { attitude.stop() }
         #if DEBUG
@@ -68,25 +73,33 @@ struct PressRoom: View {
             let scale = min(proxy.size.width / Card.width, proxy.size.height / Card.height)
             let size = CGSize(width: Card.width * scale, height: Card.height * scale)
             let tilt = light.tilt
-            OnTheBed(session: session, position: session.position, light: light, reduceMotion: reduceMotion)
-                .scaleEffect(scale, anchor: .topLeading)
-                .frame(width: size.width, height: size.height, alignment: .topLeading)
-                .shadow(color: .black.opacity(0.18), radius: 14, x: 6 - tilt.x * 8, y: 12 - tilt.y * 8)
-                .shadow(color: .black.opacity(0.14), radius: 2, x: 1, y: 2)
-                .contentShape(Rectangle())
-                .gesture(SpatialTapGesture().onEnded { value in
-                    let point = CGPoint(x: value.location.x / scale, y: value.location.y / scale)
-                    withAnimation(reduceMotion ? Motion.plain : Motion.settle) { session.touch(at: point) }
-                })
-                .overlay(alignment: .topLeading) { parts(scale: scale) }
-                .accessibilityElement(children: .contain)
-                .accessibilityLabel("The card on the press: \(session.edition.described)")
-                .accessibilityRotor("Parts") {
-                    ForEach(session.turnable) { part in
-                        AccessibilityRotorEntry(Text(session.spoken(part)), id: part.id, in: rotor)
-                    }
+            Group {
+                if reduceMotion, session.separation > 0 {
+                    FlatSheets(session: session, light: light, height: size.height)
+                } else {
+                    OnTheBed(session: session, position: session.position, separation: session.separation, light: light,
+                             reduceMotion: reduceMotion)
+                        .scaleEffect(scale, anchor: .topLeading)
+                        .frame(width: size.width, height: size.height, alignment: .topLeading)
+                        .shadow(color: .black.opacity(0.18 * (1 - session.separation)), radius: 14, x: 6 - tilt.x * 8, y: 12 - tilt.y * 8)
+                        .shadow(color: .black.opacity(0.14), radius: 2, x: 1, y: 2)
+                        .contentShape(Rectangle())
+                        .gesture(SpatialTapGesture().onEnded { value in
+                            let point = CGPoint(x: value.location.x / scale, y: value.location.y / scale)
+                            withAnimation(reduceMotion ? Motion.plain : Motion.settle) { session.touch(at: point) }
+                        })
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .simultaneousGesture(pinch)
+            .overlay(alignment: .topLeading) { parts(scale: scale) }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("The card on the press: \(session.edition.described)")
+            .accessibilityRotor("Parts") {
+                ForEach(session.turnable) { part in
+                    AccessibilityRotorEntry(Text(session.spoken(part)), id: part.id, in: rotor)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
@@ -107,6 +120,30 @@ struct PressRoom: View {
         }
     }
 
+    /// Pinch outward and the card comes apart into its sheets; pinch in and they press back together.
+    private var pinch: some Gesture {
+        MagnifyGesture()
+            .onChanged { value in
+                let from = pinchedFrom ?? session.separation
+                pinchedFrom = from
+                var still = Transaction()
+                still.disablesAnimations = true
+                withTransaction(still) { session.separation = min(max(from + (value.magnification - 1) * 1.25, 0), 1) }
+            }
+            .onEnded { value in
+                pinchedFrom = nil
+                let apart = value.velocity > 0.5 || (value.velocity > -0.5 && session.separation > 0.5)
+                separate(apart)
+            }
+    }
+
+    /// Spread the sheets, or press them back together with one heavy impact.
+    private func separate(_ apart: Bool) {
+        let wasApart = session.separation > 0
+        withAnimation(reduceMotion ? Motion.plain : Motion.settle) { session.separation = apart ? 1 : 0 }
+        if !apart, wasApart { closings += 1 }
+    }
+
     // MARK: The bench
 
     /// What you are holding decides the bench: the wheel for a part, the edition's three choices at rest.
@@ -118,10 +155,23 @@ struct PressRoom: View {
                 .transition(Self.benchChange)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            HStack(alignment: .top, spacing: 30) {
-                Choice("Movement", session.edition.movement.rawValue.capitalized)
-                Choice("Inks", session.edition.palette.rawValue.capitalized)
-                Choice("Stock", session.edition.stock.words)
+            VStack(spacing: 26) {
+                HStack(alignment: .top, spacing: 30) {
+                    Choice("Movement", session.edition.movement.rawValue.capitalized)
+                    Choice("Inks", session.edition.palette.rawValue.capitalized)
+                    Choice("Stock", session.edition.stock.words)
+                }
+                // Separations are a pinch on the card, and a button for anyone who does not pinch.
+                Button { separate(session.separation == 0) } label: {
+                    Text(session.separation > 0 ? "Press them together" : "See the plates")
+                        .font(Type.words(15))
+                        .foregroundStyle(Ink.ink)
+                        .padding(.horizontal, 16)
+                        .frame(minHeight: 44)
+                        .overlay(Capsule().stroke(Ink.ink.opacity(0.25), lineWidth: 0.75))
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .transition(Self.benchChange)
@@ -136,23 +186,57 @@ struct PressRoom: View {
     )
 }
 
-/// The card on the bed at a wheel position. Animatable on the position, so the spring that settles the wheel carries
-/// the card through the in-betweens with it.
+/// The card on the bed at a wheel position and a separation. Animatable on both, so the spring that settles the wheel
+/// carries the card through the in-betweens, and the one that spreads the sheets lifts them apart.
 private struct OnTheBed: View, @MainActor Animatable {
     let session: PressSession
     var position: Double
+    var separation: CGFloat
     let light: Light
     let reduceMotion: Bool
 
-    var animatableData: Double {
-        get { position }
-        set { position = newValue }
+    var animatableData: AnimatablePair<Double, CGFloat> {
+        get { AnimatablePair(position, separation) }
+        set { position = newValue.first; separation = newValue.second }
     }
 
     var body: some View {
         EditionFace(composition: session.drawing(at: position, reduceMotion: reduceMotion), light: light,
-                    focus: session.focus?.id)
+                    focus: session.focus?.id, separation: separation)
             .accessibilityHidden(true)
+    }
+}
+
+/// Separations under Reduce Motion: the sheets laid side by side in a flat row, each touched on its own.
+private struct FlatSheets: View {
+    let session: PressSession
+    let light: Light
+    let height: CGFloat
+
+    var body: some View {
+        let composition = session.drawing(at: session.position, reduceMotion: true)
+        let scale = height * 0.5 / Card.height
+        let face = EditionFace(composition: composition, light: light, focus: session.focus?.id)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 14) {
+                ForEach(Separation.layers(metallic: composition.isMetallic), id: \.self) { layer in
+                    VStack(spacing: 8) {
+                        face.sheet(layer)
+                            .scaleEffect(scale, anchor: .topLeading)
+                            .frame(width: Card.width * scale, height: Card.height * scale, alignment: .topLeading)
+                            .contentShape(Rectangle())
+                            .gesture(SpatialTapGesture().onEnded { value in
+                                session.touch(at: CGPoint(x: value.location.x / scale, y: value.location.y / scale), on: layer)
+                            })
+                        Text(PressSession.capitalised(layer.name)).font(Type.words(12)).foregroundStyle(Ink.grey)
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(PressSession.capitalised(layer.name))
+                }
+            }
+            .padding(.horizontal, 4)
+        }
+        .frame(height: height)
     }
 }
 

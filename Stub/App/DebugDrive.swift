@@ -42,6 +42,8 @@ final class DebugDrive {
     static let part: String? = value(after: "-part")
     /// `-take 14`: turn the part in hand to this take and let it settle.
     static let take: Int? = value(after: "-take").flatMap { Int($0) }
+    /// `-separated 0.8`: in the press room, lift the card's layers this far apart (brief §5.4).
+    static let separated: CGFloat? = value(after: "-separated").flatMap { Double($0) }.map { CGFloat($0) }
     /// `-scrub 13.5`: hold the wheel here, between two takes, for a screenshot of an in-between.
     static let scrub: Double? = value(after: "-scrub").flatMap { Double($0) }
 
@@ -137,6 +139,15 @@ final class DebugDrive {
     func press(_ session: PressSession, reduceMotion: Bool) async {
         do {
             try await beat(0.8)
+            if let apart = Self.separated {
+                if Self.requested {
+                    try await separations(session, to: apart)
+                    return
+                }
+                Self.log.info("drive: separate \(Double(apart))")
+                withAnimation(Motion.settle) { session.separation = apart }
+                try await beat(0.8)
+            }
             let named = Self.part.flatMap { name in session.turnable.first { $0.id == name || $0.id.hasSuffix("/" + name) } }
             guard let part = named ?? (Self.requested ? session.turnable.first : nil) else { return }
             Self.log.info("drive: pick up \(part.id)")
@@ -162,6 +173,38 @@ final class DebugDrive {
         } catch {
             // The room was left.
         }
+    }
+
+    /// The card pinched apart into its sheets, turned in the light, a part picked up on its own sheet, put down, and the
+    /// sheets pressed back together.
+    private func separations(_ session: PressSession, to apart: CGFloat) async throws {
+        Self.log.info("drive: pinch apart")
+        for frame in 1...50 {
+            var still = Transaction()
+            still.disablesAnimations = true
+            withTransaction(still) { session.separation = apart * CGFloat(frame) / 50 * 0.85 }
+            try await beat(1.0 / 60)
+        }
+        withAnimation(Motion.settle) { session.separation = apart }
+        try await beat(1.2)
+        Self.log.info("drive: the light across the sheets")
+        for step in 0...60 {
+            let a = Double(step) / 60 * 2 * .pi
+            tilt = CGPoint(x: sin(a) * 0.7, y: -0.2 - sin(a) * 0.2)
+            try await beat(1.0 / 30)
+        }
+        tilt = Self.heldTilt
+        if let part = Self.part.flatMap({ name in session.turnable.first { $0.id == name || $0.id.hasSuffix("/" + name) } }) {
+            Self.log.info("drive: pick up \(part.id) on its sheet")
+            withAnimation(Motion.settle) { session.pickUp(part) }
+            try await beat(1.6)
+            withAnimation(Motion.settle) { session.putDown() }
+            try await beat(0.8)
+        }
+        Self.log.info("drive: press together")
+        withAnimation(Motion.settle) { session.separation = 0 }
+        try await beat(1.4)
+        Self.log.info("drive: done")
     }
 
     /// The wheel turned by hand to `take`: fast at first and slowing, as a flick coasts, then the settle spring.

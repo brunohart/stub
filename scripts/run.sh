@@ -2,7 +2,7 @@
 # Install and launch the last build on the simulator, then screenshot it.
 # Usage: scripts/run.sh [--seed] [--reset] [--drive] [--season] [--import] [--edition] [--turned] [--tilt x,y]
 #                       [--proof spec] [--keeps] [--open title] [--press] [--part id] [--take n] [--scrub x]
-#                       [--record path.mov]
+#                       [--separated s] [--record path.mov]
 #                       [--type size] [--look metal|swiftui] [--wait-for regex] [--shot path.png]
 # --drive: after the seed, press, open, hold and close on a timer (see DebugDrive) so the run can be filmed.
 # --season: open the season sheet once the seed has settled.
@@ -16,6 +16,8 @@
 # --press: with --edition, carry the card on into the press room (Day 24). --part id: pick up that part (its last
 #   word is enough). --take n: turn it to take n. --scrub x: hold the wheel at x, between two takes. --drive with
 #   --press turns the wheel on a clock. --record path.mov: film STUB_RECORD seconds (default 20) from launch.
+# --separated 0.8: in the press room, lift the card's layers that far apart (Day 25); with --drive, pinch them apart,
+#   turn them in the light, and press them together.
 # --type: set the simulator's Dynamic Type size for the run (medium, extra-extra-large, accessibility-extra-large …)
 #   and put it back to medium afterwards.
 # --wait-for: instead of sleeping STUB_SETTLE seconds, poll the app's log for a line matching the regex
@@ -31,7 +33,7 @@ while [ $# -gt 0 ]; do case "$1" in
   --edition) ARGS+=(-edition);; --turned) ARGS+=(-turned);; --tilt) ARGS+=(-tilt "$2"); shift;;
   --proof) ARGS+=(-proof "$2"); shift;; --keeps) ARGS+=(-keeps);; --open) ARGS+=(-open "$2"); shift;;
   --press) ARGS+=(-press);; --part) ARGS+=(-part "$2"); shift;; --take) ARGS+=(-take "$2"); shift;;
-  --scrub) ARGS+=(-scrub "$2"); shift;; --record) RECORD="$2"; shift;;
+  --scrub) ARGS+=(-scrub "$2"); shift;; --record) RECORD="$2"; shift;; --separated) ARGS+=(-separated "$2"); shift;;
   --look) ARGS+=(-look "$2"); shift;; --wait-for) WAIT="$2"; shift;;
   --shot) SHOT="$2"; shift;; *) echo "unknown $1" >&2; exit 2;; esac; shift; done
 SIM="$(scripts/sim.sh)"
