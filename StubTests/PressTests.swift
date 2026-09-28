@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import CoreGraphics
+import QuartzCore
 @testable import Stub
 
 /// The press (ADR-016): every part rolled from its own die, a take as a fork of it, a proof as a difference laid over
@@ -317,5 +318,52 @@ struct PressRoomTests {
         #expect(Editions(defaults: defaults).pressProof(for: "The Brutalist").takes == ["constructivist/disc": 14])
         let again = PressSession(title: "The Brutalist", copy: copy, editions: Editions(defaults: defaults))
         #expect(again.take(of: Parts.Constructivist.disc) == 14, "the next visit continues where you stopped")
+    }
+}
+
+/// Separations (Day 25): the finger carried back through each sheet's projection lands where it was drawn.
+struct SeparationTests {
+    @Test func aFingerIsCarriedBackOntoItsSheet() throws {
+        for s in [CGFloat(0), 0.3, 0.8, 1] {
+            for index in 0..<5 {
+                for p in [CGPoint(x: 40, y: 60), CGPoint(x: 165, y: 264), CGPoint(x: 300, y: 500)] {
+                    let drawn = Separation.project(p, index: index, separation: s)
+                    let back = try #require(Separation.unproject(drawn, index: index, separation: s))
+                    #expect(abs(back.x - p.x) < 1e-6 && abs(back.y - p.y) < 1e-6, "sheet \(index) at \(s)")
+                }
+            }
+        }
+        let flat = Separation.transform(index: 3, separation: 0)
+        #expect(CATransform3DIsIdentity(flat), "at 0 the card is the card")
+    }
+
+    @Test func theSheetsLiftApart() {
+        let centre = CGPoint(x: Card.width / 2, y: Card.height / 2)
+        let bottom = Separation.project(centre, index: 0, separation: 1)
+        let top = Separation.project(centre, index: 4, separation: 1)
+        #expect(bottom.distance(to: top) > 60, "four spreads apart, the top sheet is well clear of the stock")
+    }
+
+    /// On the flat card the title covers the band's middle; apart, the band is reachable on its own sheet.
+    @MainActor @Test func aBuriedPartIsReachableOnItsSheet() throws {
+        let copy = Copy(title: "The Brutalist", year: 2026)
+        let defaults = try #require(UserDefaults(suiteName: "separations-\(UUID().uuidString)"))
+        defer { EditionCache.clear(in: defaults) }
+        let editions = Editions(defaults: defaults)
+        editions.store(Genome.floor(for: "The Brutalist"))
+        let session = PressSession(title: "The Brutalist", copy: copy, editions: editions)
+        let c = session.composition
+        let band = try #require(c.poster.first { $0.part == "constructivist/diagonal" })
+        let middle = band.turn?.around ?? .zero
+        #expect(c.part(at: middle) == "constructivist/title", "flat, the title is on top of the band's middle")
+        #expect(c.part(at: middle, on: .first) == "constructivist/diagonal")
+
+        session.separation = 1
+        let layers = Separation.layers(metallic: c.isMetallic)
+        let first = try #require(layers.firstIndex(of: .first))
+        // A finger where the band's middle is drawn on the first plate's sheet: the sheets above are lifted clear of it.
+        let finger = Separation.project(middle, index: first, separation: 1)
+        session.touch(at: finger)
+        #expect(session.focus?.id == "constructivist/diagonal")
     }
 }
