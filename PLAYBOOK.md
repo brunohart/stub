@@ -125,7 +125,9 @@ Data only, no new UI (brief §4).
 - Tests 1, 2, 4, 5, 6, 7 from the brief (§9). ADR-016 and DESIGN.md › *The press*.
 - Flag: `--proof "disc=14,bars=3"`. Proof: the edition shot at take 0, and with the proof.
 
-## Day 24 — Wed 30 Sep — The press room, isolation, the wheel
+## Day 24 — Wed 30 Sep — The press room, isolation, the wheel ✅
+
+Shipped (on 28 Sep, straight after Day 23): both bullets. The halftone cross-fades between cached screens; the feel is a device test. See `docs/LOG.md`.
 
 - Hold the keepsake to take it to the press; the room (the bed, the bench, the italic line), ghosting the parts you are not holding, the wheel and its detents, in-betweens (`Composition.between`), the rotor and the adjustable wheel (brief §5.1–5.3).
 - Test 3. Flags: `--press`, `--part constructivist/disc`, `--take 14`, `--scrub 13.5`. Proof: shots at 13, 13.5 and 14, and `docs/screenshots/day-24-press.mov`.
