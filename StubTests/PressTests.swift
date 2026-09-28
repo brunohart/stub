@@ -2,6 +2,7 @@ import Testing
 import Foundation
 import CoreGraphics
 import QuartzCore
+import CoreHaptics
 @testable import Stub
 
 /// The press (ADR-016): every part rolled from its own die, a take as a fork of it, a proof as a difference laid over
@@ -426,5 +427,95 @@ struct BenchTests {
     @Test func everyChoiceIsSpoken() {
         for movement in Movement.allCases { #expect(movement.spoken.hasSuffix(".")) }
         for stock in Stock.allCases { #expect(stock.feel.hasSuffix(".") && !stock.words.isEmpty) }
+    }
+}
+
+/// The lever, the platen and the back (Day 27).
+struct PullTests {
+    /// A pulled proof, undone, is not pulled; redone, it is again. Shake, or three fingers.
+    @MainActor @Test func aPullCanBeUndone() throws {
+        let defaults = try #require(UserDefaults(suiteName: "pull-\(UUID().uuidString)"))
+        defer { EditionCache.clear(in: defaults); ProofCache.clear(in: defaults) }
+        let editions = Editions(defaults: defaults)
+        editions.store(Genome.floor(for: "The Brutalist"))
+        let session = PressSession(title: "The Brutalist", copy: Copy(title: "The Brutalist"), editions: editions)
+        let undo = UndoManager()
+        undo.groupsByEvent = false
+        session.undoManager = undo
+
+        undo.beginUndoGrouping()
+        session.pickUp(Parts.Constructivist.disc)
+        session.settle(on: 14)
+        undo.endUndoGrouping()
+        #expect(session.somethingToPull)
+        #expect(session.sentence(at: 14) == "The disc. Take fourteen.")
+        session.putDown()
+        #expect(session.sentence(at: 0) == "Pull it when it is right.")
+
+        undo.beginUndoGrouping()
+        session.pull()
+        undo.endUndoGrouping()
+        #expect(editions.proof(for: "The Brutalist")?.takes == ["constructivist/disc": 14])
+        #expect(editions.edition(for: "The Brutalist")?.directedBy == .you)
+        #expect(!session.somethingToPull)
+        #expect(session.pulls == 1)
+
+        undo.undo()
+        #expect(editions.proof(for: "The Brutalist") == nil, "the pull undone")
+        undo.redo()
+        #expect(editions.proof(for: "The Brutalist")?.takes == ["constructivist/disc": 14], "and done again")
+
+        undo.undo()   // the pull
+        undo.undo()   // the take
+        #expect(session.proof.takes.isEmpty, "the take on the press undone too")
+    }
+
+    @Test func thePencilSaysWhatDiffers() throws {
+        var edition = Genome.floor(for: "The Brutalist")
+        #expect(Pencil(edition: edition) == nil, "only a proof is written on")
+        edition = edition.applying(Proof(release: edition.release, takes: ["constructivist/bars": 3, "constructivist/disc": 14]))
+        let pencil = try #require(Pencil(edition: edition))
+        #expect(pencil.artistsProof)
+        #expect(pencil.takes == "disc 14 · bars 3", "in the order the parts are drawn")
+        #expect(pencil.spoken(signed: true) == "Signed, artist's proof, disc take fourteen, bars take three.")
+        #expect(edition.colophon == "Constructivist, sand inks, foil on coated card. Artist's proof, pulled by you.")
+        let inks = Genome.floor(for: "The Brutalist").applying(Proof(release: edition.release, palette: .moss))
+        #expect(Pencil(edition: inks)?.takes == nil, "A/P alone when no take differs")
+    }
+
+    /// Kept once, in Application Support, as a drawing; redone, it is gone.
+    @MainActor @Test func theSignatureIsKept() throws {
+        let url = URL.temporaryDirectory.appending(path: "signature-\(UUID().uuidString)/Signature.drawing")
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let book = Signatures(url: url)
+        #expect(!book.isSigned)
+        let fixture = Signatures.fixture()
+        #expect(fixture.strokes.count == 3)
+        book.keep(fixture)
+        #expect(book.isSigned && book.image != nil)
+        #expect(Signatures(url: url).drawing?.strokes.count == 3, "it survives a relaunch")
+        book.redo()
+        #expect(!book.isSigned)
+        #expect(!Signatures(url: url).isSigned)
+    }
+
+    @Test func theLeverResistsAndGives() throws {
+        #expect(LeverFeel.resistance(at: 0) == 0.1)
+        #expect(abs(LeverFeel.resistance(at: 1) - 0.8) < 1e-6)
+        #expect(LeverFeel.resistance(at: 0.5) < LeverFeel.resistance(at: 0.9))
+        // The handle lags the finger a little, more so as it goes; it gives before a thumb runs out of screen.
+        #expect(Lever.handle(for: 0) == 0)
+        #expect(Lever.handle(for: 75) < 75 && Lever.handle(for: 75) > 60)
+        let gives = (0...300).first { Lever.handle(for: CGFloat($0)) >= Lever.length * Lever.gives }
+        #expect(gives.map { $0 > 150 && $0 < 180 } == true, "it gives after \(gives ?? -1) points of drag")
+        #expect(abs(Lever.handle(for: 1000) - Lever.length) < 1e-9, "dragged on past the bottom, it stays at the bottom")
+        let path = (0...2000).map { Lever.handle(for: CGFloat($0)) }
+        #expect(zip(path, path.dropFirst()).allSatisfy { $0 <= $1 }, "it never comes back up while the finger goes down")
+    }
+
+    /// The platen's feel is an asset in the bundle, and it parses.
+    @Test func thePlatenIsInTheBundle() throws {
+        let url = try #require(LeverFeel.platen)
+        _ = try CHHapticPattern(contentsOf: url)
     }
 }
