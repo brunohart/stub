@@ -58,6 +58,8 @@ final class DebugDrive {
     static let scrub: Double? = value(after: "-scrub").flatMap { Double($0) }
     /// `-viewings 3`: the detail's stub is this viewing of its release, punched n − 1 times (brief §6.1).
     static let viewings: Int? = value(after: "-viewings").flatMap { Int($0) }.map { max($0, 1) }
+    /// `-clip`: with `-edition`, draw the moving share and log where it was written (brief §6.4).
+    static var wantsClip: Bool { ProcessInfo.processInfo.arguments.contains("-clip") }
     /// `-room`: with `-edition`, set the card on a table (ADR-018). The simulator has no camera, so the table is a stand-in.
     static var wantsRoom: Bool { ProcessInfo.processInfo.arguments.contains("-room") }
     /// `-age 6`: the detail's stub has been in the drawer this many years, for its patina (brief §6.2).

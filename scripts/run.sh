@@ -3,7 +3,7 @@
 # Usage: scripts/run.sh [--seed] [--reset] [--drive] [--season] [--import] [--edition] [--turned] [--tilt x,y]
 #                       [--proof spec] [--keeps] [--open title] [--press] [--part id] [--take n] [--scrub x]
 #                       [--separated s] [--bench name] [--flood p] [--pulled] [--wet w] [--signed] [--record path.mov]
-#                       [--viewings n] [--age years] [--room]
+#                       [--viewings n] [--age years] [--room] [--clip out.mp4]
 #                       [--type size] [--look metal|swiftui] [--wait-for regex] [--shot path.png]
 # --drive: after the seed, press, open, hold and close on a timer (see DebugDrive) so the run can be filmed.
 # --season: open the season sheet once the seed has settled.
@@ -26,6 +26,7 @@
 # --viewings 3: the opened stub is that viewing of its release, punched n − 1 times through the strip (Day 28).
 #   --age 6: it has been in the drawer that many years, for its patina.
 # --room: with --edition, set the card on a table (Day 29). The simulator has no camera: a parchment stand-in.
+# --clip out.mp4: with --edition, draw the moving share (Day 30), wait for it, and copy it out of the app's container.
 # --type: set the simulator's Dynamic Type size for the run (medium, extra-extra-large, accessibility-extra-large …)
 #   and put it back to medium afterwards.
 # --wait-for: instead of sleeping STUB_SETTLE seconds, poll the app's log for a line matching the regex
@@ -34,7 +35,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
-ARGS=(); SHOT=""; WAIT=""; TYPE=""; RECORD=""
+ARGS=(); SHOT=""; WAIT=""; TYPE=""; RECORD=""; CLIP=""
 while [ $# -gt 0 ]; do case "$1" in
   --seed) ARGS+=(-seed);; --reset) ARGS+=(-reset);; --drive) ARGS+=(-drive);; --season) ARGS+=(-season);;
   --import) ARGS+=(-import);; --type) TYPE="$2"; shift;;
@@ -45,6 +46,7 @@ while [ $# -gt 0 ]; do case "$1" in
   --bench) ARGS+=(-bench "$2"); shift;; --flood) ARGS+=(-flood "$2"); shift;;
   --pulled) ARGS+=(-pulled);; --wet) ARGS+=(-wet "$2"); shift;; --signed) ARGS+=(-signed);;
   --viewings) ARGS+=(-viewings "$2"); shift;; --age) ARGS+=(-age "$2"); shift;; --room) ARGS+=(-room);;
+  --clip) ARGS+=(-clip); CLIP="$2"; WAIT="${WAIT:-Clip: written}"; shift;;
   --look) ARGS+=(-look "$2"); shift;; --wait-for) WAIT="$2"; shift;;
   --shot) SHOT="$2"; shift;; *) echo "unknown $1" >&2; exit 2;; esac; shift; done
 SIM="$(scripts/sim.sh)"
@@ -77,5 +79,9 @@ else
   sleep "${STUB_SETTLE:-12}"
 fi
 if [ -n "$SHOT" ]; then xcrun simctl io "$SIM" screenshot "$SHOT" >/dev/null 2>&1 && echo "screenshot: $SHOT"; fi
+if [ -n "$CLIP" ]; then
+  MADE="$(ls -t "$(xcrun simctl get_app_container "$SIM" com.designedbybruno.stub data)"/tmp/*-edition.mp4 2>/dev/null | head -1)"
+  if [ -n "$MADE" ] && cp "$MADE" "$CLIP"; then echo "clip: $CLIP"; else echo "no clip was written" >&2; fi
+fi
 # What the reader did, for the log.
 applog

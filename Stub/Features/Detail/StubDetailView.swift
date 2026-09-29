@@ -157,8 +157,18 @@ struct StubDetailView: View {
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                if let shareable {
-                    ShareLink(item: shareable, preview: SharePreview("An edition of \(stub.title)", image: shareable)) {
+                if let shareable, let edition = editions.edition(for: stub.title) {
+                    // The still, and beside it the card turning in the light: a still is the wrong share for a card whose
+                    // point is light (brief §6.4). The clip is drawn when a destination asks for it.
+                    Menu {
+                        ShareLink(item: EditionClip(composition: Composition(edition: edition, copy: copy)),
+                                  preview: SharePreview("An edition of \(stub.title), turning in the light", image: shareable)) {
+                            Label("Share it turning in the light", systemImage: "film")
+                        }
+                        ShareLink(item: shareable, preview: SharePreview("An edition of \(stub.title)", image: shareable)) {
+                            Label("Share the still", systemImage: "photo")
+                        }
+                    } label: {
                         Label("Share the edition", systemImage: "square.and.arrow.up")
                     }
                     .tint(Ink.ink)
@@ -176,6 +186,18 @@ struct StubDetailView: View {
         }
         #if DEBUG
         .onChange(of: DebugDrive.shared.turned) { _, now in turned = now }
+        .task {
+            // `-clip`: draw the moving share once the card is printed, as a destination asking for it would, and log it.
+            guard DebugDrive.wantsClip else { return }
+            do {
+                while editions.edition(for: stub.title) == nil { try await Task.sleep(for: .milliseconds(250)) }
+                guard let edition = editions.edition(for: stub.title) else { return }
+                let url = try await EditionClip(composition: Composition(edition: edition, copy: copy)).render()
+                EditionClip.log.info("Clip: written to \(url.path)")
+            } catch {
+                EditionClip.log.error("Clip: \(error.localizedDescription)")
+            }
+        }
         .task {
             // `-room`: set the card on the table once it is printed, as "Put it on the table" would on a phone that can.
             guard DebugDrive.wantsRoom else { return }
