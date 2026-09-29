@@ -45,7 +45,8 @@ struct EvalTests {
 
     @Test func evalsWriteTheTable() async throws {
         let truths = try Self.truths()
-        #expect(truths.count == 8)
+        // Eight since Day 3; the ninth (Day 28) is a second viewing of the third's release.
+        #expect(truths.count == 9)
 
         var modelNote = "no on-device model on this host"
         var askModel = false
