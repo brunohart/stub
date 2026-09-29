@@ -163,7 +163,13 @@ Shipped (on 29 Sep): the card as a RealityKit entity cut from `TicketShape`, lit
 
 - ADR-018 (the brief's ADR-017; that number went to taking the grain out). The card on a real table through the camera (RealityKit), gated on `ARWorldTrackingConfiguration.isSupported`. The entity builds in the simulator; placing it is a device test (`docs/device.md` §3).
 
-## Day 30 — Tue 6 Oct — The moving share, and the write-up
+## Day 30 — Tue 6 Oct — The moving share, and the write-up ✅
+
+Shipped (on 29 Sep): `ImageRenderer` draws the shaders (a test says so); three seconds of the card turning in the light, beside the still in the share; the README, `docs/device.md` §3.10 and a draft `docs/post-press.md`. 111 tests. The press brief is done. See `docs/LOG.md`.
 
 - Confirm `ImageRenderer` draws the edition's shaders first. A three-second clip of the card turning in the light in the `ShareLink`.
 - `README.md` (the press row, the day table), `docs/device.md` §3 (the press in the hand), and a draft `docs/post-press.md` on one subject: re-rolling a part without moving the rest, from `Dice.fork` to the wheel.
+
+## After Day 30
+
+The press brief is done. The slot exits with "playbook complete" until this file grows. The "Still rough" paragraphs of Days 28 to 30 in `docs/LOG.md` are where a Day 31 would start, and `docs/device.md` §3 is the list only a phone can close.

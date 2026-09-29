@@ -2,6 +2,20 @@
 
 Newest at the top. One entry per slot. What shipped, what broke, what the reader did.
 
+## 2026-09-29 — Day 30: The moving share, and the write-up
+
+Same session, same day (brief §6.4 and §10). The last day of the press brief.
+
+**Shipped.** First, the risk the brief named: **`ImageRenderer` draws the edition's shaders.** A new test renders a foil card lit and unlit (`editionLit`) and needs the two to differ across the card, and needs the foil never to come out as the bare white shape the foil shader is handed. Both hold: the `colorEffect` (the stock's sheen) and the `layerEffect`s (the relief, the foil) are all drawn. So the still share that has depended on this since Day 21 was right all along, and so is the room's base colour, which carries the patina's foxing into RealityKit. **The moving share** (`EditionClip`): three seconds at 60 fps of the card turning from −0.35 to 0.35 of tilt on a cosine ease, so the loop has no jolt at either end. It leans as the keepsake leans (11° a unit of tilt, the same perspective), the light moves with it, and it sits on the still's parchment margin with its shadow. Each frame comes from `ImageRenderer` at two pixels a point and goes to HEVC through `AVAssetWriter` (772 by 1,168, 6 Mb/s). It is a `Transferable` with a `FileRepresentation`, so the clip is drawn only when a destination asks for it, not when the detail opens. The detail's share button is now a menu: "Share it turning in the light" and "Share the still". `run.sh --clip out.mp4` draws it in the app and copies it out of the container. The write-up: `README.md` gains the card's history, the room and the share, *Place* and *Share* rows, the tuned numbers for the punch, the patina, the card on a table and the clip, Days 28 to 30, the new flags, today's eval table, and an honesty paragraph that no longer says the model has never art-directed an edition. `docs/device.md` §3.10 covers the moving share; §3.8 already covered the press in the hand, and §3.9 covers the room. `docs/post-press.md` is a draft on one subject in the voice of `docs/post.md`: re-rolling one part of a poster without moving the rest, from `Dice.fork` to the wheel. One hundred and eleven tests in twenty-two suites (three new in `ShareTests`).
+
+Screenshots: `day-30-clip.mp4` (the second Dune, holographic film on the disc, 180 frames in 9.8 s in a Debug build, 1.6 MB) and `day-30-clip-frames.png` (its first, middle and last frames side by side: the film's bands slide across the disc as the card turns).
+
+**Reader.** No new seed. The eval ran a third time today with the model: medians 6.0 s cold and 5.7 s hinted (2.6 s and 17.7 s on the two runs before). Hinted model and heuristic are 9/9 on every field; cold, the model read eight of nine cinemas, dates and screens, and two of nine prices. La Chimera's edition was chosen by the model in 10.9 s (constructivist, oxide, coated, over the floor's blueprint, night, foil): the second release the model has art-directed in the simulator.
+
+**Broke and fixed.** `run.sh` first found the clip by reading its path out of the app's log, and the log is cut at 220 characters, well short of a simulator container path; it now takes the newest `*-edition.mp4` from the app's `tmp`. The first proof clip was La Chimera, which the model had just moved from foil to coated card, so there was no foil for the light to cross; the proof is the holographic Dune instead.
+
+**Still rough.** Drawing the clip takes about ten seconds in a Debug build in the simulator, and the share sheet waits for it; on a phone in Release it should be several times faster, but that is a device test (§3.10). The clip is the front only; a turn that went over to the back would show the stub you were handed, and is the obvious next clip. The press brief is done. Days 28 to 30 were filed in Linear as BEDIP-213, 214 and 215 and closed; Days 21 to 27 have no issues there.
+
 ## 2026-09-29 — Day 29: The room's light
 
 Same session, same day (brief §6.3, ADR-018).

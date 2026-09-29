@@ -2,9 +2,9 @@
 
 **A private archive of every film you saw in a room with strangers.**
 
-Photograph the ticket stub. The phone reads it, files it, and gives you two things back: the stub as it was scanned, and an **edition**, a ticket designed for that film's release, printed with your own seat and night, lit by the phone and felt under your finger. Then you can take the edition to the **press** and pull your own proof of it. Nothing leaves the device.
+Photograph the ticket stub. The phone reads it, files it, and gives you two things back: the stub as it was scanned, and an **edition**, a ticket designed for that film's release, printed with your own seat and night, lit by the phone and felt under your finger. Then you can take the edition to the **press** and pull your own proof of it, put it on a real table, and send it turning in the light. Nothing leaves the device.
 
-Native Swift and SwiftUI, Metal, Vision, Foundation Models, Core Haptics. iOS 26, built and proved daily in the iOS 27 simulator.
+Native Swift and SwiftUI, Metal, Vision, Foundation Models, Core Haptics, RealityKit. iOS 26, built and proved daily in the iOS 27 simulator.
 
 <p>
 <img src="docs/screenshots/day-7-table.png" width="24%" alt="The drawer: eight stubs tipped onto a table, each a little crooked">
@@ -55,7 +55,21 @@ What the press keeps isn't an image. It's the difference between your card and t
 {"pulledAt":"2026-09-27T23:48:29Z","release":"la chimera","takes":{"blueprint/circle":7,"blueprint/radius":3},"version":2}
 ```
 
-That is 122 bytes, and it prints the same card on every phone. Going back is deleting it.
+That is 122 bytes, and it prints the same card on every phone. Going back is deleting it. The long version is [`docs/post-press.md`](docs/post-press.md): re-rolling one part of a poster without moving the rest, from `Dice.fork` to the wheel.
+
+### The card keeps its history
+
+A second viewing of a release punches the strip, the way a conductor punches a ticket, in the movement's own die: noir's is a crescent, riso's is two discs out of register, deco's a stepped diamond. The punch goes through both faces and lands clear of every word and of the code on the back. The card also ages from the night it was seen. The stock warms, a spot of foxing comes up every eighteen months or so, and the corners fray. It's the same on every phone and changes only as the calendar does.
+
+Put it on the table and the card sits on a real surface through the camera, at its real size, 64 by 102 millimetres and four tenths thick, cut with its perforation and punches. There, and only there, the light is the room's. Share it and you get the still or three seconds of the card turning while the light crosses the foil.
+
+<p>
+<img src="docs/screenshots/day-28-viewings-3.png" width="32%" alt="The Brutalist as a third viewing: two crescent punches through a noir strip">
+<img src="docs/screenshots/day-28-age-6-back.png" width="32%" alt="The back of a six-year-old card: warmer stock, four spots of foxing, rubbed corners">
+<img src="docs/screenshots/day-29-room.png" width="32%" alt="The second Dune lying on a stand-in table in RealityKit, the holographic disc catching the light">
+</p>
+
+<sub>A third viewing, punched twice · six years in the drawer · on a table, lit by the room (the simulator's stand-in). <a href="docs/screenshots/day-30-clip.mp4">The moving share</a>.</sub>
 
 ---
 
@@ -78,6 +92,10 @@ Every number here was set on purpose, and most were tuned by eye and thumb. The 
 | The lever | 150 pt of travel, gives at 92%, resistance 0.1 → 0.8 | Committing is physical; there is no Save button *(device)* |
 | Wet ink | dries over 2.4 s, then the timeline stops | The one thing that moves on its own, and it ends |
 | A proof | about 120 bytes | A few numbers laid over an edition, not a picture of one |
+| A punch | 16 pt across, 3 pt clear of any word | Smaller and a cut shape reads as a printed glyph |
+| Patina | warmth 0.42 (1 − e^(−years/4.5)), foxing from the first year, one spot every eighteen months, seven at most | Quick at first, then hardly at all; rare |
+| The card on a table | 64 × 102.4 × 0.4 mm, maps at 2.5 px a point | A playing card's size; cut in 0.8 s in a Debug build *(device)* |
+| The moving share | 3 s at 60 fps, tilt −0.35 → 0.35, HEVC | About 1.6 MB; drawn in 10 s in a Debug build, when a destination asks for it |
 
 ## How it's built
 
@@ -90,6 +108,8 @@ Every number here was set on purpose, and most were tuned by eye and thumb. The 
 | **Look** | Metal `[[stitchable]]` shaders in SwiftUI | Silkscreen and misregistration on flat parchment, specified at the modifier boundary so Metal is an implementation, not the identity ([ADR-002](DECISIONS.md#adr-002--the-look-is-specified-in-swiftui-first-metal-is-an-implementation-not-the-identity)) |
 | **Print** | `@Guide(.anyOf(…))`, Metal, Core Motion, Core Haptics | The model art-directs from a closed vocabulary; the hash draws; one light ([ADR-015](DECISIONS.md#adr-015--every-release-gets-an-edition-the-hash-draws-it-the-model-art-directs-it-from-a-closed-vocabulary)) |
 | **Press** | SwiftUI `Canvas`, `projectionEffect`, Core Haptics | Parts, takes, in-betweens, separations; a proof is a diff ([ADR-016](DECISIONS.md#adr-016--the-press-a-proof-is-a-diff-over-the-edition-and-every-part-has-its-own-die)) |
+| **Place** | RealityKit, ARKit, a RealityKit surface shader | The card on a real table, lit by the room; holographic film from the real view direction ([ADR-018](DECISIONS.md#adr-018--the-rooms-light-on-a-real-table-the-card-is-lit-by-the-room)) |
+| **Share** | `ImageRenderer`, AVFoundation | The still, and three seconds of the card turning in the light, drawn frame by frame through the same shaders |
 | **Keep** | SwiftData, an App Group | On the device, no account, no network ([ADR-005](DECISIONS.md#adr-005--private-by-construction), [ADR-012](DECISIONS.md#adr-012--one-drawer-in-an-app-group-the-app-writes-it-the-widget-reads-it-an-intent-runs-inside-the-app)) |
 | **Reach** | App Intents, WidgetKit, VisionKit | "Log a stub in Stub"; the last stub on the lock screen; live text from the camera |
 | **Access** | VoiceOver, Dynamic Type, Reduce Motion | Every card says what it knows; one column at the accessibility sizes; a rotor for the parts of a poster; the wheel is one adjustable control ([ADR-013](DECISIONS.md#adr-013--the-table-is-two-columns-until-the-type-gets-large-at-the-accessibility-sizes-it-is-one)) |
@@ -117,6 +137,9 @@ One day at a time, each day proved by a screenshot of the real app running in th
 | 25 | Separations | <img src="docs/screenshots/day-25-separated.png" width="96"> |
 | 26 | The fan of movements, the draw-downs that flood the card, the swatch book | <img src="docs/screenshots/day-26-flood.png" width="96"> |
 | 27 | The lever and the platen, wet ink, undo, and the back: signed, A/P, the takes in pencil | <img src="docs/screenshots/day-27-signed.png" width="96"> |
+| 28 | The punch and patina: a remarque for every viewing after the first; the card ages from the night | <img src="docs/screenshots/day-28-viewings-3.png" width="96"> |
+| 29 | The room's light: the card on a real table, lit by the room ([ADR-018](DECISIONS.md#adr-018--the-rooms-light-on-a-real-table-the-card-is-lit-by-the-room)) | <img src="docs/screenshots/day-29-room.png" width="96"> |
+| 30 | The moving share, and the write-up, [`docs/post-press.md`](docs/post-press.md) | <img src="docs/screenshots/day-30-clip-frames.png" width="96"> |
 
 ## Run it
 
@@ -125,7 +148,7 @@ You need Xcode 27 with an iOS 27 simulator (the app still targets iOS 26; [ADR-0
 ```bash
 git clone https://github.com/brunohart/stub && cd stub
 scripts/build.sh      # xcodegen, then a simulator build
-scripts/test.sh       # 98 tests on an iPhone 18 Pro; the eval suite asks the model for a couple of minutes
+scripts/test.sh       # 111 tests on an iPhone 18 Pro; the eval suite asks the model for a few minutes
 scripts/run.sh --seed --reset --wait-for "written|hand-counted" --shot docs/screenshots/now.png
 ```
 
@@ -133,7 +156,7 @@ The simulator has no camera, no gyroscope and no hands, so `run.sh` stands in fo
 
 | Flag | Does |
 |---|---|
-| `--seed --reset` | Runs the eight synthetic stubs in `fixtures/` through the real crop, Vision and parsers |
+| `--seed --reset` | Runs the nine synthetic stubs in `fixtures/` through the real crop, Vision and parsers |
 | `--edition [--open "Title"]` | Opens a stub so its edition is chosen and printed; `--turned` shows its back |
 | `--tilt x,y` | Holds the light where a screenshot wants it |
 | `--press --part disc --take 14` | Carries the card into the press and turns a part; `--scrub 13.5` holds an in-between |
@@ -141,6 +164,9 @@ The simulator has no camera, no gyroscope and no hands, so `run.sh` stands in fo
 | `--proof "disc=14,bars=3"` | Pulls a proof; `--keeps` shows what the press keeps |
 | `--bench movement` · `--flood 0.4` | Opens the fan, the draw-downs or the swatch book; holds a flood part-way |
 | `--pulled --wet 0.6` · `--signed` | Pulls the proof on the press and holds the ink wet; signs with a fixture signature |
+| `--viewings 3` · `--age 6` | Punches the card as a third viewing; ages it six years |
+| `--room` | Sets the card on a table (the simulator has no camera, so the table is a stand-in) |
+| `--clip out.mp4` | Draws the moving share and copies it out |
 | `--drive [--record out.mov]` | Plays the interactions on a clock, and films them |
 | `--type accessibility-extra-large` | Sets Dynamic Type for the run |
 
@@ -148,24 +174,24 @@ To run it on a phone, see [`docs/device.md`](docs/device.md).
 
 ## What the readers score
 
-A test runs every fixture through the real pipeline and writes [`docs/evals.md`](docs/evals.md). The run of 28 September 2026, on the iOS 27 simulator:
+A test runs every fixture through the real pipeline and writes [`docs/evals.md`](docs/evals.md). The run of 29 September 2026, on the iOS 27 simulator, with the ninth fixture (a second Dune Part Two, printed IMAX):
 
 | Field | rules | model, cold | model + the rules' draft |
 |---|---|---|---|
-| title | 8/8 | 8/8 | 8/8 |
-| cinema | 8/8 | 5/8 | 8/8 |
-| date | 8/8 | 8/8 | 8/8 |
-| screen | 8/8 | 7/8 | 8/8 |
-| seat | 8/8 | 8/8 | 8/8 |
-| price | 8/8 | 2/8 | 8/8 |
+| title | 9/9 | 9/9 | 9/9 |
+| cinema | 9/9 | 8/9 | 9/9 |
+| date | 9/9 | 8/9 | 9/9 |
+| screen | 9/9 | 8/9 | 9/9 |
+| seat | 9/9 | 9/9 | 9/9 |
+| price | 9/9 | 2/9 | 9/9 |
 
-The rules take about a millisecond. The model takes 2.4 s (median) with the hint and 2.7 s cold. Cold, it reads a `$` as US dollars. Given the rules' draft, it matches them on every field. It isn't the same reader twice, so the table is a sample, and the log records the runs that scored differently.
+The rules take about a millisecond. The model took 5.7 s (median) with the hint and 6.0 s cold on this run; three runs that day had medians from 2.5 s to 17.7 s on the same Mac. Cold, it reads a `$` as US dollars. Given the rules' draft, it matches them on every field. It isn't the same reader twice, so the table is a sample, and the log records the runs that scored differently.
 
 ## Honesty
 
 On Day 0 the on-device model said it was available and then refused every request. The rules filed every fixture anyway, and that is why they are the floor and why every stub records who read it. On Day 1, Vision's document segmentation confidently returned a strip of table for every ticket, and a plain rectangle detector became the second floor. Day 21's editions were written on a machine with no Swift compiler and judged in a browser. They compiled on the first try on Day 22, and the log says what that session did and didn't catch.
 
-What isn't proved yet: the camera, the Siri phrases, the lock-screen widget, and everything you feel rather than see (the gyroscope, the haptics, the wheel's detents, the foil in moving light) need a signed build on a phone. In the simulator, the model hasn't yet art-directed an edition: every one so far fell back to the hash after twelve seconds, most likely because the season sentence was using the model at the same time. Each day's log ends with a "Still rough" paragraph.
+What isn't proved yet: the camera, the Siri phrases, the lock-screen widget, the card on a real table, and everything you feel rather than see (the gyroscope, the haptics, the wheel's detents, the foil in moving light) need a signed build on a phone. The model art-directed its first editions in the simulator on Day 28 (The Brutalist as noir, La Chimera as constructivist), but its latency swings from about two seconds to about eighteen between runs on the same Mac, so plenty of editions still fall back to the hash after twelve seconds. Each day's log ends with a "Still rough" paragraph.
 
 ## Licence
 
