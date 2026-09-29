@@ -120,7 +120,7 @@ struct Pencil: Equatable {
         return words.joined(separator: ", ") + "."
     }
 
-    private static func spelled(_ n: Int) -> String {
+    static func spelled(_ n: Int) -> String {
         let f = NumberFormatter()
         f.locale = Locale(identifier: "en")
         f.numberStyle = .spellOut

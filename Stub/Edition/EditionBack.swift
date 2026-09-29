@@ -28,7 +28,8 @@ struct EditionBack: View {
         ZStack(alignment: .topLeading) {
             // The back of the card is bare stock: the palette's lighter paper, whichever way round the front was.
             Rectangle().fill(Color(hex: ground))
-                .modifier(StockEffect(light: light, stock: c.edition.stock == .cotton ? .cotton : .coated, seed: Double(c.edition.seed % 991)))
+                .modifier(StockEffect(light: light, stock: c.edition.stock == .cotton ? .cotton : .coated, seed: Double(c.edition.seed % 991),
+                                      patina: c.patina.mirrored))
 
             VStack(alignment: .leading, spacing: 0) {
                 mount(corner: corner)
@@ -48,7 +49,8 @@ struct EditionBack: View {
                 .offset(y: Card.poster)
         }
         .frame(width: Card.width, height: Card.height)
-        .clipShape(TicketShape())
+        // The punches go through both faces: from the back, each is where it is on the front, mirrored.
+        .clipShape(TicketShape(punches: c.punches, mirrored: true))
     }
 
     /// The photograph in four corners, or a blank stub if there is none.
@@ -128,7 +130,7 @@ struct EditionBack: View {
                     .font(Face.serifItalic.font(14))
                     .foregroundStyle(words)
                 // The serial is the release's hash: every copy of this edition carries the same one.
-                Text("No. " + String(composition.edition.seed >> 32, radix: 16).uppercased())
+                Text(Self.serial(composition.edition))
                     .font(Face.mono.font(11))
                     .foregroundStyle(words.opacity(0.7))
             }
@@ -139,11 +141,12 @@ struct EditionBack: View {
                     .interpolation(.none)
                     .resizable()
                     .foregroundStyle(words)
-                    .frame(width: 62, height: 62)
+                    .frame(width: Self.codeSide, height: Self.codeSide)
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 22)
+        // `clearZones` measures the same numbers, so a punch never lands on the code or these words.
+        .padding(.horizontal, Self.stripInset.width)
+        .padding(.vertical, Self.stripInset.height)
         .frame(maxHeight: .infinity, alignment: .bottom)
     }
 }

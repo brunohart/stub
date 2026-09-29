@@ -36,15 +36,49 @@ static float edition_height(half4 s) {
     return float(s.a) - 0.6 * float(dot(s.rgb, half3(0.299h, 0.587h, 0.114h)));
 }
 
+// Patina (brief §6.2): what the stock has earned since the night it was seen. `warmth` yellows the ground, `wear`
+// rubs the four corners light, and each spot (x, y, radius, strength, in card points) is foxing: a small rust stain
+// in the paper, soft-edged, a little darker at its core. All three come from `Patina` in Swift, which makes them zero at
+// age 0, and the caller skips this entirely there, so a new card is exactly the stock.
+static float3 edition_patina(float3 rgb, float2 p, float2 size, float warmth, float wear, device const float *spots, int count) {
+    rgb = mix(rgb, rgb * float3(1.0, 0.95, 0.82), warmth);
+    // A worn corner is frayed along its cut edge, not stained: lighter fibre hugging the rounded outline for a few
+    // points, fading out along the sides away from the corner.
+    float2 q = abs(p - size * 0.5) - (size * 0.5 - 10.0);
+    float inside = -(length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - 10.0);
+    float2 near = min(p, size - p);
+    float corner = 1.0 - smoothstep(8.0, 34.0, length(near));
+    float fray = 1.0 - smoothstep(0.0, 3.5 + edition_noise(p * 0.6) * 3.0, inside);
+    float rub = fray * corner;
+    float3 rubbed = mix(rgb, float3(0.93, 0.91, 0.86), 0.6);
+    rgb = mix(rgb, rubbed, rub * wear);
+    for (int i = 0; i + 3 < count; i += 4) {
+        float2 c = float2(spots[i], spots[i + 1]);
+        float r = spots[i + 2];
+        float d = distance(p, c);
+        if (d > r * 2.6) { continue; }
+        float edge = r * (1.0 + (edition_noise(p * 0.8 + c) - 0.5) * 0.7);
+        float core = 1.0 - smoothstep(r * 0.2, edge, d);
+        float halo = (1.0 - smoothstep(edge, r * 2.6, d)) * 0.3;
+        rgb = mix(rgb, rgb * float3(0.8, 0.62, 0.44), spots[i + 3] * max(core, halo));
+    }
+    return rgb;
+}
+
 // The stock. Cotton has a long soft fibre; coated card has a satin gloss that follows the light. No per-pixel grain:
-// speckle over a whole card reads as noise on a screen, not as paper (ADR-017).
-[[ stitchable ]] half4 stock(float2 position, half4 color, float4 bounds, float2 light, float fibre, float gloss, float seed) {
+// speckle over a whole card reads as noise on a screen, not as paper (ADR-017). `age` in years; at 0 there is no patina.
+[[ stitchable ]] half4 stock(float2 position, half4 color, float4 bounds, float2 light, float fibre, float gloss, float seed,
+                             float age, float warmth, float wear, device const float *spots, int count) {
     float2 uv = (position - bounds.xy) / max(bounds.zw, float2(1.0));
     // Cotton rag: short fibres, a little longer across than down, two octaves so it reads as paper, not grain.
     float f = edition_noise(position * float2(0.11, 0.32) + seed * 13.0) * 0.65
         + edition_noise(position * float2(0.31, 0.9) + seed * 7.0) * 0.35 - 0.5;
     float s = edition_sheen(uv, light, 2.2) * gloss;
-    float3 rgb = float3(color.rgb) + f * fibre + s;
+    float3 rgb = float3(color.rgb) + f * fibre;
+    if (age > 0.0) {
+        rgb = edition_patina(rgb, position - bounds.xy, bounds.zw, warmth, wear, spots, count);
+    }
+    rgb += s;
     return half4(half3(clamp(rgb, 0.0, 1.0)) * color.a, color.a);
 }
 

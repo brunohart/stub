@@ -15,6 +15,10 @@ struct Composition: Sendable, Equatable {
     let stripField: Role
     /// For a drawing between two takes of one part (the wheel mid-turn), where between them it is; `nil` for a take.
     let inBetween: InBetween?
+    /// The remarques: which viewing this copy was, punched through the strip (brief §6.1). None for a first viewing.
+    let punches: [Punch]
+    /// The surface the card has earned since the night it was seen (brief §6.2).
+    let patina: Patina
 
     struct InBetween: Equatable, Sendable {
         var part: Part.ID
@@ -32,12 +36,15 @@ struct Composition: Sendable, Equatable {
         stripField = edition.movement == .noir ? .dark : .ground
         strip = composer.strip(on: stripField)
         inBetween = nil
+        punches = Remarque.punches(for: edition, copy: copy, strip: strip)
+        patina = Patina(age: copy.age, seed: edition.seed, viewing: copy.viewing)
     }
 
     /// This composition with another poster: an in-between, drawn by `between`.
     init(_ c: Composition, poster: [Mark], inBetween: InBetween?) {
         edition = c.edition; inks = c.inks; copy = c.copy; strip = c.strip
         posterField = c.posterField; stripField = c.stripField
+        punches = c.punches; patina = c.patina
         self.poster = poster
         self.inBetween = inBetween
     }

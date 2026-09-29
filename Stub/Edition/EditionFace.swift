@@ -63,7 +63,7 @@ struct EditionFace: View {
                 }
             }
             .frame(width: Card.width, height: Card.height)
-            .clipShape(TicketShape())
+            .clipShape(TicketShape(punches: composition.punches))
         }
     }
 
@@ -72,9 +72,9 @@ struct EditionFace: View {
     func sheet(_ layer: Separation.Layer) -> some View {
         layerArt(layer)
             .frame(width: Card.width, height: Card.height)
-            .clipShape(TicketShape())
+            .clipShape(TicketShape(punches: composition.punches))
             .overlay {
-                TicketShape().stroke(Color(hex: edge(of: layer)).opacity(layer == .stock ? 0.35 : 0.2), lineWidth: 0.75)
+                TicketShape(punches: composition.punches).stroke(Color(hex: edge(of: layer)).opacity(layer == .stock ? 0.35 : 0.2), lineWidth: 0.75)
             }
     }
 
@@ -103,7 +103,7 @@ struct EditionFace: View {
                 context.fill(Path(Card.posterRect), with: .color(c.inks.color(c.posterField)))
                 context.fill(Path(Card.stripRect), with: .color(c.inks.color(c.stripField)))
             }
-            .modifier(StockEffect(light: light, stock: stock, seed: Double(c.edition.seed % 997)))
+            .modifier(StockEffect(light: light, stock: stock, seed: Double(c.edition.seed % 997), patina: c.patina))
         case .first, .second, .type:
             // One canvas a plate, so each has its own impression and the print run can lay each down on its own. The
             // type lies over the foil, never under it: stamped last in time, but a title the foil covered would be a
@@ -143,9 +143,14 @@ private struct PlateArt: View, Equatable {
     }
 }
 
-/// The ticket's outline: rounded corners, a half-moon notch at each end of the perforation, and the
-/// perforation itself punched through, so whatever is under the card shows through the holes.
+/// The ticket's outline: rounded corners, a half-moon notch at each end of the perforation, the perforation itself
+/// punched through, and the conductor's punches (the remarques), so whatever is under the card shows through the holes.
 struct TicketShape: Shape {
+    /// The remarques, in the front's card points (brief §6.1).
+    var punches: [Punch] = []
+    /// The card seen from the back: turned over about its long axis, so every punch is mirrored.
+    var mirrored = false
+
     func path(in rect: CGRect) -> Path {
         let s = rect.width / Card.width
         let card = Path(roundedRect: rect, cornerRadius: Card.corner * s)
@@ -159,6 +164,9 @@ struct TicketShape: Shape {
         while x < Card.width - 14 {
             cuts.addEllipse(in: CGRect(x: rect.minX + x * s - hole, y: y - hole, width: hole * 2, height: hole * 2))
             x += 7.5
+        }
+        for punch in punches {
+            cuts.addPath(punch.path(scale: s, origin: rect.origin, mirrored: mirrored))
         }
         return card.subtracting(cuts)
     }
@@ -325,11 +333,16 @@ struct StockEffect: ViewModifier {
     var light: Light
     var stock: Stock
     var seed: Double
+    /// The age the stock has earned (brief §6.2). `Patina.none` changes nothing.
+    var patina: Patina = .none
 
     func body(content: Content) -> some View {
         if LookEngine.current.isMetal {
             content.colorEffect(ShaderLibrary.stock(
-                .boundingRect, .float2(light.vector), .float(stock.fibre), .float(stock.gloss), .float(seed)
+                .boundingRect, .float2(light.vector), .float(stock.fibre), .float(stock.gloss), .float(seed),
+                .float(patina.age), .float(patina.warmth), .float(patina.wear),
+                // Never an empty buffer: a spot of strength zero stands in for none.
+                .floatArray(patina.spots.isEmpty ? [0, 0, 1, 0] : patina.spots)
             ))
         } else {
             content

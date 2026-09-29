@@ -139,7 +139,8 @@ struct Keepsake: View {
                 }
                 // The card's edge: a sliver of darker stock showing on the side away from the light.
                 .background(
-                    TicketShape()
+                    // Punched too, and mirrored when the back is showing: through a hole, the cut wall shows on one side.
+                    TicketShape(punches: composition.punches, mirrored: angle > 90)
                         .fill(Color(hex: EditionInks.mix(composition.inks.hex(composition.stripField), 0x000000, 0.35)))
                         .offset(x: 1.2 - tilt.x * 1.2, y: 1.8 - tilt.y * 1.2)
                 )
@@ -261,7 +262,8 @@ struct Keepsake: View {
             let pencil = Pencil(edition: edition).map { " " + $0.spoken(signed: Signatures.shared.isSigned) } ?? ""
             return "The stub for \(stub.title) as it was scanned, on the back of its edition.\(pencil)"
         }
-        return "The edition of \(stub.title): \(edition.colophon) \(copy.viewingWords)."
+        let punched = Remarque.spoken(memo.composition(edition, copy).punches).map { ", \($0)" } ?? ""
+        return "The edition of \(stub.title): \(edition.colophon) \(copy.viewingWords)\(punched)."
     }
 }
 
