@@ -2,6 +2,7 @@
 // Draws synthetic ticket stubs as PNGs so the simulator has something honest to read.
 // Usage: swift scripts/make-fixtures.swift fixtures/ [index ...]
 // Day 0: four clean stubs. Day 3: four harder ones (rotated, low contrast, thermal receipt, European).
+// Day 28: a second Dune Part Two, so the drawer holds a second viewing of one release and its card is punched.
 import Foundation
 import AppKit
 
@@ -31,6 +32,8 @@ let tickets: [Ticket] = [
     Ticket(venue: "ACADEMY CINEMAS", film: "ANORA", when: "Wed 19 Feb 2025 8:15PM", screen: "CINEMA 2", seat: "SEAT C8", price: "ADULT        $19.00", ref: "TRANS 004512", paper: NSColor(calibratedWhite: 0.97, alpha: 1), rotation: 0.6, ink: NSColor(calibratedWhite: 0.22, alpha: 1), layout: .receipt, extra: ["44 LORNE ST AUCKLAND", "--------------------"], slug: "thermal"),
     // 8: European. Accents in the venue, dotted date, French seat words, trailing euro with a comma.
     Ticket(venue: "CINÉMA DU PANTHÉON", film: "LA CHIMERA", when: "24.03.2024 20:30", screen: "SALLE 2", seat: "RANG F PLACE 12", price: "TARIF PLEIN 12,50 €", ref: "Billet n° 4471", paper: NSColor(calibratedRed: 0.93, green: 0.88, blue: 0.78, alpha: 1), rotation: -2.5, slug: "european"),
+    // Day 28. The same release again, a fortnight later, another seat: "IMAX" must fold away so it is one edition.
+    Ticket(venue: "THE ROXY CINEMA", film: "DUNE PART TWO IMAX", when: "Sat 30 Mar 2024 13:10", screen: "SCR 1", seat: "SEAT G 11", price: "TOTAL $21.00", ref: "ADMIT ONE", paper: NSColor(calibratedRed: 0.95, green: 0.94, blue: 0.89, alpha: 1), rotation: -1.6, slug: "dune-again"),
 ]
 
 let args = Array(CommandLine.arguments.dropFirst())
