@@ -157,7 +157,9 @@ Shipped (on 29 Sep): both bullets. The punch in each movement's own die, through
 - Remarques punched through both faces for second and later viewings; patina from `screenedAt` and the seed (brief §6.1–6.2). Tests 8 and 9. Flags: `--viewings 3`, `--age 6`.
 - A ninth fixture in `scripts/make-fixtures.swift`, a second Dune Part Two ticket ("DUNE PART TWO IMAX", a later date, another seat), with its truth in `fixtures/expected.json`.
 
-## Day 29 — Mon 5 Oct — The room's light
+## Day 29 — Mon 5 Oct — The room's light ✅
+
+Shipped (on 29 Sep): the card as a RealityKit entity cut from `TicketShape`, lit by the room from maps drawn by `ImageRenderer`, holographic film as a surface shader, "Put it on the table" gated on world tracking, a stand-in table for the simulator. ADR-018. 108 tests. See `docs/LOG.md`.
 
 - ADR-018 (the brief's ADR-017; that number went to taking the grain out). The card on a real table through the camera (RealityKit), gated on `ARWorldTrackingConfiguration.isSupported`. The entity builds in the simulator; placing it is a device test (`docs/device.md` §3).
 
