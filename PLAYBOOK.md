@@ -150,7 +150,9 @@ Shipped (on 28 Sep, straight after Day 26): lever and platen, the `wet` uniform,
 
 - Lever and platen, the `wet` uniform, `UndoManager`, the signature, A/P and takes in pencil, the colophon and the detail's line (brief §5.7–5.9). Flags: `--pulled`, `--wet 0.6`. Proof: the wet shot, and the back signed (a fixture signature drawn by `DebugSeed`).
 
-## Day 28 — Sun 4 Oct — The punch and patina
+## Day 28 — Sun 4 Oct — The punch and patina ✅
+
+Shipped (on 29 Sep): both bullets. The punch in each movement's own die, through both faces; patina from the night it was seen; a ninth fixture, the second Dune. 106 tests. See `docs/LOG.md`.
 
 - Remarques punched through both faces for second and later viewings; patina from `screenedAt` and the seed (brief §6.1–6.2). Tests 8 and 9. Flags: `--viewings 3`, `--age 6`.
 - A ninth fixture in `scripts/make-fixtures.swift`, a second Dune Part Two ticket ("DUNE PART TWO IMAX", a later date, another seat), with its truth in `fixtures/expected.json`.

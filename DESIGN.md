@@ -29,6 +29,7 @@ Every stub also comes back as an **edition**: a ticket designed for its film's r
 5. **Weight is allowed, the faces are not.** Host Grotesk from Light to ExtraBold, Newsreader, Fragment Mono. No fourth face, even for a Deco title.
 6. **Nothing invented.** No taglines, no plot, no stars, no fake barcode. The Aztec code on the back says what the strip says.
 7. **You can feel it.** A finger dragged across the card feels the stock (cotton is soft, foil is slick) and clicks once at the perforation.
+8. **The card keeps its history.** A second viewing of a release punches the strip, the way a conductor punches a ticket: a remarque in the movement's own die, through both faces, clear of every word and of the code. The card ages from the night it was seen: the stock warms, a spot of foxing comes up now and then, the corners soften. Both are the copy's, never the design's; both are the same on every phone; a first viewing seen tonight has neither.
 
 ## The press
 
