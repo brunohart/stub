@@ -36,7 +36,7 @@ targets:
           - Newsreader-Italic-Variable.ttf
           - FragmentMono-Regular.ttf
           - FragmentMono-Italic.ttf
-        NSCameraUsageDescription: Stub photographs your ticket stub. The photo stays on this device.
+        NSCameraUsageDescription: Stub photographs your ticket stub, and puts its edition on your table. Nothing from the camera leaves this device.
         NSPhotoLibraryUsageDescription: Stub reads ticket stubs from your library. Nothing is uploaded.
         # No network, no crypto of our own (ADR-005): answers App Store Connect's export question for every upload.
         ITSAppUsesNonExemptEncryption: false

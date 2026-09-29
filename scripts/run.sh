@@ -3,7 +3,7 @@
 # Usage: scripts/run.sh [--seed] [--reset] [--drive] [--season] [--import] [--edition] [--turned] [--tilt x,y]
 #                       [--proof spec] [--keeps] [--open title] [--press] [--part id] [--take n] [--scrub x]
 #                       [--separated s] [--bench name] [--flood p] [--pulled] [--wet w] [--signed] [--record path.mov]
-#                       [--viewings n] [--age years]
+#                       [--viewings n] [--age years] [--room]
 #                       [--type size] [--look metal|swiftui] [--wait-for regex] [--shot path.png]
 # --drive: after the seed, press, open, hold and close on a timer (see DebugDrive) so the run can be filmed.
 # --season: open the season sheet once the seed has settled.
@@ -25,6 +25,7 @@
 #   --press turns the card over on the bed. --signed: sign with the fixture signature at launch.
 # --viewings 3: the opened stub is that viewing of its release, punched n − 1 times through the strip (Day 28).
 #   --age 6: it has been in the drawer that many years, for its patina.
+# --room: with --edition, set the card on a table (Day 29). The simulator has no camera: a parchment stand-in.
 # --type: set the simulator's Dynamic Type size for the run (medium, extra-extra-large, accessibility-extra-large …)
 #   and put it back to medium afterwards.
 # --wait-for: instead of sleeping STUB_SETTLE seconds, poll the app's log for a line matching the regex
@@ -43,7 +44,7 @@ while [ $# -gt 0 ]; do case "$1" in
   --scrub) ARGS+=(-scrub "$2"); shift;; --record) RECORD="$2"; shift;; --separated) ARGS+=(-separated "$2"); shift;;
   --bench) ARGS+=(-bench "$2"); shift;; --flood) ARGS+=(-flood "$2"); shift;;
   --pulled) ARGS+=(-pulled);; --wet) ARGS+=(-wet "$2"); shift;; --signed) ARGS+=(-signed);;
-  --viewings) ARGS+=(-viewings "$2"); shift;; --age) ARGS+=(-age "$2"); shift;;
+  --viewings) ARGS+=(-viewings "$2"); shift;; --age) ARGS+=(-age "$2"); shift;; --room) ARGS+=(-room);;
   --look) ARGS+=(-look "$2"); shift;; --wait-for) WAIT="$2"; shift;;
   --shot) SHOT="$2"; shift;; *) echo "unknown $1" >&2; exit 2;; esac; shift; done
 SIM="$(scripts/sim.sh)"

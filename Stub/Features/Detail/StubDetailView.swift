@@ -18,6 +18,8 @@ struct StubDetailView: View {
     @State private var showProof = false
     /// The card has been taken to the press room.
     @State private var pressing = false
+    /// The card is on a real table (ADR-018).
+    @State private var inRoom = false
     @Namespace private var press
     @State private var shareable: Image?
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -69,6 +71,16 @@ struct StubDetailView: View {
                             Text("Edition: \(edition.described.lowercased()) · \(edition.directedBy.words)")
                                 .font(Type.numbers(11)).foregroundStyle(Ink.grey)
                                 .fixedSize(horizontal: false, vertical: true)
+                            // Only where the phone can find a table: the simulator and older phones never see it.
+                            if RoomView.isSupported {
+                                Button { inRoom = true } label: {
+                                    Text("Put it on the table").font(Type.words(14)).foregroundStyle(Ink.ink)
+                                        .frame(minHeight: 44)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityHint("Shows the edition at its real size on a table, through the camera.")
+                            }
                         }
 
                         // What the press keeps: the whole difference between this card and the title's, as it is stored
@@ -134,6 +146,15 @@ struct StubDetailView: View {
             PressRoom(stub: stub, copy: copy)
                 .navigationTransition(.zoom(sourceID: "press", in: press))
         }
+        .fullScreenCover(isPresented: $inRoom) {
+            if let edition = editions.edition(for: stub.title) {
+                let composition = Composition(edition: edition, copy: copy)
+                RoomView(composition: composition, back: EditionBack(
+                    composition: composition, photo: PlateImage.image(for: stub.id, in: .detail, data: stub.imageData),
+                    tilt: stub.tilt, code: Aztec.mask(for: copy.message), pencil: Pencil(edition: edition),
+                    signature: Signatures.shared.image))
+            }
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 if let shareable {
@@ -155,6 +176,15 @@ struct StubDetailView: View {
         }
         #if DEBUG
         .onChange(of: DebugDrive.shared.turned) { _, now in turned = now }
+        .task {
+            // `-room`: set the card on the table once it is printed, as "Put it on the table" would on a phone that can.
+            guard DebugDrive.wantsRoom else { return }
+            do {
+                while editions.edition(for: stub.title) == nil { try await Task.sleep(for: .milliseconds(250)) }
+                try await Task.sleep(for: .seconds(1.5))
+            } catch { return }
+            inRoom = true
+        }
         .task {
             // `-press`: carry the card on into the press room once it is printed, as a hold would.
             guard DebugDrive.wantsPress else { return }
