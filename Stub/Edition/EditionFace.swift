@@ -329,17 +329,25 @@ struct Printer {
 // The three surfaces as modifiers, so the look stays specified at the modifier boundary (ADR-002): Metal draws
 // them by default, and `-look swiftui` prints the edition flat, in its inks, with the foil in its metal.
 
+extension EnvironmentValues {
+    /// Whether the edition is lit by the one light, the phone's (DESIGN.md › Editions rule 4). The card on a real table
+    /// is lit by the room instead (ADR-018), so its maps are printed unlit: the stock keeps its fibre and its age but not
+    /// its sheen, the inks have no relief (the room's light reads a normal map), the foil is flat in its metal.
+    @Entry var editionLit = true
+}
+
 struct StockEffect: ViewModifier {
     var light: Light
     var stock: Stock
     var seed: Double
     /// The age the stock has earned (brief §6.2). `Patina.none` changes nothing.
     var patina: Patina = .none
+    @Environment(\.editionLit) private var lit
 
     func body(content: Content) -> some View {
         if LookEngine.current.isMetal {
             content.colorEffect(ShaderLibrary.stock(
-                .boundingRect, .float2(light.vector), .float(stock.fibre), .float(stock.gloss), .float(seed),
+                .boundingRect, .float2(light.vector), .float(stock.fibre), .float(lit ? stock.gloss : 0), .float(seed),
                 .float(patina.age), .float(patina.warmth), .float(patina.wear),
                 // Never an empty buffer: a spot of strength zero stands in for none.
                 .floatArray(patina.spots.isEmpty ? [0, 0, 1, 0] : patina.spots)
@@ -355,9 +363,10 @@ struct ReliefEffect: ViewModifier {
     var depth: Double
     var reach: Double
     var wet: Double = 0
+    @Environment(\.editionLit) private var lit
 
     func body(content: Content) -> some View {
-        if LookEngine.current.isMetal {
+        if LookEngine.current.isMetal, lit {
             content.layerEffect(
                 ShaderLibrary.relief(.boundingRect, .float2(light.vector), .float(depth), .float(reach), .float(wet)),
                 maxSampleOffset: CGSize(width: 2, height: 2)
@@ -373,9 +382,10 @@ struct FoilEffect: ViewModifier {
     var metal: UInt32
     var holographic: Bool
     var lightGround: Bool
+    @Environment(\.editionLit) private var lit
 
     func body(content: Content) -> some View {
-        if LookEngine.current.isMetal {
+        if LookEngine.current.isMetal, lit {
             content.layerEffect(
                 ShaderLibrary.foil(.boundingRect, .float2(light.vector), .color(Color(hex: metal)),
                                    .float(holographic ? 1 : 0), .float(lightGround ? 1 : 0)),
