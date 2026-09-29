@@ -168,7 +168,18 @@ struct StubDetailView: View {
     }
 
     /// This stub's copy of its edition, counted against the drawer.
-    private var copy: Copy { Copy(stub: stub, among: drawer) }
+    private var copy: Copy {
+        var copy = Copy(stub: stub, among: drawer)
+        #if DEBUG
+        // `-viewings` and `-age` stand in for a drawer with more of this film in it, and for the years (ADR-009).
+        if let viewing = DebugDrive.viewings {
+            copy.viewing = viewing
+            copy.viewings = max(copy.viewings, viewing)
+        }
+        if let age = DebugDrive.age { copy.age = min(max(age, 0), Patina.oldest) }
+        #endif
+        return copy
+    }
 
     /// The edition's front on a margin of parchment, lit a little from the side, as an image to share.
     private static func render(_ composition: Composition) -> Image? {

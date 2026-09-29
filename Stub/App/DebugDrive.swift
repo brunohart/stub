@@ -56,6 +56,10 @@ final class DebugDrive {
     static let separated: CGFloat? = value(after: "-separated").flatMap { Double($0) }.map { CGFloat($0) }
     /// `-scrub 13.5`: hold the wheel here, between two takes, for a screenshot of an in-between.
     static let scrub: Double? = value(after: "-scrub").flatMap { Double($0) }
+    /// `-viewings 3`: the detail's stub is this viewing of its release, punched n − 1 times (brief §6.1).
+    static let viewings: Int? = value(after: "-viewings").flatMap { Int($0) }.map { max($0, 1) }
+    /// `-age 6`: the detail's stub has been in the drawer this many years, for its patina (brief §6.2).
+    static let age: Double? = value(after: "-age").flatMap { Double($0) }
 
     private static func value(after flag: String) -> String? {
         let args = ProcessInfo.processInfo.arguments
