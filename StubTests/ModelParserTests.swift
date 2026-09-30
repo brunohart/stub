@@ -118,6 +118,9 @@ struct ModelParserTests {
         #expect(ModelParser.cased("Cinéma du Panthéon") == "Cinéma du Panthéon")
         #expect(ModelParser.cased("Dune Part Two") == "Dune Part Two")
         #expect(ModelParser.cased("THE ROXY CINEMA") == "The Roxy Cinema")
+        // 2026-09-30, the deep eval: shouted with one accent small. It is still shouting.
+        #expect(ModelParser.cased("CINéMA DU PANTHÉON") == ModelParser.cased("CINÉMA DU PANTHÉON"))
+        #expect(ModelParser.cased("CINéMA DU PANTHÉON") != "CINéMA DU PANTHÉON")
         #expect(ModelParser.cased("1917") == "1917")
         #expect(ModelParser.cased("  ") == "")
     }

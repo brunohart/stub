@@ -225,9 +225,11 @@ struct ModelParser: StubParsing {
     /// The heuristic reads capitals off the ticket and title-cases them. The model sometimes copies the capitals
     /// instead ("AFTERSUN", "RIALTO CINEMAS NEWMARKET" on Day 4), and "PLACE 12" on a lock screen is the wrong
     /// first impression. A shouted answer gets the heuristic's casing; a cased one is the model's own choice and stays.
+    /// An answer whose only small letters are accented is shouting too: the model has shouted "CINéMA DU PANTHÉON",
+    /// its é small and every other letter capital, and the drawer filed it so (`docs/evals-deep.md`, 2026-09-30).
     static func cased(_ s: String) -> String {
         let t = s.trimmingCharacters(in: .whitespaces)
-        guard t.contains(where: \.isLetter), !t.contains(where: \.isLowercase) else { return t }
+        guard t.contains(where: \.isUppercase), t.filter(\.isLowercase).allSatisfy({ !$0.isASCII }) else { return t }
         return HeuristicParser.titleCase(t)
     }
 
