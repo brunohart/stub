@@ -148,7 +148,7 @@ You need Xcode 27 with an iOS 27 simulator (the app still targets iOS 26; [ADR-0
 ```bash
 git clone https://github.com/brunohart/stub && cd stub
 scripts/build.sh      # xcodegen, then a simulator build
-scripts/test.sh       # 113 tests on an iPhone 18 Pro; the eval suite asks the model for a few minutes
+scripts/test.sh       # 115 tests on an iPhone 18 Pro; the eval suite asks the model for a few minutes
 scripts/run.sh --seed --reset --wait-for "written|hand-counted" --shot docs/screenshots/now.png
 ```
 
