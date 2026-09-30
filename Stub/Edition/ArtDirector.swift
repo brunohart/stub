@@ -157,6 +157,9 @@ final class Editions {
     /// Every release's proof still on the press, where the person left it.
     private(set) var onPress: [String: Proof]
     private var deciding: [String: Task<Edition, Never>] = [:]
+    /// Whether an edition is being chosen. The season sentence waits for it as it waits for the reader: the model
+    /// answers one request at a time, and the edition is what the person is looking at (Day 22's note).
+    var isDeciding: Bool { !deciding.isEmpty }
     @ObservationIgnored private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {

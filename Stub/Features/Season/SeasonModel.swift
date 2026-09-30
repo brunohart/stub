@@ -37,8 +37,10 @@ final class SeasonModel {
         }
         do {
             try await Task.sleep(for: Self.settle)
-            // The reader has the model's attention; the sentence can wait for it.
-            while StubReader.isBusy { try await Task.sleep(for: .seconds(1)) }
+            // The reader and the press have the model's attention; the sentence can wait for both. On Keep the new
+            // copy's edition is chosen while the drawer's count changes, and an edition that loses the model to the
+            // sentence is drawn from the title and kept that way (Day 22).
+            while StubReader.isBusy || Editions.shared.isDeciding { try await Task.sleep(for: .seconds(1)) }
             let started = ContinuousClock.now
             let written = try await SeasonWriter.write(new)
             let ms = Int(started.duration(to: .now) / .milliseconds(1))
