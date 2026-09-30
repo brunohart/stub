@@ -113,6 +113,25 @@ extension Composition {
         return mark.plate == plate && !(isMetallic && mark.foil)
     }
 
+    /// Where `part` is drawn with the sheets `separation` apart: the box round its marks on each sheet it is printed on,
+    /// carried through that sheet's transform, the boxes joined. VoiceOver's outline for a part follows its sheet; it sat
+    /// where the part is on the flat card while the card was apart (Day 25's note). Flat, it is `bounds(of:)`.
+    func bounds(of part: Part.ID, separation s: CGFloat) -> CGRect? {
+        guard s > 0 else { return bounds(of: part) }
+        var box = CGRect.null
+        for (index, layer) in Separation.layers(metallic: isMetallic).enumerated() {
+            let r = poster.filter { $0.part == part && prints($0, on: layer) }.map(\.bounds).reduce(CGRect.null) { $0.union($1) }
+                .intersection(Card.posterRect)
+            guard !r.isNull, !r.isEmpty else { continue }
+            let corners = [CGPoint(x: r.minX, y: r.minY), CGPoint(x: r.maxX, y: r.minY),
+                           CGPoint(x: r.minX, y: r.maxY), CGPoint(x: r.maxX, y: r.maxY)]
+                .map { Separation.project($0, index: index, separation: s) }
+            let xs = corners.map(\.x), ys = corners.map(\.y)
+            box = box.union(CGRect(x: xs.min()!, y: ys.min()!, width: xs.max()! - xs.min()!, height: ys.max()! - ys.min()!))
+        }
+        return box.isNull || box.isEmpty ? nil : box
+    }
+
     /// The part under `point` on one sheet of the separations.
     func part(at point: CGPoint, on layer: Separation.Layer, slop: CGFloat = 6) -> Part.ID? {
         guard Card.posterRect.contains(point) else { return nil }

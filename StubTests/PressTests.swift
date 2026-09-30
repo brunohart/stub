@@ -367,6 +367,28 @@ struct SeparationTests {
         session.touch(at: finger)
         #expect(session.focus?.id == "constructivist/diagonal")
     }
+
+    /// Day 25's note: VoiceOver's outline for a part sat where the part is on the flat card while the sheets were apart.
+    /// It follows the sheet now: flat it is the part's own box, and apart it holds where every mark of the part is drawn.
+    @Test(arguments: Movement.allCases)
+    func aPartsOutlineFollowsItsSheet(_ movement: Movement) {
+        var edition = Genome.floor(for: "The Brutalist")
+        edition.movement = movement
+        let c = Composition(edition: edition, copy: Copy(title: "The Brutalist", year: 2026))
+        let layers = Separation.layers(metallic: c.isMetallic)
+        for part in Set(c.poster.compactMap(\.part)) {
+            #expect(c.bounds(of: part, separation: 0) == c.bounds(of: part))
+            guard let apart = c.bounds(of: part, separation: 1) else { continue }
+            for mark in c.poster where mark.part == part {
+                guard let index = layers.firstIndex(where: { c.prints(mark, on: $0) }) else { continue }
+                let r = mark.bounds.intersection(Card.posterRect)
+                guard !r.isNull, !r.isEmpty else { continue }
+                let drawn = Separation.project(CGPoint(x: r.midX, y: r.midY), index: index, separation: 1)
+                #expect(apart.insetBy(dx: -0.5, dy: -0.5).contains(drawn), "\(part): a mark's middle is drawn outside its outline")
+            }
+            if let flat = c.bounds(of: part) { #expect(apart != flat, "\(part): the outline did not move with the sheets") }
+        }
+    }
 }
 
 /// The bench (Day 26): the genome's three choices, and the objects that offer them.

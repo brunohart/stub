@@ -266,7 +266,8 @@ struct PressRoom: View {
     /// One VoiceOver element over each part the press can turn, where it lies on the card, so the rotor can reach it.
     private func parts(scale: CGFloat) -> some View {
         ForEach(session.turnable) { part in
-            if let r = session.composition.bounds(of: part.id) {
+            // Where the part is drawn: on its sheet when the card is apart.
+            if let r = session.composition.bounds(of: part.id, separation: session.separation) {
                 Color.clear
                     .frame(width: r.width * scale, height: r.height * scale)
                     .offset(x: r.minX * scale, y: r.minY * scale)
