@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import UIKit
 @testable import Stub
 
 /// The camera path without a camera: the live scanner's lines are put in reading order and handed to the
@@ -40,6 +41,21 @@ struct ScannerTests {
         #expect(draft.seat == "H12")
         #expect(draft.readBy == "heuristic")
         #expect(stages == [.understanding(parser: "heuristic"), .done], "no cropping and no Vision on the camera path")
+    }
+
+    /// Day 6's note: the scanner handed the whole frame over as the plate, table and all, where a photograph is cropped.
+    @Test func theScannedFrameIsCroppedToTheTicket() async throws {
+        let url = try #require(Bundle.main.url(forResource: "stub-1-the-brutalist", withExtension: "png"))
+        let frame = try #require(UIImage(data: Data(contentsOf: url))?.cgImage)
+        let reading = StubReading(lines: ["EMBASSY THEATRE", "THE BRUTALIST", "Sat 6 Sep 2026 7:30PM", "SCREEN 1", "SEAT H12", "ADULT $18.50"])
+        var stages: [StubReader.Stage] = []
+        let result = await StubReader.read(reading, plate: frame, using: HeuristicParser(), progress: { stage in
+            stages.append(stage)
+        })
+        #expect(result.cropped && result.detector != nil, "no ticket found in the frame")
+        #expect(result.plate.width * result.plate.height < frame.width * frame.height * 8 / 10)
+        #expect(result.draft.title == "The Brutalist" && result.draft.seat == "H12")
+        #expect(stages == [.understanding(parser: "heuristic"), .done], "the crop runs beside the parsers, not as a stage")
     }
 
     @Test func aStubSaysWhatItKnowsWhenReadAloud() {

@@ -143,7 +143,7 @@ struct ImportView: View {
         }
     }
 
-    /// The camera's lines go through the same parsers as a photograph's (ADR-010); the frame is the plate.
+    /// The camera's lines go through the same parsers as a photograph's (ADR-010); the frame, cropped, is the plate.
     private func scanned(_ scan: StubScanner.Scan) async {
         failure = nil
         reading = nil
@@ -161,6 +161,7 @@ struct ImportView: View {
             withAnimation(Motion.place) { draft = snapshot }
         })
         reading = result.reading
+        if result.cropped { image = UIImage(cgImage: result.plate) }
         withAnimation(Motion.place) { draft = result.draft }
     }
 

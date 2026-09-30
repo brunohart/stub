@@ -63,19 +63,25 @@ enum StubReader {
         return Result(plate: plate, cropped: cropped, detector: detector, reading: reading, draft: draft)
     }
 
-    /// The camera path (Day 6): the live scanner has already read the print, so there is nothing to crop
-    /// and nothing for Vision to do. The lines go straight to the parsers; the photograph is only the plate.
+    /// The camera path (Day 6): the live scanner has already read the print, so there is nothing for Vision to
+    /// read. The lines go straight to the parsers. The frame is cropped to the ticket as a photograph is, while the
+    /// parsers work, so a scanned card's plate is the ticket and not the table (Day 6's note); a frame with no ticket
+    /// found in it stays whole.
     static func read(
         _ reading: StubReading,
-        plate: CGImage,
+        plate frame: CGImage,
+        using parser: (any StubParsing)? = nil,
         progress: @Sendable @MainActor (Stage) -> Void,
         partial: (@Sendable @MainActor (StubDraft) -> Void)? = nil
     ) async -> Result {
         inFlight.withLock { $0 += 1 }
         defer { inFlight.withLock { $0 -= 1 } }
         log.info("Scanner read \(reading.lines.count) lines live")
-        let draft = await understand(reading, progress: progress, partial: partial)
-        return Result(plate: plate, cropped: false, detector: nil, reading: reading, draft: draft)
+        async let crop = StubCrop.crop(frame)
+        let draft = await understand(reading, using: parser, progress: progress, partial: partial)
+        let plate = await crop
+        log.info("Scanned frame \(plate.cropped ? "cropped to the ticket" : "kept whole: no ticket found")")
+        return Result(plate: plate.image, cropped: plate.cropped, detector: plate.detector, reading: reading, draft: draft)
     }
 
     /// Text to fields. The floor first, always; then the model with the floor's draft in hand (ADR-010),
