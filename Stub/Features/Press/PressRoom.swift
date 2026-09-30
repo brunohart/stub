@@ -229,12 +229,14 @@ struct PressRoom: View {
                 if signatures.isSigned {
                     Color.clear
                         .contentShape(Rectangle())
-                        .onLongPressGesture { withAnimation(Motion.settle) { signatures.redo() } }
+                        .onLongPressGesture { withAnimation(Motion.settle) { signatures.change(to: nil, undoManager: undoManager) } }
                         .accessibilityElement()
                         .accessibilityLabel("Your signature")
-                        .accessibilityAction(named: "Sign again") { signatures.redo() }
+                        .accessibilityAction(named: "Sign again") { signatures.change(to: nil, undoManager: undoManager) }
                 } else {
-                    SignaturePad(scale: scale) { drawing in withAnimation(Motion.place) { signatures.keep(drawing) } }
+                    SignaturePad(scale: scale) { drawing in
+                        withAnimation(Motion.place) { signatures.change(to: drawing, undoManager: undoManager) }
+                    }
                 }
             }
             .frame(width: r.width * scale, height: r.height * scale)

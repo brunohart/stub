@@ -521,6 +521,33 @@ struct PullTests {
         #expect(!Signatures(url: url).isSigned)
     }
 
+    /// Day 27's note: undo reached every change on the press but the signature. Signing, and signing again, are undone and
+    /// redone now, and each step is kept on disk as it happens.
+    @MainActor @Test func aSignatureCanBeUndone() throws {
+        let url = URL.temporaryDirectory.appending(path: "signature-\(UUID().uuidString)/Signature.drawing")
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let book = Signatures(url: url)
+        let undo = UndoManager()
+        undo.groupsByEvent = false
+        func step(_ change: () -> Void) {
+            undo.beginUndoGrouping()
+            change()
+            undo.endUndoGrouping()
+        }
+        let first = Signatures.fixture()
+        step { book.change(to: first, undoManager: undo) }
+        #expect(book.isSigned && undo.undoActionName == "Sign")
+        step { book.change(to: nil, undoManager: undo) }
+        #expect(!book.isSigned && undo.undoActionName == "Sign Again")
+        undo.undo()
+        #expect(book.drawing?.bounds == first.bounds, "undoing sign-again puts the signature back")
+        #expect(Signatures(url: url).drawing?.strokes.count == first.strokes.count, "and keeps it")
+        undo.undo()
+        #expect(!book.isSigned && !Signatures(url: url).isSigned, "undoing the signing leaves the margin bare")
+        undo.redo()
+        #expect(book.drawing?.bounds == first.bounds)
+    }
+
     @Test func theLeverResistsAndGives() throws {
         #expect(LeverFeel.resistance(at: 0) == 0.1)
         #expect(abs(LeverFeel.resistance(at: 1) - 0.8) < 1e-6)

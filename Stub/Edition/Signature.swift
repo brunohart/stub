@@ -52,6 +52,16 @@ final class Signatures {
         try? FileManager.default.removeItem(at: url)
     }
 
+    /// Sign (`new`), or open the margin to sign again (`nil`), on `undoManager`, so shake and three-finger undo reach the
+    /// signature as they reach a pull (Day 27's note). Undoing a signing puts back the signature before it, or the bare
+    /// margin; undoing "sign again" puts the old signature back. Undone, it can be redone.
+    func change(to new: PKDrawing?, undoManager: UndoManager?) {
+        let before = drawing
+        if let new { keep(new) } else { redo() }
+        undoManager?.registerUndo(withTarget: self) { book in book.change(to: before, undoManager: undoManager) }
+        undoManager?.setActionName(new == nil ? "Sign Again" : "Sign")
+    }
+
     /// The pencil: graphite, soft, a little grey.
     static let graphite = UIColor(red: 0.27, green: 0.27, blue: 0.29, alpha: 1)
     static var pencil: PKInkingTool { PKInkingTool(.pencil, color: graphite, width: 2.6) }
