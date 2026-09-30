@@ -192,9 +192,30 @@ struct ModelParser: StubParsing {
               seat: p.seat ?? "", price: p.price ?? "", currency: p.currency ?? "", hint: hint)
     }
 
+    /// "Screen 2": the shape `normalisedScreen` files a numbered screen in.
+    static func isShapedScreen(_ screen: String) -> Bool {
+        screen.range(of: #"^Screen \d{1,2}$"#, options: .regularExpression) != nil
+    }
+
     /// "H12", "AA3": a row and a number. The shape the drawer files a seat in.
     static func hasRow(_ seat: String) -> Bool {
         seat.range(of: #"^[A-Z]{1,2}\d{1,3}$"#, options: .regularExpression) != nil
+    }
+
+    /// One letter added, dropped or changed, ignoring case and accents. The same word cased differently is not an
+    /// edit: casing is the model's choice (`cased`).
+    static func oneEditApart(_ a: String, _ b: String) -> Bool {
+        let fold = { (s: String) in Array(s.lowercased().folding(options: .diacriticInsensitive, locale: nil)) }
+        let x = fold(a), y = fold(b)
+        guard !x.isEmpty, !y.isEmpty, x != y, abs(x.count - y.count) <= 1 else { return false }
+        var i = 0, j = 0, edits = 0
+        while i < x.count, j < y.count {
+            if x[i] == y[j] { i += 1; j += 1; continue }
+            edits += 1
+            if edits > 1 { return false }
+            if x.count > y.count { i += 1 } else if x.count < y.count { j += 1 } else { i += 1; j += 1 }
+        }
+        return edits + (x.count - i) + (y.count - j) == 1
     }
 
     /// The heuristic reads capitals off the ticket and title-cases them. The model sometimes copies the capitals
@@ -210,16 +231,27 @@ struct ModelParser: StubParsing {
     /// so the two are compared on what they read and not on how they spelt it (Day 3 evals: the cold model's
     /// misses on screen and seat were "SCR 2" and "SEAT D 4", read correctly and left as printed).
     ///
-    /// `hint` is the heuristic's draft when the model was reading with one (ADR-010). It settles one argument:
-    /// a seat the model read without its row ("PLACE 12", Day 4) when the hint has the row (F12). The row was
+    /// `hint` is the heuristic's draft when the model was reading with one (ADR-010). It settles three arguments.
+    /// A seat the model read without its row ("PLACE 12", Day 4) when the hint has the row (F12): the row was
     /// printed and the regex saw it; the model's version is not a seat the drawer can file. An empty seat is left
-    /// empty: filling what it missed is the model's job, and the eval table should see when it does not.
+    /// empty: filling what it missed is the model's job, and the eval table should see when it does not. And a
+    /// title one letter away from the hint's ("Aftrsun" for "Aftersun", Days 5, 28 and 30): the regex copies the
+    /// letters off the ticket, and a model that spells differently by one letter has slipped, not read. And a screen
+    /// the normaliser could not shape but whose number is the hint's ("Salée 2" for SALLE 2, Days 5 and 30): the
+    /// hint's "Screen 2" is the same screen in the drawer's words. "IMAX", with no number, stays the model's.
     static func draft(title: String, cinema: String, screenedAt: String, screen: String, seat: String, price: String,
                       currency: String, hint: StubDraft? = nil) -> StubDraft {
         var draft = StubDraft()
         draft.title = cased(HeuristicParser.stripFormats(title.trimmingCharacters(in: .whitespaces)))
+        if let hint, oneEditApart(draft.title, hint.title) {
+            draft.title = hint.title
+        }
         draft.cinema = cased(cinema)
         draft.screen = normalisedScreen(screen)
+        if let hint, !isShapedScreen(draft.screen), isShapedScreen(hint.screen),
+           draft.screen.filter(\.isNumber) == hint.screen.filter(\.isNumber) {
+            draft.screen = hint.screen
+        }
         draft.seat = normalisedSeat(seat)
         if let hint, !draft.seat.isEmpty, !hasRow(draft.seat), hasRow(hint.seat) {
             draft.seat = hint.seat

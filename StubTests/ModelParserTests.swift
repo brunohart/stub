@@ -63,6 +63,43 @@ struct ModelParserTests {
         #expect(ModelParser.hasRow("H12") && ModelParser.hasRow("AA3") && !ModelParser.hasRow("PLACE 12") && !ModelParser.hasRow("12") && !ModelParser.hasRow(""))
     }
 
+    @Test func hintKeepsTheTitleTheModelMisspelt() {
+        var hint = StubDraft()
+        hint.title = "Aftersun"
+        // Days 5, 28 and 30: the hinted model wrote "Aftrsun" off the low-contrast stub, with "Aftersun" in its hint.
+        #expect(ModelParser.draft(title: "Aftrsun", cinema: "", screenedAt: "", screen: "", seat: "", price: "", currency: "", hint: hint).title == "Aftersun")
+        #expect(ModelParser.draft(title: "Aftersum", cinema: "", screenedAt: "", screen: "", seat: "", price: "", currency: "", hint: hint).title == "Aftersun")
+        #expect(ModelParser.draft(title: "Afftersun", cinema: "", screenedAt: "", screen: "", seat: "", price: "", currency: "", hint: hint).title == "Aftersun")
+        // Two letters away is a different reading, and the model's own; so is a title with no hint.
+        #expect(ModelParser.draft(title: "Aftrsn", cinema: "", screenedAt: "", screen: "", seat: "", price: "", currency: "", hint: hint).title == "Aftrsn")
+        #expect(ModelParser.draft(title: "Aftrsun", cinema: "", screenedAt: "", screen: "", seat: "", price: "", currency: "").title == "Aftrsun")
+        // Casing and accents are not letters: the model's accent stays the model's.
+        hint.title = "La Chimera"
+        #expect(ModelParser.draft(title: "La Chiméra", cinema: "", screenedAt: "", screen: "", seat: "", price: "", currency: "", hint: hint).title == "La Chiméra")
+        #expect(!ModelParser.oneEditApart("Dune Part Two", "DUNE PART TWO"))
+        #expect(ModelParser.oneEditApart("Past Lives", "Past Live") && ModelParser.oneEditApart("Anora", "Anura"))
+        #expect(!ModelParser.oneEditApart("", "Anora") && !ModelParser.oneEditApart("Up", "Us Two"))
+        // A title not yet streamed is not one letter from a one-letter hint.
+        #expect(!ModelParser.oneEditApart("", "M"))
+    }
+
+    @Test func hintShapesTheScreenTheNormaliserCouldNot() {
+        var hint = StubDraft()
+        hint.title = "La Chimera"; hint.screen = "Screen 2"
+        func screen(_ raw: String, _ hint: StubDraft?) -> String {
+            ModelParser.draft(title: "La Chimera", cinema: "", screenedAt: "", screen: raw, seat: "", price: "", currency: "", hint: hint).screen
+        }
+        // Days 5 and 30: the hinted model wrote "Salée 2" for SALLE 2, and the hint said Screen 2.
+        #expect(screen("Salée 2", hint) == "Screen 2")
+        // Another number, or none, is the model's own reading; so is an unshaped screen with no hint.
+        #expect(screen("Salée 3", hint) == "Salée 3")
+        #expect(screen("IMAX", hint) == "IMAX")
+        #expect(screen("", hint) == "")
+        #expect(screen("Salée 2", nil) == "Salée 2")
+        // A screen the normaliser shapes is never second-guessed.
+        #expect(screen("SALLE 4", hint) == "Screen 4")
+    }
+
     @Test func shoutedAnswersGetTheHeuristicsCasing() {
         // Day 4: "AFTERSUN" and "RIALTO CINEMAS NEWMARKET" came back in capitals on one run.
         let d = ModelParser.draft(title: "AFTERSUN", cinema: "RIALTO CINEMAS NEWMARKET", screenedAt: "", screen: "", seat: "", price: "", currency: "")
