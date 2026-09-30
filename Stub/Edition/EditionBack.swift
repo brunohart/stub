@@ -46,6 +46,8 @@ struct EditionBack: View {
 
             strip(words: words)
                 .frame(width: Card.width, height: Card.height - Card.poster)
+                // The strip's words and code age with the paper they are printed on, mirrored as the stock's foxing is.
+                .modifier(AgedEffect(patina: c.patina.mirrored, foxes: true, origin: CGPoint(x: 0, y: Card.poster)))
                 .offset(y: Card.poster)
         }
         .frame(width: Card.width, height: Card.height)

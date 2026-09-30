@@ -27,7 +27,8 @@ struct ShareTests {
     /// Lit and unlit differ: the stock's sheen (a `colorEffect`), the relief and the foil (`layerEffect`s) are all
     /// drawn. Unlit, a foil mark is its metal multiplied flat; lit, the foil shader shades it, and it is never the
     /// white shape the shader is handed.
-    @Test func imageRendererDrawsTheShaders() throws {
+    @Test func imageRendererDrawsTheShaders() async throws {
+        try await EditionShaders.prepare()
         let c = composition(.foil)
         let light = Light(tilt: CGPoint(x: 0.3, y: -0.2))
         let lit = try render(EditionFace(composition: c, light: light))

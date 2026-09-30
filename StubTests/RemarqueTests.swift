@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import CoreGraphics
+import SwiftUI
 @testable import Stub
 
 /// After the proof (brief §6): the punch, a remarque for every viewing after the first, and the patina a card earns by
@@ -127,6 +128,59 @@ struct RemarqueTests {
         for i in stride(from: 0, to: old.spots.count, by: 4) {
             #expect(back.spots[i] == Float(Card.width) - old.spots[i] && back.spots[i + 1] == old.spots[i + 1])
         }
+    }
+
+    /// The patina reaches what is printed (2026-09-30). Until then it lived in the stock under the plates, and a spot of
+    /// foxing that came up under a band of ink, or a corner the ink covered, stayed as new. Every spot that lands on ink
+    /// in any of the eight movements now stains it, and ink on a rubbed corner is worn through toward the paper under it.
+    @MainActor @Test func theInkAgesWithThePaper() async throws {
+        func render(_ c: Composition, printed: Int = Plate.foil) throws -> Pixels {
+            let renderer = ImageRenderer(content: EditionFace(composition: c, printed: printed).frame(width: Card.width, height: Card.height))
+            renderer.scale = 1
+            return Pixels(try #require(renderer.cgImage))
+        }
+        typealias RGBA = (Double, Double, Double, Double)
+        func luma(_ p: RGBA) -> Double { 0.299 * p.0 + 0.587 * p.1 + 0.114 * p.2 }
+        func apart(_ a: RGBA, _ b: RGBA) -> Double { abs(a.0 - b.0) + abs(a.1 - b.1) + abs(a.2 - b.2) }
+        // SwiftUI compiles a shader the first time it is used, and a render made before that draws the layer without it:
+        // the first run of this test counted differently from the second.
+        try await EditionShaders.prepare()
+        var inkedSpots = 0, stained = 0, inkedCorners = 0, worn = 0
+        let w = Int(Card.width), h = Int(Card.height)
+        for movement in Movement.allCases {
+            var young = copies[0], old = copies[0]
+            young.age = 0
+            old.age = Patina.oldest
+            let e = edition(movement, "The Brutalist")
+            let new = Composition(edition: e, copy: young), aged = Composition(edition: e, copy: old)
+            let bare = try render(new, printed: 0), inked = try render(new)
+            let paper = try render(aged, printed: 0), card = try render(aged)
+            for i in stride(from: 0, to: aged.patina.spots.count, by: 4) {
+                let x = Int(aged.patina.spots[i]), y = Int(aged.patina.spots[i + 1]), r = Int(aged.patina.spots[i + 2].rounded(.up))
+                // Foil is metal, and foxing never comes through it.
+                let foil = aged.isMetallic && aged.poster.contains { $0.foil && $0.bounds.insetBy(dx: -4, dy: -4).contains(CGPoint(x: x, y: y)) }
+                guard !foil, apart(inked.rgba(x, y), bare.rgba(x, y)) > 0.25 else { continue }
+                // Only a spot under opaque ink proves anything: through a halftone or a multiplied plate the stock's own
+                // foxing shows anyway. A neighbour clear of the spot in the same ink that shows no age at all (not even
+                // the stock's warmth) is opaque ink, and so is this.
+                let opaque = [(3 * r, 0), (-3 * r, 0), (0, 3 * r), (0, -3 * r)].contains { dx, dy in
+                    let nx = x + dx, ny = y + dy
+                    guard nx > 12, ny > 12, nx < w - 12, ny < h - 12 else { return false }
+                    return apart(inked.rgba(nx, ny), inked.rgba(x, y)) < 0.03 && apart(card.rgba(nx, ny), inked.rgba(nx, ny)) < 0.01
+                }
+                guard opaque else { continue }
+                inkedSpots += 1
+                if luma(card.rgba(x, y)) < luma(inked.rgba(x, y)) * 0.95 { stained += 1 }
+            }
+            for (x, y) in [(4, 4), (w - 5, 4), (4, h - 5), (w - 5, h - 5)] {
+                guard apart(inked.rgba(x, y), bare.rgba(x, y)) > 0.25 else { continue }
+                inkedCorners += 1
+                if apart(card.rgba(x, y), paper.rgba(x, y)) < apart(inked.rgba(x, y), bare.rgba(x, y)) * 0.8 { worn += 1 }
+            }
+        }
+        #expect(inkedSpots > 0, "no spot of foxing landed on opaque ink in eight movements, so this proves nothing")
+        #expect(stained == inkedSpots, "\(stained) of \(inkedSpots) spots on opaque ink stained it")
+        #expect(worn == inkedCorners, "\(worn) of \(inkedCorners) inked corners were worn")
     }
 
     /// Counted in whole days from the night it was seen, so it changes only as the calendar does.

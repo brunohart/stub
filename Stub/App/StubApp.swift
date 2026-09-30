@@ -38,6 +38,8 @@ struct StubApp: App {
                     #if DEBUG
                     FontAudit.run()
                     #endif
+                    // The edition's shaders before the first card, share or room map needs them.
+                    try? await EditionShaders.prepare()
                     // One small question, once, so the import screen's status line is what happened.
                     if #available(iOS 26.0, *) { await ModelProbe.run() }
                     #if DEBUG

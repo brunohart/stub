@@ -36,22 +36,22 @@ static float edition_height(half4 s) {
     return float(s.a) - 0.6 * float(dot(s.rgb, half3(0.299h, 0.587h, 0.114h)));
 }
 
-// Patina (brief §6.2): what the stock has earned since the night it was seen. `warmth` yellows the ground, `wear`
-// rubs the four corners light, and each spot (x, y, radius, strength, in card points) is foxing: a small rust stain
-// in the paper, soft-edged, a little darker at its core. All three come from `Patina` in Swift, which makes them zero at
-// age 0, and the caller skips this entirely there, so a new card is exactly the stock.
-static float3 edition_patina(float3 rgb, float2 p, float2 size, float warmth, float wear, device const float *spots, int count) {
-    rgb = mix(rgb, rgb * float3(1.0, 0.95, 0.82), warmth);
-    // A worn corner is frayed along its cut edge, not stained: lighter fibre hugging the rounded outline for a few
-    // points, fading out along the sides away from the corner.
+// How rubbed a point of the card is, 0 to 1: frayed along the cut edge near each corner, not stained. Lighter fibre
+// hugs the rounded outline for a few points and fades out along the sides away from the corner. `p` and `size` in card
+// points.
+static float edition_rub(float2 p, float2 size) {
     float2 q = abs(p - size * 0.5) - (size * 0.5 - 10.0);
     float inside = -(length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - 10.0);
     float2 near = min(p, size - p);
     float corner = 1.0 - smoothstep(8.0, 34.0, length(near));
     float fray = 1.0 - smoothstep(0.0, 3.5 + edition_noise(p * 0.6) * 3.0, inside);
-    float rub = fray * corner;
-    float3 rubbed = mix(rgb, float3(0.93, 0.91, 0.86), 0.6);
-    rgb = mix(rgb, rubbed, rub * wear);
+    return fray * corner;
+}
+
+// What the foxing multiplies a point by: 1 clear of every spot, rust at a spot's core. Each spot (x, y, radius,
+// strength, in card points) is a small stain in the paper, soft-edged, a little darker at its core.
+static float3 edition_fox(float2 p, device const float *spots, int count) {
+    float3 f = float3(1.0);
     for (int i = 0; i + 3 < count; i += 4) {
         float2 c = float2(spots[i], spots[i + 1]);
         float r = spots[i + 2];
@@ -60,9 +60,19 @@ static float3 edition_patina(float3 rgb, float2 p, float2 size, float warmth, fl
         float edge = r * (1.0 + (edition_noise(p * 0.8 + c) - 0.5) * 0.7);
         float core = 1.0 - smoothstep(r * 0.2, edge, d);
         float halo = (1.0 - smoothstep(edge, r * 2.6, d)) * 0.3;
-        rgb = mix(rgb, rgb * float3(0.8, 0.62, 0.44), spots[i + 3] * max(core, halo));
+        f *= mix(float3(1.0), float3(0.8, 0.62, 0.44), spots[i + 3] * max(core, halo));
     }
-    return rgb;
+    return f;
+}
+
+// Patina (brief §6.2): what the stock has earned since the night it was seen. `warmth` yellows the ground, `wear`
+// rubs the four corners light, and the spots are foxing. All three come from `Patina` in Swift, which makes them zero at
+// age 0, and the caller skips this entirely there, so a new card is exactly the stock.
+static float3 edition_patina(float3 rgb, float2 p, float2 size, float warmth, float wear, device const float *spots, int count) {
+    rgb = mix(rgb, rgb * float3(1.0, 0.95, 0.82), warmth);
+    float3 rubbed = mix(rgb, float3(0.93, 0.91, 0.86), 0.6);
+    rgb = mix(rgb, rubbed, edition_rub(p, size) * wear);
+    return rgb * edition_fox(p, spots, count);
 }
 
 // The stock. Cotton has a long soft fibre; coated card has a satin gloss that follows the light. No per-pixel grain:
@@ -80,6 +90,22 @@ static float3 edition_patina(float3 rgb, float2 p, float2 size, float warmth, fl
     }
     rgb += s;
     return half4(half3(clamp(rgb, 0.0, 1.0)) * color.a, color.a);
+}
+
+// The patina on what is printed over the stock (2026-09-30). Until then it lived only in the stock, under the plates,
+// so an inked corner or a spot under a band of ink stayed pristine. Where a thumb has rubbed a corner the ink is worn
+// through to the stock, which is rubbed light under it. Foxing is in the paper, so it comes up through ink, which is
+// thin, a little fainter than on bare stock; `fox` 0 for foil, which is metal and never shows it. Warmth stays in the
+// stock: the paper yellows, the ink keeps its colour. `origin` is where this layer sits on the card and `card` the
+// card's size, both in points, so a layer smaller than the card ages in the card's places.
+[[ stitchable ]] half4 aged(float2 position, half4 color, float4 bounds, float2 origin, float2 card, float wear, float fox,
+                            device const float *spots, int count) {
+    if (color.a < 0.002h) { return color; }
+    float2 p = position - bounds.xy + origin;
+    float3 rgb = float3(color.rgb);
+    if (fox > 0.0) { rgb *= mix(float3(1.0), edition_fox(p, spots, count), fox); }
+    float worn = edition_rub(p, card) * wear;
+    return half4(half3(rgb), color.a) * half(1.0 - worn);
 }
 
 // The relief. The inks layer as a height field, lit: a highlight on the walls that face the light and a shadow on

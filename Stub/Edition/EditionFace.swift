@@ -111,11 +111,13 @@ struct EditionFace: View {
             let plate = layer.plate ?? .type
             PlateArt(composition: c, plate: plate, focus: focus).equatable()
                 .modifier(ReliefEffect(light: light, depth: depth * impression, reach: stock.reach, wet: wet))
+                .modifier(AgedEffect(patina: c.patina, foxes: true))
                 .opacity(printed >= plate.rawValue ? 1 : 0)
         case .foil:
             PlateArt(composition: c, plate: nil, focus: focus).equatable()
                 .modifier(FoilEffect(light: light, metal: c.inks.foilBase, holographic: stock == .holographic,
                                      lightGround: c.inks.groundIsLight))
+                .modifier(AgedEffect(patina: c.patina, foxes: false))
                 .opacity(printed >= Plate.foil ? 1 : 0)
                 // The foil lands: a breath larger, then pressed flat.
                 .scaleEffect(printed >= Plate.foil ? 1 : 1.04)
@@ -349,6 +351,46 @@ struct StockEffect: ViewModifier {
             content.colorEffect(ShaderLibrary.stock(
                 .boundingRect, .float2(light.vector), .float(stock.fibre), .float(lit ? stock.gloss : 0), .float(seed),
                 .float(patina.age), .float(patina.warmth), .float(patina.wear),
+                // Never an empty buffer: a spot of strength zero stands in for none.
+                .floatArray(patina.spots.isEmpty ? [0, 0, 1, 0] : patina.spots)
+            ))
+        } else {
+            content
+        }
+    }
+}
+
+/// The edition's shaders, compiled ahead of their first use. SwiftUI compiles a shader the first time a view uses it, and
+/// a frame drawn before that, on screen or by `ImageRenderer`, is drawn without it: a first share, a first room map or a
+/// test's first render could leave out the foil or the patina (2026-09-30, found by `theInkAgesWithThePaper`).
+enum EditionShaders {
+    static func prepare() async throws {
+        let spots: [Float] = [0, 0, 1, 0]
+        let colour: [(Shader, Shader.UsageType)] = [
+            (ShaderLibrary.stock(.boundingRect, .float2(CGPoint.zero), .float(0), .float(0), .float(0), .float(0), .float(0),
+                                 .float(0), .floatArray(spots)), .colorEffect),
+            (ShaderLibrary.aged(.boundingRect, .float2(CGPoint.zero), .float2(CGPoint.zero), .float(0), .float(0), .floatArray(spots)), .colorEffect),
+            (ShaderLibrary.flood(.float2(CGPoint.zero), .float(0), .float(0), .float(0), .float(0)), .colorEffect),
+            (ShaderLibrary.relief(.boundingRect, .float2(CGPoint.zero), .float(0), .float(0), .float(0)), .layerEffect),
+            (ShaderLibrary.foil(.boundingRect, .float2(CGPoint.zero), .color(.white), .float(0), .float(0)), .layerEffect),
+        ]
+        for (shader, usage) in colour { try await shader.compile(as: usage) }
+    }
+}
+
+/// The patina on what is printed over the stock: the ink worn through at the corners, foxing coming up through the ink
+/// (`foxes`) but not through foil (2026-09-30). Drawn lit or unlit, like the stock's patina: age is surface, not light.
+/// `origin` is where the layer sits on the card, for a layer smaller than the card. Nothing at all at age 0.
+struct AgedEffect: ViewModifier {
+    var patina: Patina
+    var foxes: Bool
+    var origin: CGPoint = .zero
+
+    func body(content: Content) -> some View {
+        if LookEngine.current.isMetal, !patina.isIdentity {
+            content.colorEffect(ShaderLibrary.aged(
+                .boundingRect, .float2(origin), .float2(CGPoint(x: Card.width, y: Card.height)),
+                .float(patina.wear), .float(foxes ? 0.85 : 0),
                 // Never an empty buffer: a spot of strength zero stands in for none.
                 .floatArray(patina.spots.isEmpty ? [0, 0, 1, 0] : patina.spots)
             ))
