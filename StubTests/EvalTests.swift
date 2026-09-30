@@ -56,6 +56,7 @@ struct EvalTests {
             switch outcome {
             case .ready: modelNote = "on-device model answered the probe"
             case .failed(let why): modelNote = "model probe failed: \(why)"
+            case .slow(let why): modelNote = "model probe timed out: \(why)"
             case .unavailable(let why): modelNote = "model unavailable: \(why)"
             case .untested: modelNote = "model not probed"
             }

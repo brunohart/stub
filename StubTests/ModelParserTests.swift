@@ -100,6 +100,16 @@ struct ModelParserTests {
         #expect(screen("SALLE 4", hint) == "Screen 4")
     }
 
+    /// Days 4 and 5: a probe that timed out locked the session to heuristics until the next launch. A cold model on
+    /// a phone can take that long for its first answer; slow is not broken.
+    @available(iOS 26.0, *)
+    @Test func aSlowProbeStillLetsTheModelRead() {
+        #expect(ModelProbe.Outcome.slow("timeout").allowsModel)
+        #expect(ModelProbe.Outcome.slow("timeout").statusLine.contains("asking it anyway"))
+        #expect(!ModelProbe.Outcome.failed("1026").allowsModel)
+        #expect(!ModelProbe.Outcome.unavailable("off").allowsModel)
+    }
+
     @Test func shoutedAnswersGetTheHeuristicsCasing() {
         // Day 4: "AFTERSUN" and "RIALTO CINEMAS NEWMARKET" came back in capitals on one run.
         let d = ModelParser.draft(title: "AFTERSUN", cinema: "RIALTO CINEMAS NEWMARKET", screenedAt: "", screen: "", seat: "", price: "", currency: "")

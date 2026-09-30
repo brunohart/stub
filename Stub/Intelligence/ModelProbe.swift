@@ -17,6 +17,9 @@ enum ModelProbe {
         case untested
         case unavailable(String)
         case ready
+        /// The probe ran out of time. A cold model on a phone can take that long to load for its first answer, so
+        /// the reader keeps asking; each read has the heuristic's draft to fall back on (Days 4 and 5).
+        case slow(String)
         case failed(String)
 
         /// The one line the import screen shows.
@@ -25,6 +28,7 @@ enum ModelProbe {
             case .untested: return "On-device model not yet probed"
             case .unavailable(let reason): return reason
             case .ready: return "On-device model ready"
+            case .slow: return "On-device model slow to answer; asking it anyway"
             case .failed: return "On-device model answered with an error; reading with heuristics"
             }
         }
@@ -32,7 +36,7 @@ enum ModelProbe {
         /// Whether the reader should bother asking the model.
         var allowsModel: Bool {
             switch self {
-            case .untested, .ready: return true
+            case .untested, .ready, .slow: return true
             case .unavailable, .failed: return false
             }
         }
@@ -72,6 +76,10 @@ enum ModelProbe {
             let ms = Int(started.duration(to: .now) / .milliseconds(1))
             log.info("Model answered '\(answer.trimmingCharacters(in: .whitespacesAndNewlines))' in \(ms) ms")
             return record(.ready)
+        } catch is ProbeTimeout {
+            let explained = explain(ProbeTimeout())
+            log.notice("Model probe: \(explained)")
+            return record(.slow(explained))
         } catch {
             let explained = explain(error)
             log.error("Model probe failed: \(explained)")
