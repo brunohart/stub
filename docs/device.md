@@ -1,31 +1,28 @@
 # Running Stub on a phone
 
-Everything in this repo up to Day 7 was proved in the simulator (ADR-003); Day 21's editions were written without one and are proved nowhere yet (`docs/LOG.md`). Some things cannot be proved in a simulator at all, and each needs one thing only Bruno can do. This page is the list.
+Everything in this repo was proved in the simulator (ADR-003); a Release build for a phone compiles with no warnings (2026-09-30) but has not yet been signed or run on one. Some things cannot be proved in a simulator at all, and each needs one thing only Bruno can do. This page is the list.
 
-## 1. Signing: a team in `project.yml`
+## 1. Signing, and putting it on the phone
 
-The simulator build is unsigned and has no `DEVELOPMENT_TEAM`. A device build needs one, and so do the App Group and the App Shortcuts. Add the team to the base settings so both targets get it (ADR-004: edit `project.yml`, never the `.xcodeproj`):
+The team is in `project.yml` (`DEVELOPMENT_TEAM: 7CLZHA268P`, in the base settings so the app and the widget both get it; ADR-004: edit `project.yml`, never the `.xcodeproj`). Automatic signing does the rest the first time it reaches the account: it registers the phone, the two bundle IDs (`com.designedbybruno.stub`, `com.designedbybruno.stub.widget`) and the App Group (`group.com.designedbybruno.stub`), and issues a development certificate. The simulator build does not need any of it.
 
-```yaml
-settings:
-  base:
-    SWIFT_VERSION: "6.0"
-    SWIFT_STRICT_CONCURRENCY: complete
-    IPHONEOS_DEPLOYMENT_TARGET: "26.0"
-    CODE_SIGN_STYLE: Automatic
-    DEVELOPMENT_TEAM: ABCDE12345        # your ten-character team ID
-```
+Three things only Bruno can do, once:
+
+1. **Accept the latest Program License Agreement** at [developer.apple.com/account](https://developer.apple.com/account). Until then every provisioning request from Xcode or `xcodebuild` is refused with "PLA Update available: You currently don't have access to this membership resource", which is how the first signed archive failed on 2026-09-30. The same refusal shows the membership itself is live.
+2. **Let Xcode sign in once.** Xcode › Settings › Accounts should list the Apple ID with the team `7CLZHA268P`. The development certificate in the keychain expired in May 2026; Xcode makes a new one on the first signed build.
+3. **Pair the phone.** Plug it in, trust this Mac, and turn on Developer Mode (Settings › Privacy & Security › Developer Mode; the phone restarts). After that it can be on the same network instead of the cable.
 
 Then:
 
 ```bash
-xcodegen generate
-open Stub.xcodeproj
+scripts/device.sh
 ```
 
-Pick the phone as the run destination and press Run. Xcode's automatic signing registers the two bundle IDs (`com.designedbybruno.stub`, `com.designedbybruno.stub.widget`) and the App Group (`group.com.designedbybruno.stub`) against the team on first build. If the group is refused because the identifier is taken on another team, change it in both `entitlements` blocks in `project.yml` and in `SharedStore.swift` (`SharedStore.group`), then regenerate.
+It builds Release (how the feel, the shaders and the clip should be judged), signs it for the first paired iPhone, installs it and launches it. `--device "Name"` picks another phone. `--debug` builds the Debug app, which carries the fixtures and the launch flags, so `scripts/device.sh --debug -- -seed` files the nine fixtures on the phone. Never pass `-reset` to a phone whose drawer holds real stubs: it empties the drawer. Xcode's Run button does the same job: `xcodegen generate`, `open Stub.xcodeproj`, pick the phone, Run.
 
-Keep the repo where it is. Derived data goes to `~/Library/Developer/Xcode/DerivedData/Stub-scripts` because `~/Documents` is an iCloud file-provider domain that stamps every `.app` with Finder info and breaks `codesign` (ADR-008). Xcode's own derived data is fine too, since it is outside `~/Documents`.
+If the App Group is refused because the identifier is taken on another team, change it in both `entitlements` blocks in `project.yml` and in `SharedStore.swift` (`SharedStore.group`), then regenerate. Without the group the app still works: `SharedStore` falls back to the app's own Application Support and the widget shows an empty drawer.
+
+Keep derived data outside iCloud: the scripts use `~/Library/Developer/Xcode/DerivedData/Stub-scripts` for the simulator and `Stub-device` for the phone (ADR-008).
 
 ## 2. Apple Intelligence on the phone
 
@@ -52,11 +49,19 @@ Each of these is unproved in the simulator, for the reason given.
 
 ## 4. TestFlight
 
-Not ready, and not far. What is missing:
+Ready apart from the account. `scripts/archive.sh` archives a Release build for `generic/platform=iOS` into Xcode's Organizer and exports it with `scripts/ExportOptions.plist` (`app-store-connect`, automatic signing, symbols uploaded). Without arguments the signed `.ipa` lands in `build/export`; `scripts/archive.sh --upload` sends it to App Store Connect. The build number is the commit count (`CURRENT_PROJECT_VERSION`, 149 at the time of writing), so an upload from a newer commit is always higher than the last; the version is `MARKETING_VERSION` in `project.yml`, `0.1.0`, shared by the app and the widget.
 
-- **An `ExportOptions.plist` and an archive script.** `scripts/build.sh` builds for the simulator only. An `xcodebuild archive` for `generic/platform=iOS` with the team set, then `-exportArchive` with `method: app-store-connect`, is the whole of it.
-- **Privacy manifest.** Done: `Stub/Resources/PrivacyInfo.xcprivacy` declares no tracking, no collected data, and one required-reason API, `UserDefaults` (the season cache and the printed editions, reason `CA92.1`); XcodeGen picks it up with the rest of `Stub/`. Nothing reads file timestamps, and the widget calls no required-reason API, so it needs no manifest of its own. `ITSAppUsesNonExemptEncryption: false` in `project.yml` answers the export question on every upload. Check after `xcodegen generate` that `PrivacyInfo.xcprivacy` is in the app's Resources phase.
-- **App Store Connect record**: the bundle ID, the App Group capability, a 1024 icon (already in the asset catalog), screenshots (the `docs/screenshots` set is at simulator resolution and will do for a first internal build).
-- **Version and build.** `CFBundleShortVersionString` is `0.1.0` in `project.yml` for both targets; `CFBundleVersion` is `1`. Bump the build number per upload.
+What the build already answers:
 
-Nothing in the app needs changing for review: no network, no account, no third-party SDKs, camera and photo-library usage strings are in `project.yml` (ADR-005).
+- **Privacy manifest.** `Stub/Resources/PrivacyInfo.xcprivacy` declares no tracking, no collected data, and one required-reason API, `UserDefaults` (the season cache and the printed editions, reason `CA92.1`). Nothing reads file timestamps, and the widget calls no required-reason API, so it needs no manifest of its own. It is in the built app's bundle (checked 2026-09-30).
+- **Export compliance.** `ITSAppUsesNonExemptEncryption: false` in `project.yml` answers the question on every upload.
+- **The icon.** 1024 by 1024 with no alpha channel, as App Store Connect requires.
+- **No fixtures.** The nine synthetic stubs are Debug only (`EXCLUDED_SOURCE_FILE_NAMES` in the Release configuration), so the Release app is 6.2 MB rather than 11.
+- **Usage strings.** Camera and photo library are in `project.yml` (ADR-005). No network, no account, no third-party SDKs, so nothing in the app needs changing for review.
+
+What only Bruno can do:
+
+- **The App Store Connect record.** My Apps › + › New App: iOS, bundle ID `com.designedbybruno.stub` (it appears once the first signed build has registered it), SKU `stub`. The name must be unique on the whole store and "Stub" alone is probably taken; the home-screen name stays `Stub` whatever the store listing says (`CFBundleDisplayName`). Uploading from Xcode's Organizer (Distribute App › App Store Connect) offers to create the record if there is none.
+- **Testers.** Internal testers (up to 100 on the team) see a build minutes after processing, with no review. External testers need a Beta App Review of the first build and a line on what to test; §3 is that line.
+- **Screenshots** only for the store listing, not for TestFlight. The `docs/screenshots` set is at simulator resolution.
+

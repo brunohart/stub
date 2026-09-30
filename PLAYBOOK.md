@@ -172,4 +172,4 @@ Shipped (on 29 Sep): `ImageRenderer` draws the shaders (a test says so); three s
 
 ## After Day 30
 
-The press brief is done. The slot exits with "playbook complete" until this file grows. The "Still rough" paragraphs of Days 28 to 30 in `docs/LOG.md` are where a Day 31 would start, and `docs/device.md` §3 is the list only a phone can close.
+The press brief is done. The slot exits with "playbook complete" until this file grows. On 2026-09-30 the repo was made ready for a phone (ADR-019, `docs/device.md` §1 and §4); what is left there is Bruno's account and hands. The "Still rough" paragraphs of Days 28 to 30 in `docs/LOG.md` are where a Day 31 would start, and `docs/device.md` §3 is the list only a phone can close.

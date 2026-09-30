@@ -148,7 +148,7 @@ You need Xcode 27 with an iOS 27 simulator (the app still targets iOS 26; [ADR-0
 ```bash
 git clone https://github.com/brunohart/stub && cd stub
 scripts/build.sh      # xcodegen, then a simulator build
-scripts/test.sh       # 111 tests on an iPhone 18 Pro; the eval suite asks the model for a few minutes
+scripts/test.sh       # 113 tests on an iPhone 18 Pro; the eval suite asks the model for a few minutes
 scripts/run.sh --seed --reset --wait-for "written|hand-counted" --shot docs/screenshots/now.png
 ```
 
@@ -170,7 +170,12 @@ The simulator has no camera, no gyroscope and no hands, so `run.sh` stands in fo
 | `--drive [--record out.mov]` | Plays the interactions on a clock, and films them |
 | `--type accessibility-extra-large` | Sets Dynamic Type for the run |
 
-To run it on a phone, see [`docs/device.md`](docs/device.md).
+On a phone, once the account is set up ([`docs/device.md`](docs/device.md) §1):
+
+```bash
+scripts/device.sh     # a signed Release build, installed and launched on the paired iPhone
+scripts/archive.sh    # archive and export for TestFlight; --upload sends it to App Store Connect
+```
 
 ## What the readers score
 
