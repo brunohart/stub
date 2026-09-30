@@ -170,7 +170,8 @@ final class DebugDrive {
                         try await beat(1.0 / 60)
                     }
                     try await beat(0.6)
-                    let chosen = Genome.movements[5]
+                    // A card the edition is not already in: letting go on its own movement flies nothing.
+                    let chosen = [5, 2].map { Genome.movements[$0] }.first { $0 != session.edition.movement } ?? Genome.movements[5]
                     Self.log.info("drive: let go on \(chosen.rawValue)")
                     session.fanFinger = nil
                     session.letGo = chosen

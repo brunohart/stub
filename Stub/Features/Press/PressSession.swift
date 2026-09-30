@@ -281,6 +281,12 @@ final class PressSession {
         Self.log.info("Press '\(self.proof.release)': \(what)")
     }
 
+    /// The bed as bare stock, the moment before a reprint's first pass: set in the same transaction as the fan's card
+    /// landing, so the frame between the flight and the print run is the sheet that landed, never the whole card.
+    func bare() {
+        printed = 0
+    }
+
     /// The card on the bed printed again, a pass at a time and quickly: after a new movement or a new stock, because
     /// what it is printed on or in has changed. Under Reduce Motion it is simply whole.
     func reprint(reduceMotion: Bool) async {

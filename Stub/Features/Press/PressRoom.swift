@@ -18,7 +18,17 @@ struct PressRoom: View {
     @State private var closings = 0
     /// The fan's card on its way to the bed.
     @State private var flying: Movement?
+    /// The flying card's turn, from its place in the hand to square on the bed.
+    @State private var flightTurn: Double = 0
+    /// How much of the flying card is still printed: it leaves the fan whole and lands as the bare sheet the bed prints.
+    @State private var flightPrinted = Plate.foil
+    /// The flying card has let go of its place in the fan. Matched to the fan card, it would follow that card while the
+    /// fan fades out rather than fly, so on take-off it is matched in `air`, where nothing is, and flies to its own frame,
+    /// the bed's. The same id in another namespace: an id wrapped differently would not have matched the fan card at all.
+    @State private var inFlight = false
     @Namespace private var fan
+    /// Where the flying card is matched once it has taken off: nothing is a source here, so it flies to its own frame.
+    @Namespace private var air
     @Environment(\.undoManager) private var undoManager
     /// When the last proof was pulled: the ink dries from then, and the timeline stops when it is dry.
     @State private var wetSince: Date?
@@ -172,8 +182,9 @@ struct PressRoom: View {
                     // The fan's card, flying to the bed.
                     .overlay(alignment: .topLeading) {
                         if let flying {
-                            CardThumb(composition: session.composition(session.edition(in: flying)), light: light)
-                                .matchedGeometryEffect(id: flying, in: fan, isSource: false)
+                            CardThumb(composition: session.composition(session.edition(in: flying)), light: light, printed: flightPrinted)
+                                .rotationEffect(.degrees(flightTurn))
+                                .matchedGeometryEffect(id: flying, in: inFlight ? air : fan, isSource: false)
                                 .frame(width: size.width, height: size.height)
                         }
                     }
@@ -325,16 +336,33 @@ struct PressRoom: View {
             Task { await session.reprint(reduceMotion: true) }
             return
         }
-        withAnimation(Motion.place) {
-            session.bench = .rest
+        // Lifted off the fan as it lies in the hand, turned with it; nothing moves yet. Matched geometry carries the card's
+        // frame and not its turn, so a card that took off straight used to snap square as it left (Day 26's note).
+        var lift = Transaction()
+        lift.disablesAnimations = true
+        withTransaction(lift) {
             flying = movement
+            inFlight = false
+            flightTurn = FanLayout.angle(of: movement)
+            flightPrinted = Plate.foil
         }
         Task {
+            // One frame in the hand, so the flight starts from the card where it was.
+            try? await Task.sleep(for: .milliseconds(16))
+            // It turns square as it flies and its ink lifts, so it lands as the bare sheet the bed prints: the print run
+            // starts from what landed, with no whole card between the flight and the first pass.
+            withAnimation(Motion.place) {
+                session.bench = .rest
+                inFlight = true
+                flightTurn = 0
+                flightPrinted = 0
+            }
             try? await Task.sleep(for: .milliseconds(480))
             var still = Transaction()
             still.disablesAnimations = true
             withTransaction(still) {
                 session.choose(movement)
+                session.bare()
                 flying = nil
             }
             await session.reprint(reduceMotion: false)

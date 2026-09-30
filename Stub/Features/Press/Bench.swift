@@ -48,6 +48,11 @@ struct FanLayout: Layout {
         count > 1 ? -arc / 2 + arc * Double(index) / Double(count - 1) : 0
     }
 
+    /// The turn of `movement`'s card in the fan: where its flight to the bed starts.
+    static func angle(of movement: Movement) -> Double {
+        angle(Genome.movements.firstIndex(of: movement) ?? 0, of: Genome.movements.count)
+    }
+
     /// Where card `index` sits across a fan `width` wide.
     func centre(_ index: Int, of count: Int, width: CGFloat) -> CGFloat {
         width / 2 + radius * CGFloat(sin(Self.angle(index, of: count, arc: arc) * .pi / 180))
