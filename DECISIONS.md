@@ -198,3 +198,13 @@ Stub had grain everywhere: per-pixel noise at 6% over the parchment behind every
 **Why.** Nothing before this had built for a phone. The team belongs in `project.yml` because the `.xcodeproj` is generated (ADR-004) and a team chosen in Xcode's UI would be lost on the next `xcodegen generate`. A commit count only goes up on `main`, needs no file to bump and no commit of its own, and says which tree a TestFlight build came from.
 
 **Consequences.** The simulator scripts are unchanged: a simulator build signs ad hoc and does not ask the account for anything. A build from a branch that has been rebased shorter than an earlier upload would reuse a number App Store Connect has seen and be refused; upload from `main`. A contributor on another team changes one line in `project.yml` and `ExportOptions.plist`.
+
+## ADR-020 — The deep eval: every question asked more than once, off the daily path
+
+**Date:** 2026-09-30 · **Status:** decided.
+
+`StubTests/DeepEvalTests.swift` asks the model what `EvalTests` asks once, `STUB_EVAL_RUNS` times (`scripts/eval.sh 3`): every fixture cold, with the hint, streamed with the hint and filed as `StubReader.understand` files it, and cold without the line about a bare `$`; the season sentence for three drawers, every attempt watched through `SeasonWriter.write(observe:)`; every release art-directed through `ArtDirector.direct`. It writes `docs/evals-deep.md`.
+
+**Why.** Day 3 said one eval run is one sample of a reader that is not the same twice, and that no rule should be loosened on one sample's evidence. The season sentence and the editions had no measurement at all, only the log's anecdotes: "the model keeps the rules about half the time cold" (Day 4), "the art director lost every race" (Day 22).
+
+**Consequences.** It is off unless the variable is set, as a suite trait, because it asks the model a few hundred times and takes most of an hour; `scripts/test.sh` and the daily slot never run it. `docs/evals-deep.md` is only written by committed code: a change to what it asks is committed with the run it produced. Its first finding changed a prompt: the cold prompt now says a bare `$` is most likely NZD, which the heuristic already assumed (`ModelParser.bareDollar`), and the column without that line stays in the table so the line keeps earning its place.

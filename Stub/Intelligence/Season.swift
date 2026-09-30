@@ -203,8 +203,11 @@ enum SeasonWriter {
 
     /// The model's sentence, judged. A refused sentence earns one more try with the reason in the prompt
     /// (Day 4: the first sentence for the seeded drawer ran to twenty-five words). Throws when the model
-    /// fails or both sentences break a rule.
-    static func write(_ summary: SeasonSummary, attempts: Int = 2) async throws -> String {
+    /// fails or both sentences break a rule. `observe` sees every attempt, what the model wrote and what the rules
+    /// said, so the deep eval can count how often the first try keeps the rules (`docs/evals-deep.md`).
+    static func write(_ summary: SeasonSummary, attempts: Int = 2,
+                      observe: (@Sendable (_ attempt: Int, _ wrote: String, _ verdict: SeasonRules.Verdict) -> Void)? = nil)
+        async throws -> String {
         var options = GenerationOptions()
         options.maximumResponseTokens = 80
         let session = session()
@@ -217,7 +220,9 @@ enum SeasonWriter {
             } catch let error as LanguageModelSession.GenerationError {
                 throw ModelParser.ModelFailure(reason: ModelParser.describe(error))
             }
-            switch SeasonRules.judge(response.content.sentence) {
+            let verdict = SeasonRules.judge(response.content.sentence)
+            observe?(attempt, response.content.sentence, verdict)
+            switch verdict {
             case .accepted(let sentence): return sentence
             case .rejected(let reason):
                 log.notice("Season rejected, attempt \(attempt) (\(reason)): \(response.content.sentence)")

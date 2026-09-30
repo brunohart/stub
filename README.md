@@ -148,7 +148,8 @@ You need Xcode 27 with an iOS 27 simulator (the app still targets iOS 26; [ADR-0
 ```bash
 git clone https://github.com/brunohart/stub && cd stub
 scripts/build.sh      # xcodegen, then a simulator build
-scripts/test.sh       # 115 tests on an iPhone 18 Pro; the eval suite asks the model for a few minutes
+scripts/test.sh       # the tests on an iPhone 18 Pro; the eval suite asks the model for a few minutes
+scripts/eval.sh 3     # the deep eval: every question asked three times, into docs/evals-deep.md (half an hour or so)
 scripts/run.sh --seed --reset --wait-for "written|hand-counted" --shot docs/screenshots/now.png
 ```
 
@@ -190,7 +191,7 @@ A test runs every fixture through the real pipeline and writes [`docs/evals.md`]
 | seat | 9/9 | 9/9 | 9/9 |
 | price | 9/9 | 2/9 | 9/9 |
 
-The rules take about a millisecond. The model took 5.7 s (median) with the hint and 6.0 s cold on this run; three runs that day had medians from 2.5 s to 17.7 s on the same Mac. Cold, it reads a `$` as US dollars. Given the rules' draft, it matches them on every field. It isn't the same reader twice, so the table is a sample, and the log records the runs that scored differently.
+The rules take about a millisecond. The model took 5.7 s (median) with the hint and 6.0 s cold on this run; three runs that day had medians from 2.5 s to 17.7 s on the same Mac. Cold, it reads a `$` as US dollars. Given the rules' draft, it matches them on every field. It isn't the same reader twice, so the table is a sample, and the log records the runs that scored differently. [`docs/evals-deep.md`](docs/evals-deep.md) asks every question three times: how far one pass can be trusted, how fast the streamed title arrives, how often the season sentence keeps its rules on the first try, and whether the model gives a release the same edition every time.
 
 ## Honesty
 
