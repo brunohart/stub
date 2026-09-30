@@ -130,6 +130,8 @@ struct ModelParserTests {
         let warm = ModelParser.prompt(reading, hint: hint)
         #expect(!cold.contains("First pass"))
         #expect(warm.contains("First pass") && warm.contains("title: Past Lives") && warm.contains("seat: K9"))
+        // A bare $ is NZD, as the heuristic files it; only the cold prompt needs telling (2026-09-30).
+        #expect(cold.hasSuffix(ModelParser.bareDollar) && !warm.contains(ModelParser.bareDollar))
         var empty = StubDraft()
         empty.seat = "K9"
         #expect(!ModelParser.prompt(reading, hint: empty).contains("First pass"), "a hint with no title is no hint")

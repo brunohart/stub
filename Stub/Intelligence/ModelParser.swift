@@ -58,20 +58,24 @@ struct ModelParser: StubParsing {
             """)
     }
 
-    /// The prompt. With a hint, the heuristic's reading is appended so the model corrects rather than starts cold.
+    /// What a bare `$` means here. The heuristic files it as NZD (`HeuristicParser.price`); a cold model, with no hint to
+    /// say so, said USD for nearly every one (price 2/9 since Day 3). With this line it read 8 of 9 (`docs/evals-deep.md`,
+    /// 2026-09-30). A hint carries its own currency, so only the cold prompt says it.
+    static let bareDollar = "A price printed with a bare $ is most likely NZD."
+
+    /// The prompt. With a hint, the heuristic's reading is appended so the model corrects rather than starts cold;
+    /// without one, what a bare `$` means.
     static func prompt(_ reading: StubReading, hint: StubDraft?) -> String {
-        var text = "Ticket text:\n\(reading.text)"
-        if let hint, hint.isUsable {
-            var lines = ["title: \(hint.title)"]
-            if !hint.cinema.isEmpty { lines.append("cinema: \(hint.cinema)") }
-            if let d = hint.screenedAt { lines.append("screenedAt: \(d.formatted(.iso8601.year().month().day().time(includingFractionalSeconds: false)))") }
-            if !hint.screen.isEmpty { lines.append("screen: \(hint.screen)") }
-            if !hint.seat.isEmpty { lines.append("seat: \(hint.seat)") }
-            if let p = hint.price { lines.append("price: \(p)") }
-            if !hint.currency.isEmpty { lines.append("currency: \(hint.currency)") }
-            text += "\n\nFirst pass by the rule-based reader (a hint, not the truth):\n" + lines.joined(separator: "\n")
-        }
-        return text
+        let text = "Ticket text:\n\(reading.text)"
+        guard let hint, hint.isUsable else { return text + "\n\n" + bareDollar }
+        var lines = ["title: \(hint.title)"]
+        if !hint.cinema.isEmpty { lines.append("cinema: \(hint.cinema)") }
+        if let d = hint.screenedAt { lines.append("screenedAt: \(d.formatted(.iso8601.year().month().day().time(includingFractionalSeconds: false)))") }
+        if !hint.screen.isEmpty { lines.append("screen: \(hint.screen)") }
+        if !hint.seat.isEmpty { lines.append("seat: \(hint.seat)") }
+        if let p = hint.price { lines.append("price: \(p)") }
+        if !hint.currency.isEmpty { lines.append("currency: \(hint.currency)") }
+        return text + "\n\nFirst pass by the rule-based reader (a hint, not the truth):\n" + lines.joined(separator: "\n")
     }
 
     func parse(_ reading: StubReading) async throws -> StubDraft {
