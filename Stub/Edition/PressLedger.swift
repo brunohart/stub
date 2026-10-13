@@ -10,19 +10,21 @@ import OSLog
 /// back on one phone goes back on all of them.
 @MainActor
 final class PressLedger {
-    enum Kind: String { case edition, proof, press, signature }
+    enum Kind: String { case edition, proof, press, signature, ledger }
 
     static let log = Logger(subsystem: "com.designedbybruno.stub", category: "ledger")
-    /// The ledger has been filled from this phone's copies once; from then on it is the truth.
-    static let filledKey = "press.ledger.filled"
 
     private let context: ModelContext
-    private let defaults: UserDefaults
 
-    init(context: ModelContext, defaults: UserDefaults = .standard) {
+    init(context: ModelContext) {
         self.context = context
-        self.defaults = defaults
     }
+
+    /// Whether this store's ledger has been filled: a marker record in the store itself, never a flag beside it. A store
+    /// that is new, recreated, or migrated without its records has no marker and is filled again from the phone's copies
+    /// before anything is adopted from it, so an empty ledger can never empty the press (2026-10-13: a flag in
+    /// `UserDefaults` outlived a store's records, and the press adopted nothing).
+    private var isFilled: Bool { record(.ledger, "filled") != nil }
 
     /// Joins the press to the ledger. The first time on a phone, whatever the phone printed, pulled and signed before the
     /// ledger existed goes into it (without overwriting what another phone already put there); then the copies are made
@@ -30,7 +32,7 @@ final class PressLedger {
     func attach(_ editions: Editions, _ signatures: Signatures) {
         editions.ledger = self
         signatures.ledger = self
-        if !defaults.bool(forKey: Self.filledKey) {
+        if !isFilled {
             let encoder = JSONEncoder()
             for (key, edition) in editions.printed where record(.edition, key) == nil {
                 if let data = try? encoder.encode(edition) { insert(.edition, key, data) }
@@ -40,8 +42,8 @@ final class PressLedger {
             if let drawing = signatures.drawing, record(.signature, "owner") == nil {
                 insert(.signature, "owner", drawing.dataRepresentation())
             }
+            insert(.ledger, "filled", Data())
             try? context.save()
-            defaults.set(true, forKey: Self.filledKey)
             Self.log.info("Ledger filled from this phone: \(editions.printed.count) editions, \(editions.proofs.count) proofs")
         }
         reconcile(editions, signatures)

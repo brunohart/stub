@@ -36,7 +36,6 @@ struct StubApp: App {
             try? context.delete(model: Stub.self)
             try? context.delete(model: PressRecord.self)
             try? context.save()
-            UserDefaults.standard.removeObject(forKey: PressLedger.filledKey)
         }
         #endif
         Drawer.dedupe(context)

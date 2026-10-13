@@ -118,8 +118,8 @@ struct DrawerTests {
             try to.mainContext.save()
         }
 
-        let (a, editionsA, signaturesA, defaultsA) = try phone()
-        let ledgerA = PressLedger(context: a.mainContext, defaults: defaultsA)
+        let (a, editionsA, signaturesA, _) = try phone()
+        let ledgerA = PressLedger(context: a.mainContext)
         ledgerA.attach(editionsA, signaturesA)
         let edition = Genome.floor(for: "The Brutalist")
         editionsA.store(edition)
@@ -128,9 +128,9 @@ struct DrawerTests {
         editionsA.pull(proof)
         #expect(editionsA.proof(for: "The Brutalist") != nil)
 
-        let (b, editionsB, signaturesB, defaultsB) = try phone()
+        let (b, editionsB, signaturesB, _) = try phone()
         try sync(a, to: b)
-        PressLedger(context: b.mainContext, defaults: defaultsB).attach(editionsB, signaturesB)
+        PressLedger(context: b.mainContext).attach(editionsB, signaturesB)
         #expect(editionsB.underneath(for: "The Brutalist") == edition, "the same edition, not one decided again")
         #expect(editionsB.proof(for: "The Brutalist")?.takes == editionsA.proof(for: "The Brutalist")?.takes)
 
@@ -140,6 +140,24 @@ struct DrawerTests {
         ledgerB.reconcile(editionsB, signaturesB)
         #expect(editionsB.proof(for: "The Brutalist") == nil, "going back on one phone goes back on the other")
         #expect(editionsB.underneath(for: "The Brutalist") == edition)
+    }
+
+    /// A store that lost its records (recreated, reset, migrated without them) is filled again from the phone's copies; it
+    /// never empties the press.
+    @Test func anEmptiedLedgerIsFilledAgainNotAdopted() throws {
+        let defaults = try #require(UserDefaults(suiteName: "refill-\(UUID().uuidString)"))
+        let editions = Editions(defaults: defaults)
+        let signatures = Signatures(url: FileManager.default.temporaryDirectory.appending(path: "sig-\(UUID().uuidString)"))
+        let first = try ModelContainer(for: SharedStore.schema, configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none))
+        PressLedger(context: first.mainContext).attach(editions, signatures)
+        let edition = Genome.floor(for: "Past Lives")
+        editions.store(edition)
+        // The same phone, a new store with nothing in it.
+        let second = try ModelContainer(for: SharedStore.schema, configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none))
+        PressLedger(context: second.mainContext).attach(editions, signatures)
+        #expect(editions.underneath(for: "Past Lives") == edition, "the press kept its edition")
+        let records = try second.mainContext.fetch(FetchDescriptor<PressRecord>())
+        #expect(records.contains { $0.kind == "edition" && $0.key == edition.release }, "and the new store was filled from it")
     }
 
     /// The season counts the chains and the independents apart, and the front row.
