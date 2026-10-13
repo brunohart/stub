@@ -45,7 +45,7 @@ struct ShareView: View {
                     .shadow(color: .black.opacity(0.14), radius: 8, x: 3, y: 5)
                     .frame(maxWidth: .infinity)
                 Label(kind == .pdf ? "The first page of the PDF. Stub reads it on the phone when you open it."
-                                   : "A screenshot of the ticket. Stub reads it on the phone when you open it.",
+                                   : "A picture of the ticket. Stub reads it on the phone when you open it.",
                       systemImage: kind == .pdf ? "doc.richtext" : "rectangle.on.rectangle")
                     .font(Type.words(14)).foregroundStyle(Ink.ink.opacity(0.75))
                     .fixedSize(horizontal: false, vertical: true)

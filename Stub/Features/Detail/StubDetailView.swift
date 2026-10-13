@@ -172,6 +172,24 @@ struct StubDetailView: View {
             }
         }
         .task {
+            // `-preview`: turn the card in the light, slowly one way and back, then set it on the table.
+            guard DebugDrive.wantsPreview else { return }
+            do {
+                while editions.edition(for: stub.title) == nil { try await Task.sleep(for: .milliseconds(250)) }
+                try await Task.sleep(for: .seconds(1.3))
+                DebugDrive.log.info("preview: turn it in the light")
+                for step in 0...96 {
+                    let a = Double(step) / 96 * 2 * .pi
+                    DebugDrive.shared.tilt = CGPoint(x: sin(a) * 0.75, y: -0.15 - sin(a * 2) * 0.2)
+                    try await Task.sleep(for: .milliseconds(38))
+                }
+                DebugDrive.shared.tilt = DebugDrive.heldTilt
+                try await Task.sleep(for: .seconds(0.6))
+                DebugDrive.log.info("preview: on the table")
+                inRoom = true
+            } catch { return }
+        }
+        .task {
             // `-room`: set the card on the table once it is printed, as "Put it on the table" would on a phone that can.
             guard DebugDrive.wantsRoom else { return }
             do {

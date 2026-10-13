@@ -71,8 +71,27 @@ struct TableView: View {
             .onOpenURL { url in reach.open(url) }
             // Whatever the share extension left while the app was away (ADR-023).
             .onChange(of: scenePhase, initial: true) { _, phase in
-                if phase == .active { reach.drainInbox() }
+                guard phase == .active else { return }
+                #if DEBUG
+                // The preview lets the cards be dealt before the stub arrives.
+                if DebugDrive.wantsPreview {
+                    Task { try? await Task.sleep(for: .seconds(2.6)); reach.drainInbox() }
+                    return
+                }
+                #endif
+                reach.drainInbox()
             }
+            #if DEBUG
+            .onChange(of: DebugDrive.shared.openNewest) { _, now in
+                guard now else { return }
+                DebugDrive.shared.openNewest = false
+                Task {
+                    try? await Task.sleep(for: .seconds(1.1))
+                    DebugDrive.log.info("preview: open")
+                    selected = stubs.first
+                }
+            }
+            #endif
             #if DEBUG
             .task {
                 // `-import`: open the import sheet after the seed has settled, so it can be screenshotted.

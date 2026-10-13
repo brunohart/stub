@@ -60,6 +60,13 @@ final class DebugDrive {
     static let viewings: Int? = value(after: "-viewings").flatMap { Int($0) }.map { max($0, 1) }
     /// `-clip`: with `-edition`, draw the moving share and log where it was written (brief §6.4).
     static var wantsClip: Bool { ProcessInfo.processInfo.arguments.contains("-clip") }
+    /// `-preview`: the App Store preview's story on a clock (BEDIP-221): the cards dealt, a stub arriving (with `-inbox`)
+    /// and read, kept, printed, into the drawer, opened, turned in the light and set on the table. `scripts/preview.sh`
+    /// films it.
+    static var wantsPreview: Bool { ProcessInfo.processInfo.arguments.contains("-preview") }
+    /// Set by the import sheet once it has put the kept stub in the drawer: the table opens the newest stub.
+    var openNewest = false
+
     /// `-inbox /path/to/ticket.pkpass`: put a file in the share extension's inbox at launch, as a share would, so the app's
     /// side of a share can be proved in the simulator (ADR-023). `.pkpass`, `.pdf`, or any image.
     static let inboxFile: String? = value(after: "-inbox")

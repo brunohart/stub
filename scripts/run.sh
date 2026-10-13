@@ -3,7 +3,7 @@
 # Usage: scripts/run.sh [--seed] [--reset] [--drive] [--season] [--import] [--edition] [--turned] [--tilt x,y]
 #                       [--proof spec] [--keeps] [--open title] [--press] [--part id] [--take n] [--scrub x]
 #                       [--separated s] [--bench name] [--flood p] [--pulled] [--wet w] [--signed] [--record path.mov]
-#                       [--viewings n] [--age years] [--room] [--clip out.mp4] [--clip-card] [--inbox file]
+#                       [--viewings n] [--age years] [--room] [--clip out.mp4] [--clip-card] [--inbox file] [--preview]
 #                       [--type size] [--look metal|swiftui] [--wait-for regex] [--shot path.png]
 # --drive: after the seed, press, open, hold and close on a timer (see DebugDrive) so the run can be filmed.
 # --season: open the season sheet once the seed has settled.
@@ -30,6 +30,8 @@
 #   Vertical, 1080 by 1920, with the watermark under the card (BEDIP-221); --clip-card draws the card-sized clip instead.
 # --inbox file: put a .pkpass, .pdf or image in the share extension's inbox at launch, as a share would (BEDIP-218); the
 #   app opens the import sheet on it. A relative path is from the repo.
+# --preview: the App Store preview's story on a clock (BEDIP-221); with --inbox, the stub that arrives. scripts/preview.sh
+#   films it and cuts it to Apple's sizes.
 # --type: set the simulator's Dynamic Type size for the run (medium, extra-extra-large, accessibility-extra-large …)
 #   and put it back to medium afterwards.
 # --wait-for: instead of sleeping STUB_SETTLE seconds, poll the app's log for a line matching the regex
@@ -52,6 +54,7 @@ while [ $# -gt 0 ]; do case "$1" in
   --clip) ARGS+=(-clip); CLIP="$2"; WAIT="${WAIT:-Clip: written}"; shift;;
   --clip-card) ARGS+=(-clipformat card);;
   --inbox) ARGS+=(-inbox "$(cd "$(dirname "$2")" && pwd)/$(basename "$2")"); shift;;
+  --preview) ARGS+=(-preview);;
   --look) ARGS+=(-look "$2"); shift;; --wait-for) WAIT="$2"; shift;;
   --shot) SHOT="$2"; shift;; *) echo "unknown $1" >&2; exit 2;; esac; shift; done
 SIM="$(scripts/sim.sh)"

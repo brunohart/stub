@@ -43,7 +43,7 @@ struct Arrival: Identifiable, Equatable, Sendable {
         case .shortcut: return "Handed over by a shortcut."
         case .pass: return "Read from the Wallet pass. No camera, no model."
         case .pdf: return "The first page of the PDF, read here on the phone."
-        case .screenshot: return "A screenshot of the ticket, read here on the phone."
+        case .screenshot: return "A picture of the ticket, read here on the phone."
         }
     }
 }

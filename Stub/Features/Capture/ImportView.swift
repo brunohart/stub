@@ -119,6 +119,20 @@ struct ImportView: View {
                 guard let arrival, !received else { return }
                 received = true
                 await receive(arrival)
+                #if DEBUG
+                // `-preview`: keep it once it is read, let the press print it, and go back to the drawer.
+                guard DebugDrive.wantsPreview, draft.isUsable else { return }
+                // The edition is chosen while the sheet is still up, so the press prints it on camera; the wait is cut.
+                let year = draft.screenedAt.map { Calendar.current.component(.year, from: $0) }
+                _ = await Editions.shared.decide(title: draft.title, year: year, screen: draft.screen.nilIfEmpty)
+                do { try await Task.sleep(for: .seconds(1.4)) } catch { return }
+                DebugDrive.log.info("preview: keep")
+                keep()
+                do { try await Task.sleep(for: .seconds(4.4)) } catch { return }
+                DebugDrive.log.info("preview: into the drawer")
+                DebugDrive.shared.openNewest = true
+                dismiss()
+                #endif
             }
             .fullScreenCover(isPresented: $isScanning) {
                 ScanSheet { scan in Task { await scanned(scan) } }
