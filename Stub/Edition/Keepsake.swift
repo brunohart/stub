@@ -36,6 +36,8 @@ struct Keepsake: View {
     @State private var lifted = false
     @State private var holdTimer: Task<Void, Never>?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Whether this person has ever turned a card over: the hint under the card is for the first time only.
+    @AppStorage("taught.turn") private var hasTurned = false
 
     init(stub: Stub, copy: Copy, turned: Binding<Bool>, pressesOnAppear: Bool = false,
          takeToPress: (() -> Void)? = nil, pressSource: Namespace.ID? = nil) {
@@ -97,6 +99,7 @@ struct Keepsake: View {
             texture.end()
         }
         .onChange(of: turned) { _, now in
+            if now { hasTurned = true }
             withAnimation(reduceMotion ? Motion.plain : Motion.settle) { angle = now ? 180 : 0 }
             if !now { hold(false) }
         }
@@ -116,8 +119,8 @@ struct Keepsake: View {
     private var caption: String? {
         if choosing { return "Choosing an edition for \(stub.title)…" }
         if turned { return "Hold the photograph to lift the print." }
-        // Where there is no row of actions (the import sheet's press), the one thing to know is that it turns.
-        if takeToPress == nil { return "Tap the card to turn it over." }
+        // Turning over is the card's own gesture, not a button: it is said until the person has done it once.
+        if !hasTurned { return "Tap the card to turn it over." }
         return nil
     }
 

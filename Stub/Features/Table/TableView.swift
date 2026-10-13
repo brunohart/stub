@@ -24,7 +24,7 @@ struct TableView: View {
                 Paper()
                 ScrollView {
                     VStack(alignment: .leading, spacing: 28) {
-                        header
+                        header(summary)
                         if stubs.isEmpty {
                             EmptyDrawer { importing = ImportRequest() }
                         } else {
@@ -111,30 +111,13 @@ struct TableView: View {
         importing = ImportRequest(arrival: arrival)
     }
 
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            DisplayTitle("Stub", size: 44)
-                .padding(.top, 12)
-            // The one italic sentence. Counted by hand on Day 0; written by the on-device model from Day 4,
-            // with the hand count as the floor (ADR-011). Tap it for the numbers.
-            Button {
-                if !stubs.isEmpty { showSeason = true }
-            } label: {
-                Text(season.sentence)
-                    .font(Type.italic(20))
-                    .foregroundStyle(Ink.navy)
-                    .lineSpacing(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .multilineTextAlignment(.leading)
-                    .contentTransition(.opacity)
-                    .animation(Motion.place, value: season.sentence)
-            }
-            .buttonStyle(.plain)
-            .disabled(stubs.isEmpty)
-            .frame(minHeight: 44, alignment: .topLeading)
-            .accessibilityHint(stubs.isEmpty ? "" : "Opens the season: the numbers behind this sentence.")
-        }
-        .padding(.top, 4)
+    /// The drawer's label, centred over the table: the screen's own name for itself (ADR-022). The season's sentence is
+    /// the season sheet's; the home shows what the drawer holds.
+    private func header(_ summary: SeasonSummary) -> some View {
+        DrawerLabel(summary: summary, years: DrawerLabel.years(of: stubs)) { showSeason = true }
+            .frame(maxWidth: .infinity)
+            .padding(.top, 18)
+            .padding(.bottom, 6)
     }
 }
 
@@ -236,6 +219,12 @@ struct EmptyDrawer: View {
                         withAnimation(Motion.settle) { breath = 1 }
                     }
                 }
+            // The empty drawer's one sentence: what the drawer is for. Reading type, not the season's italic voice.
+            Text(SeasonSummary().handSentence)
+                .font(Type.reading(19))
+                .foregroundStyle(Ink.ink.opacity(0.8))
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
             Button(action: add) {
                 HStack(spacing: 8) {
                     Image(systemName: "plus").font(.system(size: 15, weight: .medium))

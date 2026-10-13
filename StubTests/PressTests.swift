@@ -3,6 +3,8 @@ import Foundation
 import CoreGraphics
 import QuartzCore
 import CoreHaptics
+import SwiftUI
+import UIKit
 @testable import Stub
 
 /// The press (ADR-016): every part rolled from its own die, a take as a fork of it, a proof as a difference laid over
@@ -296,7 +298,7 @@ struct PressRoomTests {
         #expect(PressSession.spelled(14) == "fourteen")
         #expect(PressSession.spelled(99) == "ninety-nine")
         let session = PressSession(title: "The Brutalist", copy: copy, editions: Editions(defaults: UserDefaults(suiteName: "press-room-\(UUID().uuidString)")!))
-        #expect(session.sentence(at: 0) == "Touch a part of the card to turn it.")
+        #expect(session.sentence(at: 0) == "Tap a part of the poster, then turn the dial.")
         let disc = Parts.Constructivist.disc
         session.pickUp(disc)
         #expect(session.sentence(at: 0) == "The disc, as the title drew it.")
@@ -472,7 +474,9 @@ struct PullTests {
         #expect(session.somethingToPull)
         #expect(session.sentence(at: 14) == "The disc. Take fourteen.")
         session.putDown()
-        #expect(session.sentence(at: 0) == "Pull it when it is right.")
+        // Put down, the line says the press's one move again; the lever says Pull on its own (ADR-022).
+        #expect(session.sentence(at: 0) == "Tap a part of the poster, then turn the dial.")
+        #expect(session.somethingToPull, "the lever is ready")
 
         undo.beginUndoGrouping()
         session.pull()
@@ -566,5 +570,57 @@ struct PullTests {
     @Test func thePlatenIsInTheBundle() throws {
         let url = try #require(LeverFeel.platen)
         _ = try CHHapticPattern(contentsOf: url)
+    }
+}
+
+/// The plates part and close without a seam (2026-10-13). The press bed draws the card as its stack of sheets even at rest,
+/// so the first frame of parting is the same picture as the card lying flat: nothing re-rasterises, and the type does not
+/// shimmer as the sheets lift or press together. The flat card everywhere else is drawn the cheaper way.
+@MainActor
+struct SeparationHandOffTests {
+    private let copy = Copy(title: "La Chimera", cinema: "Cinéma du Panthéon", date: "24 MAR 2024", time: "20:30",
+                            screen: "2", seat: "F12", price: "€12.50", year: 2024)
+
+    private func render(_ view: some View) throws -> Pixels {
+        let renderer = ImageRenderer(content: view.frame(width: Card.width, height: Card.height))
+        renderer.scale = 2
+        return Pixels(try #require(renderer.cgImage))
+    }
+
+    /// Pixels that differ by more than `threshold` (6% by default, about what a tenth of a pixel of motion changes an
+    /// edge by at most), between two renders of the same size.
+    private func jump(_ a: Pixels, _ b: Pixels, threshold: Double = 0.06) -> Int {
+        var differ = 0
+        for y in stride(from: 0, to: a.height, by: 2) {
+            for x in stride(from: 0, to: a.width, by: 2) {
+                let p = a.rgba(x, y), q = b.rgba(x, y)
+                if max(abs(p.0 - q.0), abs(p.1 - q.1), abs(p.2 - q.2)) > threshold { differ += 1 }
+            }
+        }
+        return differ
+    }
+
+    /// The sheets at rest and the first frame of their parting (a twentieth of a pixel of motion at the corners) differ by
+    /// that motion and nothing else, in every movement.
+    @Test func theSheetsAtRestAreTheFirstFrameApart() async throws {
+        try await EditionShaders.prepare()
+        for movement in Genome.movements {
+            var edition = Genome.floor(for: copy.title)
+            edition.movement = movement
+            let c = Composition(edition: edition, copy: copy)
+            let resting = try render(EditionFace(composition: c, separation: 0, asSheets: true))
+            let lifting = try render(EditionFace(composition: c, separation: 0.0002, asSheets: true))
+            #expect(jump(resting, lifting) < 40, "\(movement): \(jump(resting, lifting)) pixels jump as the sheets start to part")
+        }
+    }
+
+    /// The other side of the decision, measured: the flat card and the first frame of parting are not the same picture
+    /// (every edge re-rasterised), which is why the press must not switch between them mid-spring.
+    @Test func theFlatCardAndTheFirstFrameApartAreNot() async throws {
+        try await EditionShaders.prepare()
+        let c = Composition(edition: Genome.floor(for: copy.title), copy: copy)
+        let flat = try render(EditionFace(composition: c))
+        let parting = try render(EditionFace(composition: c, separation: 0.0002))
+        #expect(jump(flat, parting) > 300, "if these ever match, the press can go back to drawing the flat card at rest")
     }
 }

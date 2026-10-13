@@ -40,22 +40,34 @@ struct EditionFace: View {
     var focus: Part.ID? = nil
     /// How far apart the layers are lifted, 0 (the card) to 1 (the separations, brief §5.4).
     var separation: CGFloat = 0
+    /// Draw the card as its stack of sheets even when they lie flat. The press bed does, so parting the plates never
+    /// changes how the card is drawn: switching from the flat card to the projected sheets re-rasterised every edge of the
+    /// type at the moment they began to part, and again as they closed (2026-10-13).
+    var asSheets = false
+
+    /// The sheets "at rest" are this far apart: too little to see, but not the identity, which SwiftUI would skip and draw
+    /// the flat way, putting the switch back at the first frame of parting.
+    static let resting: CGFloat = 0.0001
     /// How deep the impression is, as a share of the stock's: the platen brings it up from 0 after a pull.
     var impression: Double = 1
     /// How wet the ink still is after a pull, 1 to 0.
     var wet: Double = 0
 
     var body: some View {
-        if separation > 0 {
+        if separation > 0 || asSheets {
             // The layers, each a sheet on its own, lifted apart and seen from above. Each keeps its shaders, so the foil
             // still catches the light.
             ZStack(alignment: .topLeading) {
                 ForEach(Array(Separation.layers(metallic: composition.isMetallic).enumerated()), id: \.element) { index, layer in
                     sheet(layer)
-                        .projectionEffect(ProjectionTransform(Separation.transform(index: index, separation: separation)))
+                        .projectionEffect(ProjectionTransform(Separation.transform(index: index, separation: max(separation, Self.resting))))
                 }
             }
             .frame(width: Card.width, height: Card.height)
+            // The flat card and the first frame of the sheets are the same picture, so one hands over to the other exactly.
+            // Under an animation SwiftUI would otherwise cross-fade the two branches, and the type would ghost as the
+            // plates lifted and again as they pressed together (2026-10-13).
+            .transition(.identity)
         } else {
             ZStack(alignment: .topLeading) {
                 ForEach(Separation.layers(metallic: composition.isMetallic), id: \.self) { layer in
@@ -64,6 +76,7 @@ struct EditionFace: View {
             }
             .frame(width: Card.width, height: Card.height)
             .clipShape(TicketShape(punches: composition.punches))
+            .transition(.identity)
         }
     }
 
@@ -74,7 +87,9 @@ struct EditionFace: View {
             .frame(width: Card.width, height: Card.height)
             .clipShape(TicketShape(punches: composition.punches))
             .overlay {
-                TicketShape(punches: composition.punches).stroke(Color(hex: edge(of: layer)).opacity(layer == .stock ? 0.35 : 0.2), lineWidth: 0.75)
+                // The film's edge comes up as the sheets part, so the first frame apart is the flat card exactly.
+                TicketShape(punches: composition.punches)
+                    .stroke(Color(hex: edge(of: layer)).opacity((layer == .stock ? 0.35 : 0.2) * min(1, Double(separation) * 6)), lineWidth: 0.75)
             }
     }
 

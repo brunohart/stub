@@ -36,14 +36,25 @@ private struct StampBody: View {
     let tight: Bool
     @Environment(\.isEnabled) private var isEnabled
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Counts the times the stamp has been lifted off the paper: each one plays the lift.
+    @State private var lifts = 0
 
     /// How far the plate is out of register at rest, in points.
     static let misregister = CGSize(width: 3, height: 3.5)
 
+    /// The lift, after a press: the ink rises a touch past where it rests and settles, tipped a fraction as a hand tips a
+    /// stamp coming off the paper, and a ring of ink squeezed out at its edge spreads and fades where it printed.
+    struct Lift {
+        var rise: CGFloat = 0
+        var tip: Double = 0
+        var ring: CGFloat = 0
+        var ringInk: Double = 0
+    }
+
     var body: some View {
         let pressed = configuration.isPressed && isEnabled
-        // Down onto the plate on the press; back up on release with the stamp's overshoot. Under Reduce Motion nothing
-        // travels: the ink darkens a little where it would have gone down.
+        // Down onto the plate on the press, the ink squashed a little under the hand. Under Reduce Motion nothing travels:
+        // the ink darkens a little where it would have gone down.
         let down = pressed && !reduceMotion
         let face = configuration.label
             .font(Type.words(16))
@@ -59,18 +70,60 @@ private struct StampBody: View {
             .contentShape(shape)
 
         face
+            .scaleEffect(x: down ? 1.012 : 1, y: down ? 0.972 : 1, anchor: .bottom)
             .offset(down ? Self.misregister : .zero)
-            .scaleEffect(down ? 0.985 : 1)
             .opacity(ink == .quiet && pressed ? 0.55 : 1)
+            .animation(pressed ? Motion.touchDown : .spring(duration: 0.32, bounce: 0.45), value: pressed)
+            .keyframeAnimator(initialValue: Lift(), trigger: lifts) { content, lift in
+                content
+                    .offset(y: -lift.rise)
+                    .rotationEffect(.degrees(lift.tip), anchor: .bottom)
+            } keyframes: { _ in
+                KeyframeTrack(\.rise) {
+                    SpringKeyframe(2.4, duration: 0.09, spring: .snappy)
+                    SpringKeyframe(0, duration: 0.42, spring: .bouncy(duration: 0.42, extraBounce: 0.12))
+                }
+                KeyframeTrack(\.tip) {
+                    SpringKeyframe(lifts.isMultiple(of: 2) ? 0.9 : -0.9, duration: 0.09, spring: .snappy)
+                    SpringKeyframe(0, duration: 0.45, spring: .bouncy(duration: 0.45, extraBounce: 0.1))
+                }
+            }
             // The plate stays where it was printed; `offset` moves only the ink, so pressing puts the ink onto it.
             .background {
                 if let plate, isEnabled {
-                    shape.fill(plate).offset(Self.misregister).accessibilityHidden(true)
+                    ZStack {
+                        shape.fill(plate).offset(Self.misregister)
+                        // The ring of ink squeezed out where the stamp met the paper, spreading as it lifts.
+                        if !reduceMotion {
+                            shape.fill(.clear)
+                                .keyframeAnimator(initialValue: Lift(), trigger: lifts) { content, lift in
+                                    content.overlay {
+                                        shape.stroke(ringColor.opacity(lift.ringInk), lineWidth: 1.4)
+                                            .padding(-lift.ring)
+                                            .offset(Self.misregister)
+                                    }
+                                } keyframes: { _ in
+                                    KeyframeTrack(\.ring) {
+                                        LinearKeyframe(0, duration: 0.01)
+                                        CubicKeyframe(7, duration: 0.42)
+                                    }
+                                    KeyframeTrack(\.ringInk) {
+                                        LinearKeyframe(0.55, duration: 0.01)
+                                        CubicKeyframe(0, duration: 0.42)
+                                    }
+                                }
+                        }
+                    }
+                    .accessibilityHidden(true)
                 }
             }
-            .animation(pressed ? Motion.touchDown : Motion.press(reduceMotion: reduceMotion), value: pressed)
-            // The tap lands with the ink on the plate, not on release: a stamp is felt when it meets the paper.
+            .onChange(of: configuration.isPressed) { was, now in
+                if was, !now, isEnabled, !reduceMotion { lifts += 1 }
+            }
+            // The tap lands with the ink on the plate, not on release: a stamp is felt when it meets the paper. The lift
+            // is felt too, lighter.
             .sensoryFeedback(.impact(flexibility: .rigid, intensity: ink == .quiet ? 0.35 : 0.6), trigger: pressed) { _, now in now }
+            .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.3), trigger: lifts)
     }
 
     private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: 6, style: .continuous) }
@@ -99,6 +152,9 @@ private struct StampBody: View {
         case .quiet: nil
         }
     }
+
+    /// The squeezed-out ink is the plate's colour at full strength.
+    private var ringColor: Color { ink == .ink ? Ink.orange : Ink.navy }
 }
 
 /// A destination or an act shown as a word over a mark, for a row of them (the detail's actions, the table's dock): the

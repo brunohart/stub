@@ -321,7 +321,7 @@ final class PressSession {
         if let explaining, let note = explaining.note { return note }
         if focus == nil {
             switch bench {
-            case .movement: return "One film in eight movements. Let go on the one you want."
+            case .movement: return "One film in eight movements. Let go on one to print it; try as many as you like."
             case .inks: return "Twelve inks. Drag one onto the card, or tap it."
             case .stock: return "Hold a swatch and rub it to feel it. Tap it to print on it."
             case .rest: break
@@ -337,9 +337,9 @@ final class PressSession {
             return composition.isMetallic ? "Five sheets: the stock, two plates, the foil and the type."
                 : "Four sheets: the stock, two plates and the type."
         }
-        if somethingToPull { return "Pull it when it is right." }
-        if edition == underneath { return "Touch a part of the card to turn it." }
-        return edition.described + "."
+        // With nothing in hand the press's one move is the thing to say, every time: the marks on the card show where,
+        // and the lever says Pull on its own once there is something to pull (ADR-022).
+        return "Tap a part of the poster, then turn the dial."
     }
 
     /// VoiceOver's name for a part in the rotor: "The disc, second ink, take three."

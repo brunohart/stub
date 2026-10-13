@@ -50,18 +50,18 @@ struct ShareTests {
         #expect(foil == 0 || Double(whiteFoil) / Double(foil) < 0.2, "the foil came out as its bare white shape")
     }
 
-    /// The clip is a movie: HEVC, the size of the card and its margin, as long as it was asked to be, and the light
-    /// moves across it (its first frame is not its last). Day 30's framing, unmarked, is exactly Day 30's size.
+    /// The clip is a movie: HEVC, the size of the card, its margin and the watermark's band, as long as it was asked to be,
+    /// and the light moves across it (its first frame is not its last).
     @Test func theClipIsAMovie() async throws {
         let c = composition(.holographic)
-        let clip = EditionClip(composition: c, format: .card, marked: false)
+        let clip = EditionClip(composition: c, format: .card)
         let url = try await clip.render(seconds: 0.5, fps: 12)
         let asset = AVURLAsset(url: url)
         let track = try #require(try await asset.loadTracks(withMediaType: .video).first)
         let duration = try await asset.load(.duration).seconds
         #expect(abs(duration - 0.5) < 0.1, "\(duration) s")
         let size = try await track.load(.naturalSize)
-        #expect(Int(size.width) == 772 && Int(size.height) == 1168, "\(size)")
+        #expect(Int(size.width) == 772 && Int(size.height) == 1232, "\(size)")
         let formats = try await track.load(.formatDescriptions)
         #expect(formats.first.map(CMFormatDescriptionGetMediaSubType) == kCMVideoCodecType_HEVC)
         let first = try #require(clip.frame(at: 0)), last = try #require(clip.frame(at: 1))
@@ -69,11 +69,11 @@ struct ShareTests {
         try? FileManager.default.removeItem(at: url)
     }
 
-    /// The vertical clip is 9:16 at 1080 by 1920, what a Story plays without cropping, and the card and the mark sit clear
-    /// of the 250-pixel bands at the top and bottom that a Story draws its own controls over (BEDIP-221).
+    /// The vertical clip is 9:16 at 1080 by 1920, what a Story plays without cropping, and the card and the watermark sit
+    /// clear of the 250-pixel bands at the top and bottom that a Story draws its own controls over (BEDIP-221).
     @Test func theVerticalClipIsNineBySixteen() async throws {
         let c = composition(.foil)
-        let clip = EditionClip(composition: c, format: .vertical, marked: true)
+        let clip = EditionClip(composition: c, format: .vertical)
         #expect(clip.pixels.width == 1080 && clip.pixels.height == 1920)
         let url = try await clip.render(seconds: 0.25, fps: 8)
         let track = try #require(try await AVURLAsset(url: url).loadTracks(withMediaType: .video).first)
@@ -89,58 +89,47 @@ struct ShareTests {
             let rows = inked(frame)
             let top = try #require(rows.first), bottom = try #require(rows.last)
             #expect(top > band, "the card reaches \(top) px from the top at t = \(t)")
-            #expect(bottom < frame.height - band, "the mark reaches \(frame.height - bottom) px from the bottom at t = \(t)")
+            #expect(bottom < frame.height - band, "the watermark reaches \(frame.height - bottom) px from the bottom at t = \(t)")
         }
     }
 
-    /// The mark is there when it is on and gone when it is off, and nothing else in the frame changes with it: the setting
-    /// is the person's, and on until they say otherwise.
-    @Test func theMarkCanBeTurnedOff() throws {
+    /// Every share carries the watermark, and there is no way to share without it: it is in the clip's every frame in both
+    /// framings, legible by its relief (its shadow and its light both stand off the paper), and nothing else in the frame
+    /// depends on it.
+    @Test func theWatermarkIsAlwaysThere() throws {
         let c = composition(.cotton)
         for format in EditionClip.Format.allCases {
-            let on = Pixels(try #require(EditionClip(composition: c, format: format, marked: true).frame(at: 0.5)))
-            let offClip = EditionClip(composition: c, format: format, marked: false)
-            let off = Pixels(try #require(offClip.frame(at: 0.5)))
-            // The mark's own box, in pixels: the only place the two frames may differ.
-            let centre = format.markCentre(in: format.canvas(marked: true))
-            let box = CGRect(x: (centre.x - 60) * format.scale, y: (centre.y - 12) * format.scale, width: 120 * format.scale, height: 24 * format.scale)
-            var inMark = 0
-            for y in stride(from: Int(box.minY), to: min(Int(box.maxY), on.height), by: 1) {
-                for x in stride(from: Int(box.minX), to: Int(box.maxX), by: 1) {
-                    let a = on.rgba(x, y)
-                    if a.0 < 0.6 { inMark += 1 }
+            for t in [0.0, 0.5, 1.0] {
+                let tilt = EditionClip.tilt(at: t)
+                let shared = Pixels(try #require(EditionClip(composition: c, format: format).frame(at: t)))
+                let bare = Pixels(try #require(EditionClip.page(c, tilt: tilt, format: format, watermark: false)))
+                let box = markBox(format)
+                let paper = bare.rgba(2, 2)
+                var darker = 0, lighter = 0, outside = 0
+                for y in stride(from: 0, to: shared.height, by: 2) {
+                    for x in stride(from: 0, to: shared.width, by: 2) {
+                        let a = shared.rgba(x, y), b = bare.rgba(x, y)
+                        let changed = abs(a.0 - b.0) + abs(a.1 - b.1) + abs(a.2 - b.2) > 0.02
+                        if box.contains(CGPoint(x: x, y: y)) {
+                            let l = a.0 + a.1 + a.2, p = paper.0 + paper.1 + paper.2
+                            if l < p - 0.3 { darker += 1 }
+                            if l > p + 0.06 { lighter += 1 }
+                        } else if changed { outside += 1 }
+                    }
                 }
-            }
-            #expect(inMark > 40, "\(format): no mark under the card (\(inMark) inked pixels)")
-            if format == .vertical {
-                // Same frame, same size: the mark is the only difference.
-                var outside = 0
-                for y in stride(from: 0, to: on.height, by: 4) where !(Int(box.minY)...Int(box.maxY)).contains(y) {
-                    for x in stride(from: 0, to: on.width, by: 4) where on.rgba(x, y) != off.rgba(x, y) { outside += 1 }
-                }
-                #expect(outside == 0, "turning the mark off changed \(outside) pixels outside it")
-                let offInMark = (Int(box.minY)..<Int(box.maxY)).reduce(0) { n, y in
-                    n + (Int(box.minX)..<Int(box.maxX)).filter { off.rgba($0, y).0 < 0.6 }.count
-                }
-                #expect(offInMark == 0, "the mark is still there when it is off")
-            } else {
-                #expect(off.height == 1168, "unmarked, the card-sized clip is Day 30's: \(off.height)")
+                #expect(darker > 30, "\(format) at t = \(t): the watermark's shadow is not there (\(darker))")
+                #expect(lighter > 30, "\(format) at t = \(t): the watermark's light is not there (\(lighter))")
+                #expect(outside == 0, "\(format): the watermark changed \(outside) pixels outside its own box")
             }
         }
-        // The setting: on when nothing has been said, off once the person turns it off.
-        let defaults = try #require(UserDefaults(suiteName: "share-mark-test"))
-        defaults.removePersistentDomain(forName: "share-mark-test")
-        #expect(ShareMark.isOn(in: defaults))
-        defaults.set(false, forKey: ShareMark.key)
-        #expect(!ShareMark.isOn(in: defaults))
-        defaults.removePersistentDomain(forName: "share-mark-test")
+        // The still carries it too: the still is the card-sized frame held at the still's light.
+        #expect(EditionClip.Format.card.canvas.height == Card.height + EditionClip.margin + EditionClip.Format.markBand)
     }
 
-    /// The mark never fights the card: in every movement, across the palettes and the stocks, at both ends of the turn,
-    /// nothing of the card reaches the mark's box, and the tail of its shadow is within two per cent of the parchment
-    /// there, so the mark is the same small words on bare paper whatever was printed above it. Writes the eight
-    /// movements' middle frames, marked, side by side to `build/shots/mark-movements.png` to be looked at.
-    @Test func theMarkSitsOnBareParchment() throws {
+    /// The watermark never fights the card: in every movement, across the palettes and the stocks, at both ends of the turn,
+    /// nothing of the card reaches the watermark's box, and the tail of its shadow is within two per cent of the parchment
+    /// there. Writes the eight movements' middle frames side by side to `build/shots/mark-movements.png` to be looked at.
+    @Test func theWatermarkSitsOnBareParchment() throws {
         var sheet: [CGImage] = []
         for (i, movement) in Genome.movements.enumerated() {
             var edition = Genome.floor(for: copy.title)
@@ -149,14 +138,9 @@ struct ShareTests {
             edition.stock = Genome.stocks[i % Genome.stocks.count]
             let c = Composition(edition: edition, copy: copy)
             for format in EditionClip.Format.allCases {
-                // Measured unmarked, on the marked frame's canvas: what would be under the mark if it were not there.
-                var bare = EditionClip(composition: c, format: format, marked: false)
-                if format == .card { bare = EditionClip(composition: c, format: .card, marked: true) }
-                let centre = format.markCentre(in: format.canvas(marked: true))
-                let box = CGRect(x: (centre.x - 48) * format.scale, y: (centre.y - 9) * format.scale,
-                                 width: 96 * format.scale, height: 18 * format.scale)
+                let box = markBox(format)
                 for t in [0.0, 1.0] {
-                    let frame = Pixels(try #require(format == .card ? Self.withoutMark(bare, at: t) : bare.frame(at: t)))
+                    let frame = Pixels(try #require(EditionClip.page(c, tilt: EditionClip.tilt(at: t), format: format, watermark: false)))
                     let paper = frame.rgba(2, 2)
                     var darkest = 0.0
                     for y in stride(from: Int(box.minY), to: min(Int(box.maxY), frame.height), by: 2) {
@@ -165,31 +149,20 @@ struct ShareTests {
                             darkest = max(darkest, max(abs(p.0 - paper.0), abs(p.1 - paper.1), abs(p.2 - paper.2)))
                         }
                     }
-                    #expect(darkest < 0.02, "\(movement) \(format) at t = \(t): something of the card under the mark, \(darkest)")
+                    #expect(darkest < 0.02, "\(movement) \(format) at t = \(t): something of the card under the watermark, \(darkest)")
                 }
             }
-            sheet.append(try #require(EditionClip(composition: c, format: .vertical, marked: true).frame(at: 0.5)))
+            sheet.append(try #require(EditionClip(composition: c, format: .vertical).frame(at: 0.5)))
         }
         try Self.write(sheet, columns: 4, to: EvalTests.repoRoot.appendingPathComponent("build/shots/mark-movements.png"))
     }
 
-    /// The card-sized frame's marked canvas with the mark left off: its band is there, its words are not.
-    @MainActor
-    private static func withoutMark(_ clip: EditionClip, at t: Double) -> CGImage? {
-        let tilt = EditionClip.tilt(at: t)
-        let canvas = clip.canvas
-        let page = ZStack {
-            Ink.paper
-            EditionFace(composition: clip.composition, light: Light(tilt: tilt))
-                .rotation3DEffect(.degrees(Double(tilt.x) * 11), axis: (x: 0, y: 1, z: 0), perspective: 0.45)
-                .rotation3DEffect(.degrees(Double(-tilt.y) * 11), axis: (x: 1, y: 0, z: 0), perspective: 0.45)
-                .shadow(color: .black.opacity(0.18), radius: 12, x: 6 - tilt.x * 8, y: 10 - tilt.y * 8)
-                .position(clip.format.cardCentre(in: canvas))
-        }
-        .frame(width: canvas.width, height: canvas.height)
-        let renderer = ImageRenderer(content: page)
-        renderer.scale = clip.format.scale
-        return renderer.cgImage
+    /// The watermark's box in pixels: wide enough for the ticket and the words, as tall as their relief.
+    private func markBox(_ format: EditionClip.Format) -> CGRect {
+        let centre = format.markCentre(in: format.canvas)
+        let half = CGSize(width: format.markSize * 5.2, height: format.markSize * 0.66)
+        return CGRect(x: (centre.x - half.width) * format.scale, y: (centre.y - half.height) * format.scale,
+                      width: 2 * half.width * format.scale, height: 2 * half.height * format.scale)
     }
 
     /// Frames side by side at a third of their size, as a PNG.

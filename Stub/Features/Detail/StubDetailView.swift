@@ -22,8 +22,6 @@ struct StubDetailView: View {
     @State private var inRoom = false
     @Namespace private var press
     @State private var shareable: Image?
-    /// Whether the moving share says "kept in Stub" under the card (BEDIP-221).
-    @AppStorage(ShareMark.key) private var marked = true
     @Environment(\.dynamicTypeSize) private var typeSize
     private let editions = Editions.shared
 
@@ -46,8 +44,8 @@ struct StubDetailView: View {
                         Keepsake(stub: stub, copy: copy, turned: $turned, takeToPress: { pressing = true }, pressSource: press)
                             .rotationEffect(.degrees(reduceMotion ? 0 : tilt))
 
-                        // What can be done with the card, named, right under it (ADR-022). A tap on the card turns it and a
-                        // hold takes it to the press, but neither gesture is the only way there.
+                        // What can be done with the card, named, right under it (ADR-022). A hold on the card also takes it to
+                        // the press; a tap turns it over, which the card teaches once.
                         actions
 
                         VStack(alignment: .leading, spacing: 6) {
@@ -166,8 +164,7 @@ struct StubDetailView: View {
             do {
                 while editions.edition(for: stub.title) == nil { try await Task.sleep(for: .milliseconds(250)) }
                 guard let edition = editions.edition(for: stub.title) else { return }
-                let clip = EditionClip(composition: Composition(edition: edition, copy: copy), format: DebugDrive.clipFormat,
-                                       marked: marked && !DebugDrive.unmarked)
+                let clip = EditionClip(composition: Composition(edition: edition, copy: copy), format: DebugDrive.clipFormat)
                 let url = try await clip.render()
                 EditionClip.log.info("Clip: written to \(url.path)")
             } catch {
@@ -195,16 +192,12 @@ struct StubDetailView: View {
         #endif
     }
 
-    /// The card's actions as a row of paper stamps: turn it, take it to the press, share it, and (where the phone can find
-    /// a table) put it on one. Two to a row at the accessibility sizes.
+    /// The card's actions as a row of paper stamps: take it to the press, share it, and (where the phone can find a table) put
+    /// it on one. Turning it over is the card's own: a tap on it. One to a row at the accessibility sizes.
     private var actions: some View {
         let edition = editions.edition(for: stub.title)
-        let count = typeSize.isAccessibilitySize ? 2 : (RoomView.isSupported ? 4 : 3)
+        let count = typeSize.isAccessibilitySize ? 1 : (RoomView.isSupported ? 3 : 2)
         return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: count), spacing: 10) {
-            Button { turned.toggle() } label: {
-                StampLabel(title: turned ? "Turn back" : "Turn over", symbol: "rectangle.portrait.rotate")
-            }
-            .accessibilityHint(turned ? "Shows the edition again." : "Shows the stub as it was scanned, on the back.")
             Button { pressing = true } label: { StampLabel(title: "The press", symbol: "dial.medium") }
                 .disabled(edition == nil)
                 .accessibilityHint("Pull your own proof of the edition.")
@@ -225,22 +218,19 @@ struct StubDetailView: View {
     private func share(_ edition: Edition?) -> some View {
         if let shareable, let edition {
             let composition = Composition(edition: edition, copy: copy)
-            let invitation = marked ? Text(ShareMark.link.absoluteString) : nil
+            let invitation = Text(ShareLinkText.link.absoluteString)
             Menu {
-                ShareLink(item: EditionClip(composition: composition, format: .vertical, marked: marked), message: invitation,
+                ShareLink(item: EditionClip(composition: composition, format: .vertical), message: invitation,
                           preview: SharePreview("An edition of \(stub.title), turning in the light", image: shareable)) {
                     Label("Share it turning in the light", systemImage: "film")
                 }
-                ShareLink(item: EditionClip(composition: composition, format: .card, marked: marked), message: invitation,
+                ShareLink(item: EditionClip(composition: composition, format: .card), message: invitation,
                           preview: SharePreview("An edition of \(stub.title), turning in the light", image: shareable)) {
                     Label("Share it turning, close up", systemImage: "rectangle.portrait")
                 }
-                ShareLink(item: shareable, preview: SharePreview("An edition of \(stub.title)", image: shareable)) {
+                ShareLink(item: shareable, message: invitation, preview: SharePreview("An edition of \(stub.title)", image: shareable)) {
                     Label("Share the still", systemImage: "photo")
                 }
-                Divider()
-                // The mark is on until the person turns it off; nobody is made to advertise.
-                Toggle("Say \u{201C}kept in Stub\u{201D}", isOn: $marked)
             } label: {
                 StampLabel(title: "Share", symbol: "square.and.arrow.up")
             }
@@ -265,12 +255,19 @@ struct StubDetailView: View {
         return copy
     }
 
-    /// The edition's front on a margin of parchment, lit a little from the side, as an image to share.
+    /// The edition's front on a margin of parchment, lit a little from the side, with the watermark under it, as an image to
+    /// share: the card-sized clip's first frame, held still, at three times the card.
     private static func render(_ composition: Composition) -> Image? {
-        let card = EditionFace(composition: composition, light: Light(tilt: CGPoint(x: 0.3, y: -0.2)))
-            .padding(28)
-            .background(Ink.paper)
-        let renderer = ImageRenderer(content: card)
+        let light = CGPoint(x: 0.3, y: -0.2)
+        let format = EditionClip.Format.card
+        let canvas = format.canvas
+        let page = ZStack {
+            Ink.paper
+            EditionFace(composition: composition, light: Light(tilt: light)).position(format.cardCentre(in: canvas))
+            Watermark(size: format.markSize, light: light).position(format.markCentre(in: canvas))
+        }
+        .frame(width: canvas.width, height: canvas.height)
+        let renderer = ImageRenderer(content: page)
         renderer.scale = 3
         return renderer.uiImage.map { Image(uiImage: $0) }
     }

@@ -49,7 +49,7 @@ struct PressRoom: View {
                 HStack(alignment: .top, spacing: 4) {
                     bed
                     // The lever runs down the right of the bed.
-                    Lever { pull() }
+                    Lever(ready: session.somethingToPull) { pull() }
                         .padding(.top, 28)
                         .opacity(session.turned ? 0.3 : 1)
                         .disabled(session.turned)
@@ -66,8 +66,6 @@ struct PressRoom: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, minHeight: 48)
                     .padding(.horizontal, 28)
-                    .contentTransition(.opacity)
-                    .animation(Motion.place, value: session.focus?.id)
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel(session.sentence(at: session.position))
                     .accessibilityAddTraits(.updatesFrequently)
@@ -130,9 +128,12 @@ struct PressRoom: View {
                 }
             }
         } else {
+            // The words change the moment the press does, never cross-fading under the plates' spring.
             Text(session.sentence(at: session.position))
                 .font(Type.words(16))
                 .foregroundStyle(Ink.ink.opacity(0.75))
+                .contentTransition(.identity)
+                .transaction { $0.animation = nil }
         }
     }
 
@@ -217,6 +218,15 @@ struct PressRoom: View {
                 }
             }
             .simultaneousGesture(pinch)
+            // Where the press can take hold: registration marks at the corners of every part that turns, put down one after
+            // another as the room opens, then resting faint. Gone while a part is in hand, the plates are apart, the card is
+            // over or a choice is open (ADR-022: it was not clear the poster could be touched).
+            .overlay(alignment: .topLeading) {
+                RegistrationMarks(session: session, scale: scale,
+                                  showing: session.focus == nil && session.separation == 0 && !session.turned
+                                    && session.bench == .rest && flying == nil)
+                    .allowsHitTesting(false)
+            }
             .overlay(alignment: .topLeading) { parts(scale: scale) }
             .accessibilityElement(children: .contain)
             .accessibilityLabel(session.turned
@@ -320,13 +330,16 @@ struct PressRoom: View {
             .onEnded { value in
                 pinchedFrom = nil
                 let apart = value.velocity > 0.5 || (value.velocity > -0.5 && session.separation > 0.5)
-                separate(apart)
+                // The fingers' speed goes on into the spring: the sheets keep the momentum the pinch gave them.
+                separate(apart, velocity: value.velocity * 1.25)
             }
     }
 
     private func benchButton(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Label(title, systemImage: symbol).font(Type.words(15))
+                .contentTransition(.identity)
+                .transaction { $0.animation = nil }
         }
         .buttonStyle(.stamp(.paper))
     }
@@ -345,15 +358,14 @@ struct PressRoom: View {
         }
     }
 
-    /// The fan's card flies to the bed, lands, and the bed prints it, a pass at a time.
+    /// The fan's card flies to the bed, lands, and the bed prints it, a pass at a time. The fan stays in the hand, so
+    /// another movement can be tried straight after; closing it is the inked Movement stamp (2026-10-13: the fan used to
+    /// close on every choice, which made comparing movements a chore).
     private func take(_ movement: Movement) {
-        guard movement != session.edition.movement else {
-            withAnimation(Motion.settle) { session.bench = .rest }
-            return
-        }
+        // One flight at a time: a second choice while a card is in the air waits for the hand.
+        guard flying == nil, movement != session.edition.movement else { return }
         if reduceMotion {
             session.choose(movement)
-            session.bench = .rest
             Task { await session.reprint(reduceMotion: true) }
             return
         }
@@ -373,7 +385,6 @@ struct PressRoom: View {
             // It turns square as it flies and its ink lifts, so it lands as the bare sheet the bed prints: the print run
             // starts from what landed, with no whole card between the flight and the first pass.
             withAnimation(Motion.place) {
-                session.bench = .rest
                 inFlight = true
                 flightTurn = 0
                 flightPrinted = 0
@@ -397,10 +408,16 @@ struct PressRoom: View {
         Task { await session.reprint(reduceMotion: reduceMotion) }
     }
 
-    /// Spread the sheets, or press them back together with one heavy impact.
-    private func separate(_ apart: Bool) {
+    /// Spread the sheets, or press them back together with one heavy impact. `velocity` is how fast a pinch was moving
+    /// them, in separations a second: the spring starts at that speed, so a flick carries on and a slow pinch settles.
+    private func separate(_ apart: Bool, velocity: CGFloat = 0) {
         let wasApart = session.separation > 0
-        withAnimation(reduceMotion ? Motion.plain : Motion.settle) { session.separation = apart ? 1 : 0 }
+        let target: CGFloat = apart ? 1 : 0
+        let distance = target - session.separation
+        let carried = abs(distance) > 0.02 ? Double(velocity / distance) : 0
+        let spring: Animation = reduceMotion ? Motion.plain
+            : .interpolatingSpring(mass: 1, stiffness: 210, damping: 21, initialVelocity: min(max(carried, -12), 12))
+        withAnimation(spring) { session.separation = target }
         if !apart, wasApart { closings += 1 }
     }
 
@@ -493,7 +510,8 @@ private struct OnTheBed: View, @MainActor Animatable {
 
     var body: some View {
         EditionFace(composition: session.drawing(at: position, reduceMotion: reduceMotion), light: light,
-                    printed: session.printed, focus: session.focus?.id, separation: separation, impression: impression, wet: wet)
+                    printed: session.printed, focus: session.focus?.id, separation: separation, asSheets: true,
+                    impression: impression, wet: wet)
             .accessibilityHidden(true)
     }
 }
@@ -593,5 +611,63 @@ extension Stock {
         case .foil: "Foil"
         case .holographic: "Holographic"
         }
+    }
+}
+
+/// Printer's registration marks at the corners of each part the press can turn: the card saying where it can be taken hold
+/// of. Put down one part after another when they appear, from the top of the poster down, at full strength, then resting
+/// a little fainter, so they are there for whoever looks without shouting at whoever does not.
+private struct RegistrationMarks: View {
+    let session: PressSession
+    let scale: CGFloat
+    var showing: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var placed = false
+    @State private var rested = false
+
+    var body: some View {
+        let parts = session.turnable.compactMap { part in session.composition.bounds(of: part.id, separation: 0).map { (part, $0) } }
+            .sorted { $0.1.minY < $1.1.minY }
+        ZStack(alignment: .topLeading) {
+            ForEach(Array(parts.enumerated()), id: \.element.0.id) { index, item in
+                let brackets = Brackets(rect: item.1.insetBy(dx: -5, dy: -5).intersection(Card.posterRect.insetBy(dx: 2, dy: 2)), scale: scale)
+                // In "registration", as a printer's marks are: ink over a halo of paper, so they read on any palette.
+                ZStack {
+                    brackets.stroke(Ink.cream.opacity(0.9), style: StrokeStyle(lineWidth: 3.6, lineCap: .round, lineJoin: .round))
+                    brackets.stroke(Ink.ink, style: StrokeStyle(lineWidth: 1.3, lineCap: .round, lineJoin: .round))
+                }
+                    .opacity(showing ? (rested ? 0.6 : 1) : 0)
+                    .scaleEffect(placed || reduceMotion ? 1 : 1.06)
+                    .animation(reduceMotion ? nil : Motion.stamp.delay(0.25 + Double(index) * 0.09), value: placed)
+                    .animation(.easeOut(duration: 0.18), value: showing)
+            }
+        }
+        .animation(.easeInOut(duration: 0.9), value: rested)
+        .task {
+            placed = true
+            try? await Task.sleep(for: .seconds(1.6))
+            rested = true
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+/// Four corner marks round a rectangle, each a short L, the way a printer marks where a sheet is to be cut.
+private struct Brackets: Shape {
+    let rect: CGRect
+    let scale: CGFloat
+
+    func path(in _: CGRect) -> Path {
+        let r = CGRect(x: rect.minX * scale, y: rect.minY * scale, width: rect.width * scale, height: rect.height * scale)
+        guard r.width > 4, r.height > 4 else { return Path() }
+        let arm = min(10, r.width / 3, r.height / 3)
+        var p = Path()
+        for (corner, dx, dy) in [(CGPoint(x: r.minX, y: r.minY), 1.0, 1.0), (CGPoint(x: r.maxX, y: r.minY), -1.0, 1.0),
+                                  (CGPoint(x: r.minX, y: r.maxY), 1.0, -1.0), (CGPoint(x: r.maxX, y: r.maxY), -1.0, -1.0)] {
+            p.move(to: CGPoint(x: corner.x + dx * arm, y: corner.y))
+            p.addLine(to: corner)
+            p.addLine(to: CGPoint(x: corner.x, y: corner.y + dy * arm))
+        }
+        return p
     }
 }

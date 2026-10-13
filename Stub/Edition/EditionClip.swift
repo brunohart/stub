@@ -10,13 +10,11 @@ import OSLog
 /// detail draws, written as HEVC by `AVAssetWriter`. Nothing moves that the phone's light would not move.
 ///
 /// Two framings (BEDIP-221). `vertical`, the default, is 9:16 at 1080 by 1920, so a Story or a Reel shows the whole of it
-/// and crops nothing; `card` is Day 30's, the card on the still's margin of parchment. Either can carry the mark, "kept in
-/// Stub", small in the lower margin, which is on unless the person turned it off (`ShareMark`).
+/// and crops nothing; `card` is Day 30's, the card on the still's margin of parchment. Both carry the watermark, "shared in
+/// Stub", blind-embossed into the parchment under the card (`Watermark`). There is no way to share without it.
 struct EditionClip: Transferable, Sendable {
     let composition: Composition
     var format: Format = .vertical
-    /// "kept in Stub" under the card.
-    var marked: Bool = true
 
     enum Format: String, Sendable, CaseIterable {
         /// 9:16, 1080 by 1920: the card centred with room above and below, clear of the bands a Story draws its own
@@ -82,7 +80,7 @@ struct EditionClip: Transferable, Sendable {
         await writer.finishWriting()
         guard writer.status == .completed else { throw writer.error ?? ClipError.writer }
         let ms = (ContinuousClock.now - started) / .milliseconds(1)
-        Self.log.info("Clip: '\(composition.edition.release)' \(format.rawValue)\(marked ? ", marked" : ""), \(frames) frames at \(width)×\(height) in \(Int(ms)) ms")
+        Self.log.info("Clip: '\(composition.edition.release)' \(format.rawValue), \(frames) frames at \(width)×\(height) in \(Int(ms)) ms")
         return url
     }
 
@@ -96,7 +94,7 @@ struct EditionClip: Transferable, Sendable {
     }
 
     /// The frame in points.
-    var canvas: CGSize { format.canvas(marked: marked) }
+    var canvas: CGSize { format.canvas }
 
     /// The frame in pixels, even in both directions: HEVC's chroma is subsampled by two.
     var pixels: (width: Int, height: Int) {
@@ -104,11 +102,16 @@ struct EditionClip: Transferable, Sendable {
     }
 
     /// One frame: the card on parchment, leaning with its tilt as the keepsake leans, lit from where the tilt puts the
-    /// light, and the mark under it when it is on.
+    /// light, and the watermark pressed into the parchment under it.
     @MainActor
     func frame(at t: Double) -> CGImage? {
-        let tilt = Self.tilt(at: t)
-        let canvas = self.canvas
+        Self.page(composition, tilt: Self.tilt(at: t), format: format, watermark: true)
+    }
+
+    /// The page at a tilt. `watermark` is false only for the tests, which measure what lies under it.
+    @MainActor
+    static func page(_ composition: Composition, tilt: CGPoint, format: Format, watermark: Bool) -> CGImage? {
+        let canvas = format.canvas
         let card = EditionFace(composition: composition, light: Light(tilt: tilt))
             .rotation3DEffect(.degrees(Double(tilt.x) * 11), axis: (x: 0, y: 1, z: 0), perspective: 0.45)
             .rotation3DEffect(.degrees(Double(-tilt.y) * 11), axis: (x: 1, y: 0, z: 0), perspective: 0.45)
@@ -116,8 +119,8 @@ struct EditionClip: Transferable, Sendable {
         let page = ZStack {
             Ink.paper
             card.position(format.cardCentre(in: canvas))
-            if marked {
-                ClipMark(size: format.markSize).position(format.markCentre(in: canvas))
+            if watermark {
+                Watermark(size: format.markSize, light: tilt).position(format.markCentre(in: canvas))
             }
         }
         .frame(width: canvas.width, height: canvas.height)
@@ -145,17 +148,17 @@ extension EditionClip.Format {
     /// Pixels a point. The vertical frame is 1080 by 1920 pixels, so the card is drawn larger in it than in the card's own.
     var scale: CGFloat { self == .vertical ? 2.25 : 2 }
 
-    /// The band under the card the mark sits in, in the `card` framing: below the shadow, which reaches about 22 points.
+    /// The band under the card the watermark sits in, in the `card` framing: below the shadow, which reaches about 22 points.
     static let markBand: CGFloat = 60
 
-    /// The frame in points. The vertical frame is the same with or without the mark; the card's grows a band for it.
-    func canvas(marked: Bool) -> CGSize {
+    /// The frame in points: 1080 by 1920 pixels for the vertical, the card and its margin and the watermark's band for the card.
+    var canvas: CGSize {
         switch self {
         case .vertical:
             return CGSize(width: 1080 / scale, height: 1920 / scale)
         case .card:
             let m = EditionClip.margin
-            return CGSize(width: Card.width + 2 * m, height: Card.height + m + (marked ? Self.markBand : m))
+            return CGSize(width: Card.width + 2 * m, height: Card.height + m + Self.markBand)
         }
     }
 
@@ -171,39 +174,74 @@ extension EditionClip.Format {
     /// Where the mark's centre is: under the card and its shadow.
     func markCentre(in canvas: CGSize) -> CGPoint {
         let card = cardCentre(in: canvas)
-        return CGPoint(x: canvas.width / 2, y: card.y + Card.height / 2 + (self == .vertical ? 38 : 36))
+        return CGPoint(x: canvas.width / 2, y: card.y + Card.height / 2 + (self == .vertical ? 43 : 39))
     }
 
-    var markSize: CGFloat { self == .vertical ? 14 : 12 }
+    var markSize: CGFloat { self == .vertical ? 15 : 13 }
 
     /// The bands at the top and bottom of a Story that its own controls are drawn over, in pixels of the 1920 frame:
     /// fourteen per cent each, about 250 pixels (Meta's guidance for Stories). Nothing of ours may sit in them.
     static let storyBand: CGFloat = 250
 }
 
-/// "kept in Stub", under the card in the moving share: the one word the clip says about where it came from. Host
-/// Grotesk, small, in the parchment's own ink, the way a museum label sits under a print; a caption, not a logo. Never on
-/// the card, never on the still, and off when the person says so (`ShareMark`).
-struct ClipMark: View {
+/// The watermark on every share (2026-10-13): "shared in Stub" beside a small ticket, blind-embossed into the parchment
+/// under the card, the way a paper mill presses its mark into a sheet. No ink of its own but a breath of the paper's own
+/// shadow, so it is read by its relief: lit along the edges that face the light, shaded along the edges that do not. In the
+/// moving share the light moves, and the relief catches it as the card turns. Never on the card, and always there:
+/// there is no setting to leave it off.
+struct Watermark: View {
     var size: CGFloat
+    /// The share's tilt, -1 to 1: where the light is, so the relief is lit from the same place as the card.
+    var light: CGPoint = CGPoint(x: 0.3, y: -0.2)
+
     var body: some View {
-        Text("kept in Stub")
-            .font(Type.words(size))
-            .foregroundStyle(Ink.ink.opacity(0.62))
-            .fixedSize()
+        // The light's direction, as a unit of offset: from the upper left, swinging with the tilt.
+        let lx = 0.55 + light.x * 0.45, ly = 0.75 - light.y * 0.25
+        let mark = HStack(spacing: size * 0.45) {
+            TicketMark().frame(width: size * 1.25, height: size * 0.78)
+            Text("shared in Stub").font(Type.display(size)).tracking(size * 0.01)
+        }
+        return ZStack {
+            // The wall facing away from the light: a hairline of shadow up and to the left.
+            mark.foregroundStyle(Color(hex: 0x5E5747).opacity(0.5)).offset(x: -lx * 0.75, y: -ly * 0.75)
+            // The wall facing the light: a hairline of light down and to the right.
+            mark.foregroundStyle(Color.white.opacity(0.85)).offset(x: lx * 0.8, y: ly * 0.8)
+            // The floor of the impression: the paper, pressed a shade darker.
+            mark.foregroundStyle(Color(hex: 0xD3CCBD))
+        }
+        .compositingGroup()
+        .fixedSize()
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Shared in Stub")
     }
 }
 
-/// Whether the moving share carries the mark, and the link in the share's text (BEDIP-221). On unless the person turns it
-/// off: nobody is made to advertise. One `UserDefaults` key (the privacy manifest's CA92.1 already covers it).
-enum ShareMark {
-    static let key = "share.mark"
-
-    static func isOn(in defaults: UserDefaults = .standard) -> Bool {
-        defaults.object(forKey: key) as? Bool ?? true
+/// The watermark's ticket: a stub's outline with a notch in each end and the perforation, small, as the icon draws it.
+struct TicketMark: View {
+    var body: some View {
+        GeometryReader { proxy in
+            let w = proxy.size.width, h = proxy.size.height
+            let notch = h * 0.22
+            Path { p in
+                p.addRoundedRect(in: CGRect(x: 0, y: 0, width: w, height: h), cornerSize: CGSize(width: h * 0.16, height: h * 0.16))
+                p.addEllipse(in: CGRect(x: -notch, y: h / 2 - notch, width: 2 * notch, height: 2 * notch))
+                p.addEllipse(in: CGRect(x: w - notch, y: h / 2 - notch, width: 2 * notch, height: 2 * notch))
+            }
+            .fill(style: FillStyle(eoFill: true))
+            // The perforation, a third of the way in, cut through.
+            VStack(spacing: h * 0.1) {
+                ForEach(0..<4, id: \.self) { _ in Circle().frame(width: h * 0.12, height: h * 0.12) }
+            }
+            .frame(width: w, height: h)
+            .offset(x: -w * 0.18)
+            .blendMode(.destinationOut)
+        }
+        .compositingGroup()
     }
+}
 
-    /// Where a stranger who sees the clip can find Stub. The page on designedbybruno.net is ours to point at the App Store
-    /// once the listing exists; the link is in the share's text, never burned into the frame.
+/// Where a stranger who sees a share can find Stub: the page on designedbybruno.net, which is ours to point at the App Store
+/// once the listing exists. It goes in the share's text, never into the frame.
+enum ShareLinkText {
     static let link = URL(string: "https://designedbybruno.net/stub")!
 }

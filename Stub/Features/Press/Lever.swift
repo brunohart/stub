@@ -5,6 +5,8 @@ import SwiftUI
 /// pulled. Let go before that and it springs back and nothing is pulled. There is no Save button because nothing here is
 /// a document: committing is physical and deliberate.
 struct Lever: View {
+    /// There is something on the press that differs from the last proof: the lever says Pull in ink rather than grey.
+    var ready = false
     /// The proof is pulled.
     var pulled: () -> Void
 
@@ -48,7 +50,9 @@ struct Lever: View {
                 Image(systemName: "arrow.down").font(.system(size: 11, weight: .medium))
                 Text("Pull").font(Type.words(12))
             }
-            .foregroundStyle(Ink.grey)
+            .foregroundStyle(ready ? Ink.orange : Ink.grey)
+            .scaleEffect(ready ? 1.08 : 1)
+            .animation(Motion.stamp, value: ready)
             .opacity(1 - Double(travel / Self.length) * 1.6)
             .offset(y: 26)
             .accessibilityHidden(true)
