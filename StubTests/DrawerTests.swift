@@ -171,8 +171,9 @@ struct DrawerTests {
         let summary = SeasonSummary(stubs: drawer)
         #expect(summary.circuits.map(\.name) == ["Event", "Hoyts"])
         #expect(summary.independents == 2 && summary.frontRow == 2)
-        #expect(summary.brief.contains("Circuits: 2 (Event ×2, Hoyts ×1)"))
-        #expect(summary.brief.contains("Front row: 2"))
+        #expect(summary.brief.contains("Cinema chains: 2 (Event ×2, Hoyts ×1)"))
+        #expect(summary.brief.contains("Nights at independent cinemas: 2"))
+        #expect(summary.brief.contains("Nights in the front row: 2"))
         #expect(summary.handSentence == "Five stubs across five cinemas and two circuits.")
         #expect(SeasonRules.judge(summary.handSentence) == .accepted(summary.handSentence))
     }

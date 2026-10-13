@@ -87,11 +87,13 @@ struct SeasonSummary: Equatable, Sendable {
         if !months.isEmpty { lines.append("Months: " + months.map { "\($0.name) ×\($0.count)" }.joined(separator: ", ")) }
         if !weekdays.isEmpty { lines.append("Weekdays: " + weekdays.map { "\($0.name) ×\($0.count)" }.joined(separator: ", ")) }
         if !paid.isEmpty { lines.append("Paid: " + paid.map { "\($0.currency) \($0.amount)" }.joined(separator: ", ")) }
+        // Worded so a model cannot take a cinema for a film: "chains", and nights rather than "visits" (2026-10-13: "Independent
+        // cinemas: 7 visits" came back as "seven independent films").
         if !circuits.isEmpty {
-            lines.append("Circuits: \(circuits.count) (" + circuits.map { "\($0.name) ×\($0.count)" }.joined(separator: ", ") + ")")
+            lines.append("Cinema chains: \(circuits.count) (" + circuits.map { "\($0.name) ×\($0.count)" }.joined(separator: ", ") + ")")
         }
-        if independents > 0 { lines.append("Independent cinemas: \(independents) visits") }
-        if frontRow > 0 { lines.append("Front row: \(frontRow)") }
+        if independents > 0 { lines.append("Nights at independent cinemas: \(independents)") }
+        if frontRow > 0 { lines.append("Nights in the front row: \(frontRow)") }
         return lines.joined(separator: "\n")
     }
 
