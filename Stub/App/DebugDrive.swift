@@ -60,6 +60,10 @@ final class DebugDrive {
     static let viewings: Int? = value(after: "-viewings").flatMap { Int($0) }.map { max($0, 1) }
     /// `-clip`: with `-edition`, draw the moving share and log where it was written (brief §6.4).
     static var wantsClip: Bool { ProcessInfo.processInfo.arguments.contains("-clip") }
+    /// `-clipformat card`: with `-clip`, the card-sized clip rather than the vertical one (BEDIP-221).
+    static let clipFormat: EditionClip.Format = value(after: "-clipformat").flatMap(EditionClip.Format.init(rawValue:)) ?? .vertical
+    /// `-unmarked`: with `-clip`, leave "kept in Stub" off.
+    static var unmarked: Bool { ProcessInfo.processInfo.arguments.contains("-unmarked") }
     /// `-room`: with `-edition`, set the card on a table (ADR-018). The simulator has no camera, so the table is a stand-in.
     static var wantsRoom: Bool { ProcessInfo.processInfo.arguments.contains("-room") }
     /// `-age 6`: the detail's stub has been in the drawer this many years, for its patina (brief §6.2).

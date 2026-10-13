@@ -22,6 +22,8 @@ struct StubDetailView: View {
     @State private var inRoom = false
     @Namespace private var press
     @State private var shareable: Image?
+    /// Whether the moving share says "kept in Stub" under the card (BEDIP-221).
+    @AppStorage(ShareMark.key) private var marked = true
     @Environment(\.dynamicTypeSize) private var typeSize
     private let editions = Editions.shared
 
@@ -159,15 +161,25 @@ struct StubDetailView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 if let shareable, let edition = editions.edition(for: stub.title) {
                     // The still, and beside it the card turning in the light: a still is the wrong share for a card whose
-                    // point is light (brief §6.4). The clip is drawn when a destination asks for it.
+                    // point is light (brief §6.4). The clip is drawn when a destination asks for it. Vertical first, so a
+                    // Story shows all of it (BEDIP-221); the card-sized clip and the still are still there.
+                    let composition = Composition(edition: edition, copy: copy)
+                    let invitation = marked ? Text(ShareMark.link.absoluteString) : nil
                     Menu {
-                        ShareLink(item: EditionClip(composition: Composition(edition: edition, copy: copy)),
+                        ShareLink(item: EditionClip(composition: composition, format: .vertical, marked: marked), message: invitation,
                                   preview: SharePreview("An edition of \(stub.title), turning in the light", image: shareable)) {
                             Label("Share it turning in the light", systemImage: "film")
+                        }
+                        ShareLink(item: EditionClip(composition: composition, format: .card, marked: marked), message: invitation,
+                                  preview: SharePreview("An edition of \(stub.title), turning in the light", image: shareable)) {
+                            Label("Share it turning, close up", systemImage: "rectangle.portrait")
                         }
                         ShareLink(item: shareable, preview: SharePreview("An edition of \(stub.title)", image: shareable)) {
                             Label("Share the still", systemImage: "photo")
                         }
+                        Divider()
+                        // The mark is on until the person turns it off; nobody is made to advertise.
+                        Toggle("Say \u{201C}kept in Stub\u{201D}", isOn: $marked)
                     } label: {
                         Label("Share the edition", systemImage: "square.and.arrow.up")
                     }
@@ -192,7 +204,9 @@ struct StubDetailView: View {
             do {
                 while editions.edition(for: stub.title) == nil { try await Task.sleep(for: .milliseconds(250)) }
                 guard let edition = editions.edition(for: stub.title) else { return }
-                let url = try await EditionClip(composition: Composition(edition: edition, copy: copy)).render()
+                let clip = EditionClip(composition: Composition(edition: edition, copy: copy), format: DebugDrive.clipFormat,
+                                       marked: marked && !DebugDrive.unmarked)
+                let url = try await clip.render()
                 EditionClip.log.info("Clip: written to \(url.path)")
             } catch {
                 EditionClip.log.error("Clip: \(error.localizedDescription)")
