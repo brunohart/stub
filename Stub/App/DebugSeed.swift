@@ -56,7 +56,8 @@ enum DebugSeed {
                     cinema: d.cinema.nilIfEmpty, screenedAt: d.screenedAt, screen: d.screen.nilIfEmpty,
                     seat: d.seat.nilIfEmpty, price: d.price, currency: d.currency.nilIfEmpty,
                     rawText: result.reading.text, imageData: plate.jpegData(compressionQuality: 0.82),
-                    readBy: d.readBy, confidence: d.confidence
+                    readBy: d.readBy, confidence: d.confidence,
+                    venue: Venue.resolve(cinema: d.cinema.nilIfEmpty).venue, circuit: Venue.resolve(cinema: d.cinema.nilIfEmpty).circuit
                 )
                 context.insert(stub)
             } catch {

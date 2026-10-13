@@ -161,6 +161,8 @@ final class Editions {
     /// answers one request at a time, and the edition is what the person is looking at (Day 22's note).
     var isDeciding: Bool { !deciding.isEmpty }
     @ObservationIgnored private let defaults: UserDefaults
+    /// The drawer's store, where what the press keeps syncs with the stubs (ADR-024). Every write goes through to it.
+    @ObservationIgnored var ledger: PressLedger?
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -210,12 +212,14 @@ final class Editions {
         pulled.pulledAt = pulled.pulledAt ?? date
         proofs[proof.release] = pulled
         ProofCache.store(pulled, in: defaults)
+        ledger?.put(.proof, proof.release, pulled.json)
     }
 
     /// Going back: the proof is deleted and the edition underneath shows again, exactly as it was.
     func discardProof(release: String) {
         proofs[release] = nil
         ProofCache.remove(release: release, in: defaults)
+        ledger?.remove(.proof, release)
     }
 
     /// The proof on the press for the release: where the person left it, or the last pulled proof, or nothing yet.
@@ -230,6 +234,7 @@ final class Editions {
         kept.pulledAt = nil
         onPress[proof.release] = kept
         ProofCache.store(kept, on: .press, in: defaults)
+        ledger?.put(.press, proof.release, kept.json)
     }
 
     /// Whether the release's card has ever been to the press: the detail stops teaching the way there once it has.
@@ -243,6 +248,22 @@ final class Editions {
     func store(_ edition: Edition) {
         printed[edition.release] = edition
         EditionCache.store(edition, in: defaults)
+        ledger?.put(.edition, edition.release, try? JSONEncoder().encode(edition))
+    }
+
+    /// What another phone printed and pulled, from the ledger: the copies here become the ledger's (ADR-024). A release the
+    /// ledger does not have keeps nothing here either, so a proof deleted on one phone is gone on this one.
+    func adopt(printed: [String: Edition], proofs: [String: Proof], onPress: [String: Proof]) {
+        guard printed != self.printed || proofs != self.proofs || onPress != self.onPress else { return }
+        self.printed = printed
+        self.proofs = proofs
+        self.onPress = onPress
+        EditionCache.clear(in: defaults)
+        for edition in printed.values { EditionCache.store(edition, in: defaults) }
+        ProofCache.clear(in: defaults)
+        for proof in proofs.values { ProofCache.store(proof, in: defaults) }
+        for proof in onPress.values { ProofCache.store(proof, on: .press, in: defaults) }
+        Self.log.info("Editions adopted from the ledger: \(printed.count) printed, \(proofs.count) pulled")
     }
 
     /// The release's edition, its proof laid over it: the one already printed, or one decided now and kept.

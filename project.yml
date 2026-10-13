@@ -49,6 +49,8 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         # ProMotion at its full 120 Hz, so the press wheel's in-betweens are not capped at 60 (ADR-016).
         CADisableMinimumFrameDurationOnPhone: true
+        # CloudKit's silent pushes say another phone changed the drawer (ADR-024).
+        UIBackgroundModes: [remote-notification]
     # The drawer lives in an App Group so the widget can read it (Day 5). Generated, like Info.plist.
     # Add to Stub links open the app (ADR-021); a Debug build reads the association file straight from the site
     # (STUB_APPLINKS_MODE), since Apple's CDN takes a day to see a new one.
@@ -57,6 +59,11 @@ targets:
       properties:
         com.apple.security.application-groups: [group.com.designedbybruno.stub]
         com.apple.developer.associated-domains: ["applinks:designedbybruno.net$(STUB_APPLINKS_MODE)"]
+        # The drawer in the person's own private iCloud (ADR-024). Without these CloudKit stops the app the moment it is
+        # asked for the container, so they are always here; the person turns sync off in Settings, not the build.
+        com.apple.developer.icloud-container-identifiers: [iCloud.com.designedbybruno.stub]
+        com.apple.developer.icloud-services: [CloudKit]
+        aps-environment: development
     dependencies:
       - target: StubWidget
       - target: StubShare

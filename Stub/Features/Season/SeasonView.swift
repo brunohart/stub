@@ -25,6 +25,15 @@ struct SeasonView: View {
                             .placedInTurn(0, placed: placed)
                         Count("\(summary.cinemas.count)", summary.cinemas.count == 1 ? "cinema" : "cinemas")
                             .placedInTurn(1, placed: placed)
+                        // The circuits, quietly: how many chains, and which (ADR-024).
+                        if !summary.circuits.isEmpty {
+                            Count("\(summary.circuits.count)", circuitsLine, size: 22)
+                                .placedInTurn(2, placed: placed)
+                        }
+                        if summary.frontRow > 0 {
+                            Count("\(summary.frontRow)", summary.frontRow == 1 ? "night in the front row" : "nights in the front row", size: 22)
+                                .placedInTurn(2, placed: placed)
+                        }
                         if let most = summary.mostVisited, most.count >= 2 {
                             Named(most.name, "most visited, \(SeasonSummary.times(most.count))")
                                 .placedInTurn(2, placed: placed)
@@ -39,6 +48,12 @@ struct SeasonView: View {
                         }
                     }
                     .onAppear { placed = true }
+
+                    // Where the drawer is kept, said plainly (ADR-024).
+                    Text(SharedStore.isSyncing ? "Kept on this phone and in your own iCloud, private to you."
+                                               : "Kept on this phone only. Settings › Stub keeps it in your iCloud too.")
+                        .font(Type.words(12)).foregroundStyle(Ink.grey)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 24)
@@ -48,6 +63,15 @@ struct SeasonView: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.hidden)
+    }
+
+    /// "circuits: Event ×2 · Lighthouse · Rialto, and five nights at independents".
+    private var circuitsLine: String {
+        let named = summary.circuits.map { $0.count > 1 ? "\($0.name) ×\($0.count)" : $0.name }.joined(separator: " · ")
+        let word = summary.circuits.count == 1 ? "circuit" : "circuits"
+        guard summary.independents > 0 else { return "\(word): \(named)" }
+        let nights = summary.independents == 1 ? "one night" : "\(SeasonSummary.spelled(summary.independents)) nights"
+        return "\(word): \(named), and \(nights) at independents"
     }
 
     private var paidLine: String {

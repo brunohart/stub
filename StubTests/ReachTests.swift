@@ -7,7 +7,7 @@ import SwiftData
 @MainActor
 struct ReachTests {
     private func drawer() throws -> ModelContainer {
-        let container = try ModelContainer(for: Stub.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let container = try ModelContainer(for: Stub.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none))
         let calendar = Calendar.current
         let year = calendar.component(.year, from: .now)
         func day(_ y: Int, _ m: Int, _ d: Int) -> Date {
@@ -27,7 +27,7 @@ struct ReachTests {
     @Test func countsTheFilmsThisYear() throws {
         let container = try drawer()
         #expect(SharedStore.filmsThisYear(in: container.mainContext) == 2, "one is two years old, one has no date")
-        let empty = try ModelContainer(for: Stub.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let empty = try ModelContainer(for: Stub.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none))
         #expect(SharedStore.filmsThisYear(in: empty.mainContext) == 0)
     }
 
@@ -57,7 +57,7 @@ struct ReachTests {
         #expect(printed.numbers == "\(printed.date!) · C8")
         #expect(LastStub(title: "Aftersun", seat: "E11").numbers == "E11")
 
-        let empty = try ModelContainer(for: Stub.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let empty = try ModelContainer(for: Stub.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none))
         #expect(SharedStore.lastStub(in: empty.mainContext) == nil)
     }
 

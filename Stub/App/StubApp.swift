@@ -1,9 +1,11 @@
 import SwiftUI
 import SwiftData
+import CoreData
 
 @main
 struct StubApp: App {
     let container: ModelContainer
+    let ledger: PressLedger
 
     init() {
         #if DEBUG
@@ -14,18 +16,36 @@ struct StubApp: App {
         // `-signed`: the fixture signature, so the back of a proof can be screenshotted signed.
         if DebugDrive.wantsSigned, !Signatures.shared.isSigned { Signatures.shared.keep(Signatures.fixture()) }
         #endif
-        // The drawer lives where the widget can read it (Day 5). A pre-Day-5 drawer is moved across once.
+        // The drawer lives where the widget can read it (Day 5). A pre-Day-5 drawer is moved across once. It is opened at
+        // the current schema, migrating a version 1 store, and mirrored to the person's private iCloud unless they said
+        // to keep it on this phone (ADR-024).
         SharedStore.migrateIfNeeded()
         do {
-            container = try SharedStore.container()
+            container = try SharedStore.container(sync: Drawer.wantsSync())
         } catch {
             fatalError("Stub could not open its drawer: \(error)")
         }
+        if let why = SharedStore.syncFailure { Drawer.log.notice("Drawer: on this phone only; iCloud could not be set up: \(why)") }
         Reach.shared.container = container
+        let context = container.mainContext
         #if DEBUG
         // Empty the drawer here, not in the seed: the seed waits for the probe, and in those seconds the
-        // table would otherwise count yesterday's drawer and start phrasing it.
-        if DebugSeed.resets { try? container.mainContext.delete(model: Stub.self) }
+        // table would otherwise count yesterday's drawer and start phrasing it. The press's ledger goes with it, before
+        // the press is joined to it, or yesterday's editions would come back from the store.
+        if DebugSeed.resets {
+            try? context.delete(model: Stub.self)
+            try? context.delete(model: PressRecord.self)
+            try? context.save()
+            UserDefaults.standard.removeObject(forKey: PressLedger.filledKey)
+        }
+        #endif
+        Drawer.dedupe(context)
+        Drawer.placeVenues(context)
+        // What the press keeps rides in the same store (ADR-024).
+        let ledger = PressLedger(context: context)
+        ledger.attach(Editions.shared, Signatures.shared)
+        self.ledger = ledger
+        #if DEBUG
         // `-inbox path`: as if the share extension had left this file, before the table first looks.
         if let path = DebugDrive.inboxFile {
             let url = URL(fileURLWithPath: path)
@@ -40,6 +60,12 @@ struct StubApp: App {
             TableView()
                 .modelContainer(container)
                 .preferredColorScheme(.light) // Day 0: parchment only. Dark drawer is a later decision.
+                // Another phone's stubs and proofs arriving from iCloud: one copy of each stub, and the press made to match.
+                .onReceive(NotificationCenter.default.publisher(for: .NSPersistentStoreRemoteChange).receive(on: RunLoop.main)) { _ in
+                    Drawer.dedupe(container.mainContext)
+                    Drawer.placeVenues(container.mainContext)
+                    ledger.reconcile(Editions.shared, Signatures.shared)
+                }
                 .task {
                     #if DEBUG
                     FontAudit.run()

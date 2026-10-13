@@ -18,6 +18,12 @@ struct SeasonSummary: Equatable, Sendable {
     var weekdays: [Tally] = []
     /// Total paid, by ISO currency code, alphabetical.
     var paid: [(currency: String, amount: Decimal)] = []
+    /// The chains the drawer has been to, most visited first (ADR-024). Independent houses are counted apart, as
+    /// `independents`: they are rooms, not a circuit.
+    var circuits: [Tally] = []
+    var independents: Int = 0
+    /// Nights in the front row: a seat in row A.
+    var frontRow: Int = 0
 
     var mostVisited: Tally? { cinemas.first }
     var busiestMonth: Tally? { months.first }
@@ -34,6 +40,7 @@ struct SeasonSummary: Equatable, Sendable {
         var byMonth: [String: (count: Int, order: Int)] = [:]
         var byWeekday: [String: (count: Int, order: Int)] = [:]
         var byCurrency: [String: Decimal] = [:]
+        var byCircuit: [String: Int] = [:]
         for stub in stubs {
             if let cinema = stub.cinema?.trimmingCharacters(in: .whitespaces), !cinema.isEmpty {
                 byCinema[cinema, default: 0] += 1
@@ -51,6 +58,12 @@ struct SeasonSummary: Equatable, Sendable {
             if let price = stub.price {
                 byCurrency[stub.currency ?? "NZD", default: 0] += price
             }
+            if let circuit = stub.circuit {
+                if circuit == Venue.independent { independents += 1 } else { byCircuit[circuit, default: 0] += 1 }
+            }
+            if let seat = stub.seat?.uppercased(), seat.range(of: #"^A\s?\d{1,3}$"#, options: .regularExpression) != nil {
+                frontRow += 1
+            }
         }
         cinemas = byCinema.map { Tally(name: $0.key, count: $0.value) }
             .sorted { $0.count != $1.count ? $0.count > $1.count : $0.name < $1.name }
@@ -61,6 +74,8 @@ struct SeasonSummary: Equatable, Sendable {
             .sorted { $0.0.count != $1.0.count ? $0.0.count > $1.0.count : $0.1 < $1.1 }
             .map(\.0)
         paid = byCurrency.map { (currency: $0.key, amount: $0.value) }.sorted { $0.currency < $1.currency }
+        circuits = byCircuit.map { Tally(name: $0.key, count: $0.value) }
+            .sorted { $0.count != $1.count ? $0.count > $1.count : $0.name < $1.name }
     }
 
     /// What the model is told. Compact, one line per fact, nothing it could mistake for an instruction.
@@ -72,6 +87,11 @@ struct SeasonSummary: Equatable, Sendable {
         if !months.isEmpty { lines.append("Months: " + months.map { "\($0.name) ×\($0.count)" }.joined(separator: ", ")) }
         if !weekdays.isEmpty { lines.append("Weekdays: " + weekdays.map { "\($0.name) ×\($0.count)" }.joined(separator: ", ")) }
         if !paid.isEmpty { lines.append("Paid: " + paid.map { "\($0.currency) \($0.amount)" }.joined(separator: ", ")) }
+        if !circuits.isEmpty {
+            lines.append("Circuits: \(circuits.count) (" + circuits.map { "\($0.name) ×\($0.count)" }.joined(separator: ", ") + ")")
+        }
+        if independents > 0 { lines.append("Independent cinemas: \(independents) visits") }
+        if frontRow > 0 { lines.append("Front row: \(frontRow)") }
         return lines.joined(separator: "\n")
     }
 
@@ -95,6 +115,7 @@ struct SeasonSummary: Equatable, Sendable {
         default:
             let places = cinemas.count <= 1 ? "one cinema" : "\(Self.spelled(cinemas.count)) cinemas"
             var sentence = "\(Self.spelled(films).capitalized) stubs across \(places)"
+            if circuits.count >= 2 { sentence += " and \(Self.spelled(circuits.count)) circuits" }
             if let month = busiestMonth, month.count >= 2, months.count >= 2 {
                 sentence += ", most of them in \(month.name.split(separator: " ").first.map(String.init) ?? month.name)"
             }

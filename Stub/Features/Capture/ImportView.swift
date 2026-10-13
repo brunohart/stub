@@ -280,6 +280,8 @@ struct ImportView: View {
     }
 
     private func keep() {
+        // Where it was, as a place: the venue normalised and its circuit, from the pass's issuer if there was one (ADR-024).
+        let place = Venue.resolve(cinema: draft.cinema.nilIfEmpty, organization: draft.organization.nilIfEmpty)
         let stub = Stub(
             title: draft.title.trimmingCharacters(in: .whitespaces),
             cinema: draft.cinema.nilIfEmpty,
@@ -291,7 +293,9 @@ struct ImportView: View {
             rawText: reading?.text ?? "",
             imageData: image?.jpegData(compressionQuality: 0.82),
             readBy: reading == nil ? "manual" : draft.readBy,
-            confidence: reading == nil ? 1 : draft.confidence
+            confidence: reading == nil ? 1 : draft.confidence,
+            venue: place.venue,
+            circuit: place.circuit
         )
         context.insert(stub)
         // Not dismissed: the stub is in the drawer, and now its edition is printed.

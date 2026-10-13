@@ -21,6 +21,8 @@ final class Signatures {
     private(set) var image: UIImage?
 
     @ObservationIgnored private let url: URL
+    /// The drawer's store, where the signature syncs with the stubs it signs (ADR-024).
+    @ObservationIgnored var ledger: PressLedger?
 
     init(url: URL = Signatures.url) {
         self.url = url
@@ -37,6 +39,11 @@ final class Signatures {
         guard !drawing.strokes.isEmpty else { return }
         self.drawing = drawing
         image = Self.render(drawing)
+        write(drawing)
+        ledger?.put(.signature, "owner", drawing.dataRepresentation())
+    }
+
+    private func write(_ drawing: PKDrawing) {
         do {
             try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
             try drawing.dataRepresentation().write(to: url, options: .atomic)
@@ -45,11 +52,26 @@ final class Signatures {
         }
     }
 
+    /// The signature the ledger holds, from this phone or another (ADR-024); none means the margin is open.
+    func adopt(_ synced: PKDrawing?) {
+        guard synced?.dataRepresentation() != drawing?.dataRepresentation() else { return }
+        if let synced, !synced.strokes.isEmpty {
+            drawing = synced
+            image = Self.render(synced)
+            write(synced)
+        } else {
+            drawing = nil
+            image = nil
+            try? FileManager.default.removeItem(at: url)
+        }
+    }
+
     /// Sign again: the old one is gone, and the margin is open.
     func redo() {
         drawing = nil
         image = nil
         try? FileManager.default.removeItem(at: url)
+        ledger?.remove(.signature, "owner")
     }
 
     /// Sign (`new`), or open the margin to sign again (`nil`), on `undoManager`, so shake and three-finger undo reach the

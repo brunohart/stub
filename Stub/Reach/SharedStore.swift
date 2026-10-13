@@ -19,11 +19,35 @@ enum SharedStore {
 
     static var isShared: Bool { groupContainer != nil }
 
-    /// The container at `url`. The widget opens it read-only: one writer, one file, no argument.
-    static func container(readOnly: Bool = false) throws -> ModelContainer {
-        let configuration = ModelConfiguration(url: url, allowsSave: !readOnly)
-        return try ModelContainer(for: Stub.self, configurations: configuration)
+    /// The person's own private iCloud database: never a server of ours (ADR-024).
+    static let cloudContainer = "iCloud.com.designedbybruno.stub"
+
+    /// The schema the drawer is opened with, version 2, migrating a version 1 store the first time.
+    static var schema: Schema { Schema(versionedSchema: StubSchemaV2.self) }
+
+    /// The container at `url`, migrated to the current schema. The widget opens it read-only: one writer, one file, no
+    /// argument. `sync` mirrors it to the person's private iCloud database; when that cannot be set up (no iCloud
+    /// entitlement on this build, a profile without the container), the drawer opens on the phone alone and says so.
+    static func container(readOnly: Bool = false, sync: Bool = false, at url: URL = url) throws -> ModelContainer {
+        if sync, !readOnly {
+            do {
+                let configuration = ModelConfiguration(schema: schema, url: url, cloudKitDatabase: .private(cloudContainer))
+                let container = try ModelContainer(for: schema, migrationPlan: StubMigrationPlan.self, configurations: configuration)
+                isSyncing = true
+                return container
+            } catch {
+                syncFailure = String(describing: error)
+            }
+        }
+        isSyncing = false
+        let configuration = ModelConfiguration(schema: schema, url: url, allowsSave: !readOnly, cloudKitDatabase: .none)
+        return try ModelContainer(for: schema, migrationPlan: StubMigrationPlan.self, configurations: configuration)
     }
+
+    /// Why the drawer could not be mirrored to iCloud this launch, when it could not.
+    nonisolated(unsafe) static var syncFailure: String?
+    /// Whether the drawer is mirrored to the person's private iCloud this launch: what the season sheet says.
+    nonisolated(unsafe) static var isSyncing = false
 
     /// Days 0–4 kept the drawer at SwiftData's default path. The first launch that knows about the group moves
     /// the three SQLite files across, once, so a drawer filled before Day 5 is not left behind. Returns whether
