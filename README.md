@@ -2,18 +2,18 @@
 
 **A private archive of every film you saw in a room with strangers.**
 
-Photograph the ticket stub. The phone reads it, files it, and gives you two things back: the stub as it was scanned, and an **edition**, a ticket designed for that film's release, printed with your own seat and night, lit by the phone and felt under your finger. Then you can take the edition to the **press** and pull your own proof of it, put it on a real table, and send it turning in the light. Nothing leaves the device.
+Photograph the ticket stub, or share in the Wallet pass, the PDF or the screenshot the cinema sent. The phone reads it, files it, and gives you two things back: the stub as it was, and an **edition**, a ticket designed for that film's release, printed with your own seat and night, lit by the phone and felt under your finger. Then you can take the edition to the **press** and pull your own proof of it, put it on a real table, and send it turning in the light. Nothing reaches anyone but you: the drawer lives on the phone and, unless you say otherwise, in your own private iCloud.
 
-Native Swift and SwiftUI, Metal, Vision, Foundation Models, Core Haptics, RealityKit. iOS 26, built and proved daily in the iOS 27 simulator.
+Native Swift and SwiftUI, Metal, Vision, Foundation Models, Core Haptics, RealityKit, CloudKit. iOS 26, built and proved daily in the iOS 27 simulator.
 
 <p>
-<img src="docs/screenshots/day-7-table.png" width="24%" alt="The drawer: eight stubs tipped onto a table, each a little crooked">
-<img src="docs/screenshots/day-21-edition.png" width="24%" alt="An edition: La Chimera as a blueprint on night inks, the ring stamped in foil">
-<img src="docs/screenshots/day-24-take-13.5.png" width="24%" alt="The press: the disc in hand halfway between two takes, the rest of the card knocked back">
+<img src="docs/screenshots/2026-10-13-home.png" width="24%" alt="The drawer under its brass label, 2024 to 2026: stubs tipped onto a table, and two stamps at the bottom, The season and Keep a stub">
+<img src="docs/screenshots/2026-10-13-detail.png" width="24%" alt="An edition: La Chimera, constructivist, chosen by the on-device model, with The press and Share under it">
+<img src="docs/screenshots/2026-10-13-press-marks.png" width="24%" alt="The press: Dune Part Two with registration marks round every part that turns, and the line: tap a part of the poster, then turn the dial">
 <img src="docs/screenshots/day-25-separated.png" width="24%" alt="Separations: the card taken apart into five sheets of film">
 </p>
 
-<sub>The drawer · an edition · the press, halfway between two takes · the card taken apart into its plates</sub>
+<sub>The drawer under its label · an edition · the press, every part that turns marked · the card taken apart into its plates</sub>
 
 ---
 
@@ -73,6 +73,19 @@ Put it on the table and the card sits on a real surface through the camera, at i
 
 ---
 
+### Ways in, and ways out
+
+A ticket that never had paper comes in through the share sheet: a **Wallet pass** is read from its own fields (the film, the cinema, the time, the seat, as the pass states them; no camera, no model), a **PDF e-ticket** from its own text, a **screenshot** as a photograph. A booking confirmation can carry an **Add to Stub** link ([the spec](docs/add-to-stub.md)) that opens the import sheet prefilled; nothing is filed until you keep it, and nothing is fetched to open it. The drawer **outlives the phone** in your private iCloud, the press's proofs and your signature with it, and every stub knows its venue and its circuit.
+
+Every share says **shared in Stub**, pressed into the parchment under the card like a paper mill's watermark. The moving share is 9:16, so a Story shows all of it.
+
+<p>
+<img src="docs/screenshots/2026-10-13-share-extension.png" width="49%" alt="Sharing a screenshot from Photos into Stub, and the import sheet with every field read">
+<img src="docs/screenshots/2026-10-13-pass-and-pdf.png" width="49%" alt="A Wallet pass read from its fields, and a PDF e-ticket read from its own text">
+</p>
+
+<p><img src="docs/screenshots/2026-10-13-vertical-clip.png" width="100%" alt="The vertical clip at the start, middle and end of its turn, the Story's reserved bands marked at the top and bottom of the middle frame"></p>
+
 ## Tuned by hand
 
 Every number here was set on purpose, and most were tuned by eye and thumb. The ones marked *device* still need a real phone to confirm the feel.
@@ -95,7 +108,12 @@ Every number here was set on purpose, and most were tuned by eye and thumb. The 
 | A punch | 16 pt across, 3 pt clear of any word | Smaller and a cut shape reads as a printed glyph |
 | Patina | warmth 0.42 (1 − e^(−years/4.5)), foxing from the first year, one spot every eighteen months, seven at most | Quick at first, then hardly at all; rare |
 | The card on a table | 64 × 102.4 × 0.4 mm, maps at 2.5 px a point | A playing card's size; cut in 0.8 s in a Debug build *(device)* |
-| The moving share | 3 s at 60 fps, tilt −0.35 → 0.35, HEVC | About 1.6 MB; drawn in 10 s in a Debug build, when a destination asks for it |
+| The moving share | 3 s at 60 fps, tilt −0.35 → 0.35, HEVC, 1080 × 1920 | The card and its watermark clear of a Story's 250-pixel bands; about 1 MB, drawn in 11.5 s in a Debug build, when a destination asks for it |
+| The watermark | "shared in Stub", 15 pt, blind-embossed: a shade of the paper, lit and shaded along its edges by the share's own light | Read by its relief, never ink on the card, always there |
+| A stamp | the ink 3 pt out of register with its plate; down in 0.1 s, back with a bounce of 0.45, lifted 2.4 pt and tipped 0.9° | Pressing a button prints a pass; felt at contact and again, softer, at the lift *(device)* |
+| The deal | 55 ms a card, from 26 pt up and 4.5° further turned, spring 0.5 / 0.62 | Cards put down on a table one by one, never faded in |
+| The drawer label | brass, its sheen 110 pt across a full tilt | The home's name for itself: the years, the stubs, the cinemas |
+| The App Store preview | 25 s, 886 × 1920 and 750 × 1334, 30 fps | Filmed from the app and cut, never sped up (`scripts/preview.sh`) |
 
 ## How it's built
 
@@ -110,8 +128,9 @@ Every number here was set on purpose, and most were tuned by eye and thumb. The 
 | **Press** | SwiftUI `Canvas`, `projectionEffect`, Core Haptics | Parts, takes, in-betweens, separations; a proof is a diff ([ADR-016](DECISIONS.md#adr-016--the-press-a-proof-is-a-diff-over-the-edition-and-every-part-has-its-own-die)) |
 | **Place** | RealityKit, ARKit, a RealityKit surface shader | The card on a real table, lit by the room; holographic film from the real view direction ([ADR-018](DECISIONS.md#adr-018--the-rooms-light-on-a-real-table-the-card-is-lit-by-the-room)) |
 | **Share** | `ImageRenderer`, AVFoundation | The still, and three seconds of the card turning in the light, drawn frame by frame through the same shaders |
-| **Keep** | SwiftData, an App Group | On the device, no account, no network ([ADR-005](DECISIONS.md#adr-005--private-by-construction), [ADR-012](DECISIONS.md#adr-012--one-drawer-in-an-app-group-the-app-writes-it-the-widget-reads-it-an-intent-runs-inside-the-app)) |
-| **Reach** | App Intents, WidgetKit, VisionKit | "Log a stub in Stub"; the last stub on the lock screen; live text from the camera |
+| **Keep** | SwiftData (versioned), an App Group, a CloudKit private database | On the device and in your own iCloud; no account of ours, no server ([ADR-005](DECISIONS.md#adr-005--private-by-construction), [ADR-012](DECISIONS.md#adr-012--one-drawer-in-an-app-group-the-app-writes-it-the-widget-reads-it-an-intent-runs-inside-the-app), [ADR-024](DECISIONS.md)) |
+| **Take in** | A share extension, the Wallet pass format, PDFKit | Passes read from their fields, PDFs from their text, screenshots as photographs; left in an inbox for the app, the drawer's one writer ([ADR-023](DECISIONS.md)) |
+| **Reach** | App Intents, universal links, WidgetKit, VisionKit | "Log a stub in Stub"; Add to Stub links and the Keep a ticket action ([ADR-021](DECISIONS.md)); the last stub on the lock screen; live text from the camera |
 | **Access** | VoiceOver, Dynamic Type, Reduce Motion | Every card says what it knows; one column at the accessibility sizes; a rotor for the parts of a poster; the wheel is one adjustable control ([ADR-013](DECISIONS.md#adr-013--the-table-is-two-columns-until-the-type-gets-large-at-the-accessibility-sizes-it-is-one)) |
 
 ---
@@ -140,6 +159,7 @@ One day at a time, each day proved by a screenshot of the real app running in th
 | 28 | The punch and patina: a remarque for every viewing after the first; the card ages from the night | <img src="docs/screenshots/day-28-viewings-3.png" width="96"> |
 | 29 | The room's light: the card on a real table, lit by the room ([ADR-018](DECISIONS.md#adr-018--the-rooms-light-on-a-real-table-the-card-is-lit-by-the-room)) | <img src="docs/screenshots/day-29-room.png" width="96"> |
 | 30 | The moving share, and the write-up, [`docs/post-press.md`](docs/post-press.md) | <img src="docs/screenshots/day-30-clip-frames.png" width="96"> |
+| 13 Oct | Add to Stub; Wallet passes, PDFs and screenshots shared in; the drawer in iCloud, venues and circuits; the 9:16 share and its watermark; the home's label, stamps, the press's marks, the icon; the App Store preview | <img src="docs/screenshots/2026-10-13-preview-frames.png" width="96"> |
 
 ## Run it
 
@@ -157,7 +177,7 @@ The simulator has no camera, no gyroscope and no hands, so `run.sh` stands in fo
 
 | Flag | Does |
 |---|---|
-| `--seed --reset` | Runs the nine synthetic stubs in `fixtures/` through the real crop, Vision and parsers |
+| `--seed --reset` | Runs the eleven synthetic tickets in `fixtures/` (nine photographed stubs, an e-ticket PDF, a screenshot) through the real reader |
 | `--edition [--open "Title"]` | Opens a stub so its edition is chosen and printed; `--turned` shows its back |
 | `--tilt x,y` | Holds the light where a screenshot wants it |
 | `--press --part disc --take 14` | Carries the card into the press and turns a part; `--scrub 13.5` holds an in-between |
@@ -167,7 +187,9 @@ The simulator has no camera, no gyroscope and no hands, so `run.sh` stands in fo
 | `--pulled --wet 0.6` · `--signed` | Pulls the proof on the press and holds the ink wet; signs with a fixture signature |
 | `--viewings 3` · `--age 6` | Punches the card as a third viewing; ages it six years |
 | `--room` | Sets the card on a table (the simulator has no camera, so the table is a stand-in) |
-| `--clip out.mp4` | Draws the moving share and copies it out |
+| `--clip out.mp4` | Draws the moving share (9:16, watermarked) and copies it out; `--clip-card` draws the card-sized one |
+| `--inbox file` | Puts a `.pkpass`, a PDF or a picture in the share extension's inbox, as a share would |
+| `--preview` | Plays the App Store preview's story; `scripts/preview.sh` films it and cuts it to Apple's sizes |
 | `--drive [--record out.mov]` | Plays the interactions on a clock, and films them |
 | `--type accessibility-extra-large` | Sets Dynamic Type for the run |
 
@@ -180,24 +202,24 @@ scripts/archive.sh    # archive and export for TestFlight; --upload sends it to 
 
 ## What the readers score
 
-A test runs every fixture through the real pipeline and writes [`docs/evals.md`](docs/evals.md). The run of 29 September 2026, on the iOS 27 simulator, with the ninth fixture (a second Dune Part Two, printed IMAX):
+A test runs every fixture through the real pipeline and writes [`docs/evals.md`](docs/evals.md). The run of 13 October 2026, on the iOS 27 simulator, with eleven fixtures: nine photographed stubs, a PDF e-ticket (read from its own text) and a screenshot of a ticket in an app:
 
 | Field | rules | model, cold | model + the rules' draft |
 |---|---|---|---|
-| title | 9/9 | 9/9 | 9/9 |
-| cinema | 9/9 | 8/9 | 9/9 |
-| date | 9/9 | 8/9 | 9/9 |
-| screen | 9/9 | 8/9 | 9/9 |
-| seat | 9/9 | 9/9 | 9/9 |
-| price | 9/9 | 2/9 | 9/9 |
+| title | 11/11 | 10/11 | 11/11 |
+| cinema | 11/11 | 10/11 | 11/11 |
+| date | 11/11 | 11/11 | 11/11 |
+| screen | 11/11 | 11/11 | 11/11 |
+| seat | 11/11 | 11/11 | 11/11 |
+| price | 11/11 | 11/11 | 11/11 |
 
-The rules take about a millisecond. The model took 5.7 s (median) with the hint and 6.0 s cold on this run; three runs that day had medians from 2.5 s to 17.7 s on the same Mac. Cold, it reads a `$` as US dollars. Given the rules' draft, it matches them on every field. It isn't the same reader twice, so the table is a sample, and the log records the runs that scored differently. [`docs/evals-deep.md`](docs/evals-deep.md) asks every question three times: how far one pass can be trusted, how fast the streamed title arrives, how often the season sentence keeps its rules on the first try, and whether the model gives a release the same edition every time.
+The rules take about a millisecond; the model takes seconds and its latency swings between runs on the same Mac. Given the rules' draft, it matches them on every field. It isn't the same reader twice, so the table is a sample, and the log records the runs that scored differently. A Wallet pass isn't in the table: it is read from its own fields, not by either reader. [`docs/evals-deep.md`](docs/evals-deep.md) asks every question three times: how far one pass can be trusted, how fast the streamed title arrives, how often the season sentence keeps its rules on the first try, and whether the model gives a release the same edition every time.
 
 ## Honesty
 
 On Day 0 the on-device model said it was available and then refused every request. The rules filed every fixture anyway, and that is why they are the floor and why every stub records who read it. On Day 1, Vision's document segmentation confidently returned a strip of table for every ticket, and a plain rectangle detector became the second floor. Day 21's editions were written on a machine with no Swift compiler and judged in a browser. They compiled on the first try on Day 22, and the log says what that session did and didn't catch.
 
-What isn't proved yet: the camera, the Siri phrases, the lock-screen widget, the card on a real table, and everything you feel rather than see (the gyroscope, the haptics, the wheel's detents, the foil in moving light) need a signed build on a phone. The model art-directed its first editions in the simulator on Day 28 (The Brutalist as noir, La Chimera as constructivist), but its latency swings from about two seconds to about eighteen between runs on the same Mac, so plenty of editions still fall back to the hash after twelve seconds. Each day's log ends with a "Still rough" paragraph.
+What isn't proved yet: the camera, the Siri phrases and the Keep a ticket action, the lock-screen widget, the card on a real table, an Add to Stub link tapped in Mail, a real Wallet pass shared from Wallet, two devices sharing one drawer through iCloud, and everything you feel rather than see (the gyroscope, the haptics, the stamps, the wheel's detents, the foil in moving light) need a signed build on a phone and the account behind it ([`docs/device.md`](docs/device.md)). The three passes in `fixtures/passes` are synthetic, in Apple's format; real ones, redacted, will join them. The model art-directed its first editions in the simulator on Day 28 (The Brutalist as noir, La Chimera as constructivist), but its latency swings from about two seconds to about eighteen between runs on the same Mac, so plenty of editions still fall back to the hash after twelve seconds. Each day's log ends with a "Still rough" paragraph.
 
 ## Licence
 
