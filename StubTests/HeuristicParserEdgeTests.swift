@@ -107,4 +107,24 @@ struct HeuristicParserEdgeTests {
         let d = HeuristicParser.parse(StubReading(lines: ["EMBASSY THEATRE", "12 ANGRY MEN", "SEAT B2", "$12.00"]))
         #expect(d.title == "12 Angry Men")
     }
+
+    /// The tickets that never had paper (BEDIP-218): an e-ticket's dates with the weekday and the month in full and a comma,
+    /// an app's with a middle dot and a spaced "pm", and the small print that is longer than the title.
+    @Test func digitalTicketsDatesAndSmallPrint() {
+        let calendar = Calendar.current
+        func parts(_ d: Date?) -> DateComponents? { d.map { calendar.dateComponents([.year, .month, .day, .hour, .minute], from: $0) } }
+        let pdf = parts(HeuristicParser.date(in: "Friday 11 April 2025, 7:00 pm"))
+        #expect(pdf?.year == 2025 && pdf?.month == 4 && pdf?.day == 11 && pdf?.hour == 19 && pdf?.minute == 0)
+        let app = parts(HeuristicParser.date(in: "Sun 26 Jan 2025 · 5:30 pm"))
+        #expect(app?.year == 2025 && app?.month == 1 && app?.day == 26 && app?.hour == 17 && app?.minute == 30)
+        let dotted = parts(HeuristicParser.date(in: "Sat 8 Mar 2025, 8.15 p.m."))
+        #expect(dotted == nil || dotted?.day == 8, "a time it cannot read is no date rather than a wrong one")
+        let page = HeuristicParser.parse(StubReading(lines: [
+            "LIGHTHOUSE CINEMA PETONE", "Your e-ticket", "ALL WE IMAGINE AS LIGHT", "Friday 11 April 2025, 7:00 pm",
+            "Cinema 1 Seat D9", "Adult $18.00", "Booking LH-20871", "Please arrive 10 minutes before the session.",
+            "This ticket admits one. Show it on your phone or printed.", "Lighthouse Cinema, 52 Beach Street, Petone.",
+        ]))
+        #expect(page.title == "All We Imagine as Light")
+        #expect(page.seat == "D9" && page.screen == "Screen 1")
+    }
 }

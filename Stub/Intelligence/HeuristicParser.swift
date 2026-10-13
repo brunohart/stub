@@ -53,7 +53,7 @@ struct HeuristicParser: StubParsing {
         }
 
         // Title: the longest unclaimed line that is mostly letters and not boilerplate.
-        let boilerplate = try! NSRegularExpression(pattern: #"(?i)\b(ADMIT|ADULT|CHILD|STUDENT|SENIOR|TICKET|ADMISSION|GST|TAX|TOTAL|RECEIPT|THANK|ENJOY|BOOKING|REF|WWW|\.COM|\.CO\.|ORDER|TRANS|NO REFUNDS?)\b"#)
+        let boilerplate = try! NSRegularExpression(pattern: #"(?i)\b(ADMIT|ADULT|CHILD|STUDENT|SENIOR|TICKETS?|E-TICKET|ADMISSION|GST|TAX|TOTAL|RECEIPT|THANK|ENJOY|BOOKING|REF|WWW|\.COM|\.CO\.|ORDER|TRANS|REFUNDS?|PLEASE|ARRIVE)\b"#)
         // A street address is the cinema's, never the film's: a number, then a street word somewhere after it.
         let address = try! NSRegularExpression(pattern: #"(?i)^\s*\d{1,5}[A-Z]?\s+\S.*\b(ST|STREET|RD|ROAD|AVE|AVENUE|LANE|LN|TERRACE|TCE|QUAY|BLVD|BOULEVARD|STRASSE|STRAßE|RUE)\b"#)
         let candidates = lines.enumerated()
@@ -62,9 +62,13 @@ struct HeuristicParser: StubParsing {
             .filter { line in
                 let letters = line.filter(\.isLetter).count
                 let range = NSRange(line.startIndex..., in: line)
+                // A sentence is the small print, not a film: four words or more ending in a full stop (BEDIP-218: an
+                // e-ticket's "Please arrive 10 minutes before the session." was the longest line on the page).
+                let sentence = line.trimmingCharacters(in: .whitespaces).hasSuffix(".") && line.split(separator: " ").count >= 4
                 return letters >= 3 && Double(letters) / Double(max(line.count, 1)) > 0.5
                     && boilerplate.firstMatch(in: line, range: range) == nil
                     && address.firstMatch(in: line, range: range) == nil
+                    && !sentence
             }
         if let best = candidates.max(by: { $0.count < $1.count }) {
             draft.title = Self.titleCase(Self.stripFormats(best))
@@ -127,6 +131,7 @@ struct HeuristicParser: StubParsing {
     }
 
     static let dateFormats: [String] = [
+        "EEEE d MMMM yyyy h:mma", "EEEE d MMMM yyyy HH:mm", "EEEE d MMMM yyyy", "d MMMM yyyy h:mma",
         "EEE d MMM yyyy h:mma", "EEE d MMM yyyy HH:mm", "EEE d MMM yyyy",
         "d MMM yyyy h:mma", "d MMM yyyy HH:mm", "d MMM yyyy", "d MMMM yyyy",
         "dd/MM/yyyy HH:mm", "dd/MM/yyyy h:mma", "dd/MM/yyyy", "dd/MM/yy HH:mm", "dd/MM/yy",
@@ -147,7 +152,12 @@ struct HeuristicParser: StubParsing {
         let cleaned = line
             .replacingOccurrences(of: #"(?i)\b(DATE|TIME|SESSION|SHOWING|SHOWTIME)\s*[:]?"#, with: "", options: .regularExpression)
             .replacingOccurrences(of: #"(?<=\d)(ST|ND|RD|TH|st|nd|rd|th)\b"#, with: "", options: .regularExpression)
-            .replacingOccurrences(of: "  ", with: " ")
+            // Digital tickets write "Friday 11 April 2025, 7:00 pm" and "Sun 26 Jan 2025 · 5:30 pm" (BEDIP-218): the comma
+            // and the dot go, and "7:00 pm" or "7:00 p.m." is the "7:00PM" a paper stub prints.
+            .replacingOccurrences(of: #"[,·•|]"#, with: " ", options: .regularExpression)
+            .replacingOccurrences(of: #"(?i)(\d)\s*a\.?\s?m\.?(?=\s|$)"#, with: "$1AM", options: .regularExpression)
+            .replacingOccurrences(of: #"(?i)(\d)\s*p\.?\s?m\.?(?=\s|$)"#, with: "$1PM", options: .regularExpression)
+            .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
             .trimmingCharacters(in: .whitespaces)
         guard cleaned.range(of: #"\d"#, options: .regularExpression) != nil else { return nil }
 
@@ -190,7 +200,7 @@ struct HeuristicParser: StubParsing {
     }
 
     static func titleCase(_ s: String) -> String {
-        let small: Set<String> = ["of", "the", "and", "a", "an", "in", "on", "at", "to", "for", "by", "or",
+        let small: Set<String> = ["of", "the", "and", "a", "an", "as", "in", "on", "at", "to", "for", "by", "or",
                                   "du", "de", "des", "der", "von", "van", "di", "del"]
         let words = s.lowercased().split(separator: " ").map(String.init)
         return words.enumerated().map { i, w in

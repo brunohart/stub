@@ -11,6 +11,8 @@ struct StubDraft: Equatable, Sendable {
     var currency: String = ""
     var confidence: Double = 0
     var readBy: String = "heuristic"
+    /// Who issued the ticket, when it says: a Wallet pass's `organizationName`. The circuit, more often than not (ADR-024).
+    var organization: String = ""
 
     var isUsable: Bool { !title.trimmingCharacters(in: .whitespaces).isEmpty }
 }

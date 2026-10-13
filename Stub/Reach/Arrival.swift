@@ -12,8 +12,11 @@ struct Arrival: Identifiable, Equatable, Sendable {
         /// The fields are already known: a link, a shortcut, a Wallet pass. No reader runs. `plate` is the picture the
         /// stub keeps, when there is one (a pass's strip); without one the card prints a blank stub.
         case known(StubDraft, raw: String, plate: Data?)
-        /// A picture of a ticket: a PDF's first page, a screenshot. It is read as a photograph is.
-        case page(Data)
+        /// A picture of a ticket: a screenshot, or a PDF with no text of its own. It is read as a photograph is, or, `whole`,
+        /// all of it rather than the ticket the crop finds.
+        case page(Data, whole: Bool)
+        /// A PDF's first page and its own text: the text goes to the parsers as written, the page is the plate.
+        case document(page: Data, lines: [String])
     }
 
     enum Source: String, Sendable {

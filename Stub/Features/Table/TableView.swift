@@ -6,6 +6,7 @@ struct TableView: View {
     /// Animated, so a stub kept from the import sheet is dropped onto the table rather than appearing on it (ADR-022).
     @Query(sort: \Stub.createdAt, order: .reverse, animation: Motion.drop) private var stubs: [Stub]
     @Environment(\.modelContext) private var context
+    @Environment(\.scenePhase) private var scenePhase
     /// The import sheet, blank or on a ticket handed over from outside (ADR-021).
     @State private var importing: ImportRequest?
     @State private var selected: Stub?
@@ -68,6 +69,10 @@ struct TableView: View {
             // A link, a shortcut or a shared ticket. One at a time: an arrival while the sheet is open waits for it to close.
             .onChange(of: reach.arrival, initial: true) { _, _ in takeArrival() }
             .onOpenURL { url in reach.open(url) }
+            // Whatever the share extension left while the app was away (ADR-023).
+            .onChange(of: scenePhase, initial: true) { _, phase in
+                if phase == .active { reach.drainInbox() }
+            }
             #if DEBUG
             .task {
                 // `-import`: open the import sheet after the seed has settled, so it can be screenshotted.
@@ -106,8 +111,7 @@ struct TableView: View {
     }
 
     private func takeArrival() {
-        guard importing == nil, let arrival = reach.arrival else { return }
-        reach.arrival = nil
+        guard importing == nil, reach.arrival != nil, let arrival = reach.take() else { return }
         importing = ImportRequest(arrival: arrival)
     }
 

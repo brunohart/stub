@@ -11,3 +11,4 @@ build/
 Stub/Info.plist
 StubWidget/Info.plist
 *.entitlements
+StubShare/Info.plist

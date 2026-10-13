@@ -26,6 +26,12 @@ struct StubApp: App {
         // Empty the drawer here, not in the seed: the seed waits for the probe, and in those seconds the
         // table would otherwise count yesterday's drawer and start phrasing it.
         if DebugSeed.resets { try? container.mainContext.delete(model: Stub.self) }
+        // `-inbox path`: as if the share extension had left this file, before the table first looks.
+        if let path = DebugDrive.inboxFile {
+            let url = URL(fileURLWithPath: path)
+            let kind: Inbox.Kind = switch url.pathExtension.lowercased() { case "pkpass": .pass; case "pdf": .pdf; default: .image }
+            do { try Inbox.put(url, kind: kind) } catch { Inbox.log.error("Inbox: -inbox \(path) failed: \(String(describing: error))") }
+        }
         #endif
     }
 

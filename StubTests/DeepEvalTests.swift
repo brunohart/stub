@@ -90,7 +90,10 @@ struct DeepEvalTests {
             let cg = try EvalTests.fixture(truth.name)
             let crop = await StubCrop.crop(cg)
             let reading: StubReading
-            if let read = try? await StubVision.read(crop.image) { reading = read } else { reading = try await StubVision.read(cg) }
+            // A PDF is read from its own text, as the app reads it (BEDIP-218).
+            let words = truth.kind == "pdf" ? EvalTests.pdfText(truth.name) : []
+            if !words.isEmpty { reading = StubReading(lines: words) }
+            else if let read = try? await StubVision.read(crop.image) { reading = read } else { reading = try await StubVision.read(cg) }
             let heuristic = HeuristicParser.parse(reading)
             for run in 1...n {
                 print("deep eval: reading \(truth.name), run \(run) of \(n)")
@@ -138,7 +141,7 @@ struct DeepEvalTests {
 
     // MARK: - The season
 
-    /// Three drawers: all nine fixtures, the four from Day 0, and one stub in euros.
+    /// Three drawers: every fixture, the four from Day 0, and one stub in euros.
     static func drawers(_ truths: [Truth]) -> [(name: String, stubs: [Stub])] {
         func stub(_ t: Truth) -> Stub {
             Stub(title: t.title, cinema: t.cinema, screenedAt: EvalTests.dateFormatter.date(from: t.screenedAt), screen: t.screen,
@@ -147,7 +150,7 @@ struct DeepEvalTests {
         let all = truths.map(stub)
         let first = truths.filter { t in ["stub-1", "stub-2", "stub-3", "stub-4"].contains { t.name.hasPrefix($0 + "-") } }.map(stub)
         let euro = truths.filter { $0.currency == "EUR" }.prefix(1).map(stub)
-        return [("all nine", all), ("the first four", first), ("one in euros", Array(euro))]
+        return [("all \(SeasonSummary.spelled(all.count))", all), ("the first four", first), ("one in euros", Array(euro))]
     }
 
     @available(iOS 26.0, *)

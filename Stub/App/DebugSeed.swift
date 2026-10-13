@@ -29,14 +29,24 @@ enum DebugSeed {
         }
         log.info("Model status: \(StubReader.modelStatus)")
         log.info("Store: \(SharedStore.isShared ? "shared with the widget" : "app-local, no App Group") at \(SharedStore.url.path)")
-        let urls = (Bundle.main.urls(forResourcesWithExtension: "png", subdirectory: nil) ?? [])
+        // Photographs, a screenshot, and a PDF e-ticket read from its first page (BEDIP-218).
+        let urls = ["png", "pdf"].flatMap { Bundle.main.urls(forResourcesWithExtension: $0, subdirectory: nil) ?? [] }
             .filter { $0.lastPathComponent.hasPrefix("stub-") }
-            .sorted { $0.lastPathComponent < $1.lastPathComponent }
+            .sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
         for url in urls {
-            guard let data = try? Data(contentsOf: url), let ui = UIImage(data: data), let cg = ui.cgImage else { continue }
+            guard let data = try? Data(contentsOf: url) else { continue }
+            let picture: CGImage? = url.pathExtension == "pdf" ? PageImage.firstPage(of: data) : UIImage(data: data)?.cgImage
+            guard let cg = picture else { continue }
             do {
-                let result = try await StubReader.read(cg) { stage in
-                    DebugSeed.log.info("\(url.lastPathComponent): \(String(describing: stage))")
+                // A PDF is read from its own text, as an arrival is (BEDIP-218).
+                let words = url.pathExtension == "pdf" ? PageImage.text(of: data) : []
+                let result: StubReader.Result
+                if words.isEmpty {
+                    result = try await StubReader.read(cg) { stage in DebugSeed.log.info("\(url.lastPathComponent): \(String(describing: stage))") }
+                } else {
+                    result = await StubReader.read(StubReading(lines: words), plate: cg) { stage in
+                        DebugSeed.log.info("\(url.lastPathComponent): \(String(describing: stage))")
+                    }
                 }
                 let d = result.draft
                 log.info("\(url.lastPathComponent) → '\(d.title)' @ \(d.cinema) seat \(d.seat) by \(d.readBy) (\(Int(d.confidence * 100))%)\(result.detector.map { " [cropped by \($0.rawValue)]" } ?? " [full frame]")")

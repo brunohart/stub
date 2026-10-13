@@ -71,8 +71,11 @@ final class Reach {
 
     /// Set by `LogStubIntent`; the table presents the import sheet and clears it.
     var wantsImport = false
-    /// A ticket handed over from outside (ADR-021). The table opens the import sheet on it and clears it.
-    var arrival: Arrival?
+    /// A ticket handed over from outside (ADR-021), the first of any waiting. The table opens the import sheet on it and
+    /// takes it with `take()`, which brings the next one forward.
+    private(set) var arrival: Arrival?
+    /// Tickets behind the first: a share of three PDFs is three sheets, one after another.
+    @ObservationIgnored private var waiting: [Arrival] = []
     /// The app's container, lent at launch so an intent does not open a second one.
     var container: ModelContainer?
 
@@ -81,10 +84,47 @@ final class Reach {
         WidgetCenter.shared.reloadAllTimelines()
     }
 
-    /// Hand a ticket to the table, which opens the import sheet on it.
+    /// Hand a ticket to the table, which opens the import sheet on it, after any already waiting.
     func arrive(_ arrival: Arrival) {
         Self.log.info("Arrival from \(arrival.source.rawValue)")
-        self.arrival = arrival
+        if self.arrival == nil { self.arrival = arrival } else { waiting.append(arrival) }
+    }
+
+    /// The first arrival, taken; the next one, if any, comes forward.
+    func take() -> Arrival? {
+        let first = arrival
+        arrival = waiting.isEmpty ? nil : waiting.removeFirst()
+        return first
+    }
+
+    /// What the share extension left in the inbox (ADR-023), each item taken out and handed to the table: a Wallet pass
+    /// read here and now (its fields, its strip, and the heuristic parser's reading of its words for anything it does not
+    /// state), a PDF's first page and a screenshot to be read as a photograph is. Called whenever the app comes to the front.
+    func drainInbox(in container: URL? = AppGroup.container) {
+        for item in Inbox.items(in: container) {
+            guard let data = Inbox.take(item, in: container) else { continue }
+            switch item.kind {
+            case .pass:
+                do {
+                    let pass = try WalletPass(pkpass: data)
+                    let handed = pass.handed(fallback: HeuristicParser.parse(pass.reading))
+                    Self.log.info("Inbox: a Wallet pass, stated \(pass.stated.sorted().joined(separator: ", ")), plate \(pass.plate == nil ? "none" : "strip")")
+                    arrive(Arrival(content: .known(handed.draft, raw: handed.raw, plate: pass.plate), source: .pass))
+                } catch {
+                    Self.log.error("Inbox: a .pkpass that is not a pass: \(String(describing: error))")
+                }
+            case .pdf:
+                guard let page = PageImage.firstPage(of: data), let jpeg = PageImage.jpeg(page) else {
+                    Self.log.error("Inbox: a PDF with no page to read")
+                    continue
+                }
+                let lines = PageImage.text(of: data)
+                Self.log.info("Inbox: a PDF, \(lines.isEmpty ? "no text of its own: read from its page" : "\(lines.count) lines of its own text")")
+                arrive(Arrival(content: lines.isEmpty ? .page(jpeg, whole: true) : .document(page: jpeg, lines: lines), source: .pdf))
+            case .image:
+                arrive(Arrival(content: .page(data, whole: false), source: .screenshot))
+            }
+        }
     }
 
     /// A URL the app was opened with. An Add to Stub link becomes an arrival; anything else is said in the log and left.

@@ -59,6 +59,7 @@ targets:
         com.apple.developer.associated-domains: ["applinks:designedbybruno.net$(STUB_APPLINKS_MODE)"]
     dependencies:
       - target: StubWidget
+      - target: StubShare
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.designedbybruno.stub
@@ -74,7 +75,7 @@ targets:
           STUB_APPLINKS_MODE: "?mode=developer"
         # The fixtures are for the seed and the tests, both Debug only; a phone's Release build does not carry them.
         Release:
-          EXCLUDED_SOURCE_FILE_NAMES: "stub-*.png"
+          EXCLUDED_SOURCE_FILE_NAMES: "stub-*.png stub-*.pdf"
           STUB_APPLINKS_MODE: ""
   # The widget: the last stub on the lock screen and the home screen. Shares the model, the inks, the type
   # tokens and the store with the app by compiling the same files; nothing it shares may need Metal or UIKit.
@@ -87,6 +88,7 @@ targets:
       - path: Stub/Design/Ink.swift
       - path: Stub/Design/Type.swift
       - path: Stub/Reach/SharedStore.swift
+      - path: Stub/Reach/AppGroup.swift
       - path: Stub/Resources/Fonts/HostGrotesk-Variable.ttf
         buildPhase: resources
       - path: Stub/Resources/Fonts/FragmentMono-Regular.ttf
@@ -110,6 +112,58 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.designedbybruno.stub.widget
         PRODUCT_NAME: StubWidget
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: NO
+        SKIP_INSTALL: YES
+  # The share extension (BEDIP-218, ADR-023): takes a Wallet pass, a PDF or a picture from any app's share sheet and leaves
+  # it in the App Group's inbox for the app. It compiles only what it needs to show the ticket: no store, no Vision, no
+  # model, no Metal.
+  StubShare:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: StubShare
+      - path: Stub/Reach/AppGroup.swift
+      - path: Stub/Reach/Inbox.swift
+      - path: Stub/Reach/Zip.swift
+      - path: Stub/Reach/WalletPass.swift
+      - path: Stub/Reach/AddLink.swift
+      - path: Stub/Reach/PageImage.swift
+      - path: Stub/Intelligence/StubDraft.swift
+      - path: Stub/Design/Ink.swift
+      - path: Stub/Design/Type.swift
+      - path: Stub/Design/Stamp.swift
+      - path: Stub/Resources/Fonts/HostGrotesk-Variable.ttf
+        buildPhase: resources
+      - path: Stub/Resources/Fonts/FragmentMono-Regular.ttf
+        buildPhase: resources
+    info:
+      path: StubShare/Info.plist
+      properties:
+        CFBundleDisplayName: Stub
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
+          NSExtensionAttributes:
+            # One item: a Wallet pass, a PDF or a picture.
+            NSExtensionActivationRule: >-
+              SUBQUERY(extensionItems, $extensionItem, SUBQUERY($extensionItem.attachments, $attachment,
+              ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.apple.pkpass"
+              || ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.adobe.pdf"
+              || ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.image").@count == 1).@count == 1
+        UIAppFonts:
+          - HostGrotesk-Variable.ttf
+          - FragmentMono-Regular.ttf
+    entitlements:
+      path: StubShare/StubShare.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.designedbybruno.stub]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.designedbybruno.stub.share
+        PRODUCT_NAME: StubShare
         TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: NO
         SKIP_INSTALL: YES

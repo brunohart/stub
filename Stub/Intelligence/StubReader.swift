@@ -32,8 +32,13 @@ enum StubReader {
 
     /// `partial` is called with each draft the model streams, title first, so a screen can fill in as the
     /// answer forms. It is not called on the heuristic path: that answer arrives whole.
+    ///
+    /// `whole`: read the whole picture and use the crop only for the plate. A PDF's page or a screenshot is already flat
+    /// and upright, and what it says about the ticket is often outside the box the crop finds: an e-ticket's cinema is in
+    /// the page's heading, above the bordered ticket (BEDIP-218).
     static func read(
         _ image: CGImage,
+        whole: Bool = false,
         progress: @Sendable @MainActor (Stage) -> Void,
         partial: (@Sendable @MainActor (StubDraft) -> Void)? = nil
     ) async throws -> Result {
@@ -48,8 +53,8 @@ enum StubReader {
         var cropped = crop.cropped
         var detector = crop.detector
         do {
-            reading = try await StubVision.read(crop.image)
-        } catch where crop.cropped {
+            reading = try await StubVision.read(whole ? image : crop.image)
+        } catch where crop.cropped && !whole {
             // The crop had no text in it. Vision was wrong about the document; read the whole frame.
             log.notice("No text in the crop; reading the full photograph instead")
             reading = try await StubVision.read(image)
@@ -57,7 +62,7 @@ enum StubReader {
             cropped = false
             detector = nil
         }
-        log.info("Vision read \(reading.lines.count) lines\(cropped ? " from the crop" : "")")
+        log.info("Vision read \(reading.lines.count) lines\(whole ? " from the whole page" : cropped ? " from the crop" : "")")
 
         let draft = await understand(reading, progress: progress, partial: partial)
         return Result(plate: plate, cropped: cropped, detector: detector, reading: reading, draft: draft)

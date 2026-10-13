@@ -219,8 +219,22 @@ struct ImportView: View {
             reading = StubReading(text: raw)
             stage = .done
             withAnimation(reduceMotion ? Motion.plain : Motion.place) { draft = known }
-        case .page(let data):
-            await read(data)
+        case .page(let data, let whole):
+            await read(data, whole: whole)
+        case .document(let page, let lines):
+            // The PDF's own words to the parsers, its page to the plate: no OCR (BEDIP-218).
+            guard let cg = PlateImage.decode(page, maxPixelSize: PlateImage.intake) else { return }
+            image = UIImage(cgImage: cg)
+            let result = await StubReader.read(StubReading(lines: lines), plate: cg, progress: { stage in
+                withAnimation(reduceMotion ? Motion.plain : Motion.settle) { self.stage = stage }
+            }, partial: { snapshot in
+                withAnimation(Motion.place) { draft = snapshot }
+            })
+            reading = result.reading
+            withAnimation(Motion.place) {
+                draft = result.draft
+                if result.cropped { image = UIImage(cgImage: result.plate) }
+            }
         }
     }
 
@@ -235,8 +249,8 @@ struct ImportView: View {
         await read(data)
     }
 
-    /// A photograph of a ticket (or a page, or a screenshot) through the reader.
-    private func read(_ data: Data) async {
+    /// A photograph of a ticket (or a page, or a screenshot, read `whole`) through the reader.
+    private func read(_ data: Data, whole: Bool = false) async {
         let size = PlateImage.intake
         guard let cg = await Task.detached(priority: .userInitiated, operation: {
                   PlateImage.decode(data, maxPixelSize: size)
@@ -246,7 +260,7 @@ struct ImportView: View {
         }
         image = UIImage(cgImage: cg)
         do {
-            let result = try await StubReader.read(cg, progress: { stage in
+            let result = try await StubReader.read(cg, whole: whole, progress: { stage in
                 withAnimation(Motion.settle) { self.stage = stage }
             }, partial: { snapshot in
                 // The model's answer as it forms: the title lands first, then the rest fills in beneath it.

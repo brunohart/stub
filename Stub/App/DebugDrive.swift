@@ -60,6 +60,9 @@ final class DebugDrive {
     static let viewings: Int? = value(after: "-viewings").flatMap { Int($0) }.map { max($0, 1) }
     /// `-clip`: with `-edition`, draw the moving share and log where it was written (brief §6.4).
     static var wantsClip: Bool { ProcessInfo.processInfo.arguments.contains("-clip") }
+    /// `-inbox /path/to/ticket.pkpass`: put a file in the share extension's inbox at launch, as a share would, so the app's
+    /// side of a share can be proved in the simulator (ADR-023). `.pkpass`, `.pdf`, or any image.
+    static let inboxFile: String? = value(after: "-inbox")
     /// `-clipformat card`: with `-clip`, the card-sized clip rather than the vertical one (BEDIP-221).
     static let clipFormat: EditionClip.Format = value(after: "-clipformat").flatMap(EditionClip.Format.init(rawValue:)) ?? .vertical
     /// `-room`: with `-edition`, set the card on a table (ADR-018). The simulator has no camera, so the table is a stand-in.

@@ -7,7 +7,7 @@ import SwiftData
 /// keeps the app's own Application Support. The app works as before, the widget honestly shows an empty
 /// drawer, and `isShared` says which it was. Compiled into the app and the widget; nothing here may need UIKit.
 enum SharedStore {
-    static let group = "group.com.designedbybruno.stub"
+    static let group = AppGroup.id
     static let filename = "Stub.store"
 
     /// The App Group container when there is one, otherwise the app's own Application Support.
@@ -15,9 +15,7 @@ enum SharedStore {
         (groupContainer ?? URL.applicationSupportDirectory).appending(path: filename)
     }
 
-    static var groupContainer: URL? {
-        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group)
-    }
+    static var groupContainer: URL? { AppGroup.container }
 
     static var isShared: Bool { groupContainer != nil }
 
