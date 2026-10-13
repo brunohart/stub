@@ -122,11 +122,13 @@ enum AddLink {
         }
     }
 
-    /// A field as words: control characters gone, runs of space one space, trimmed, and no longer than `longest`.
+    /// A field as words: control and format characters gone, runs of space one space, trimmed, and no longer than
+    /// `longest`. The joiners stay: they hold an emoji family or a Devanagari conjunct together, and are not a trick.
     static func text(_ value: String?) -> String {
         guard let value else { return "" }
+        let joiners: Set<UInt32> = [0x200C, 0x200D]
         let visible = String(String.UnicodeScalarView(value.unicodeScalars.map {
-            CharacterSet.controlCharacters.contains($0) || CharacterSet.newlines.contains($0) ? " " : $0
+            (CharacterSet.controlCharacters.contains($0) && !joiners.contains($0.value)) || CharacterSet.newlines.contains($0) ? " " : $0
         }))
         let collapsed = visible.split(whereSeparator: \.isWhitespace).joined(separator: " ")
         return String(collapsed.prefix(longest))

@@ -116,6 +116,14 @@ struct AddLinkTests {
         #expect(!handed.raw.contains("\u{0}"))
     }
 
+    /// A joined emoji stays one emoji; a right-to-left override, which could disguise a title, does not survive.
+    @Test func joinersStayAndOverridesGo() throws {
+        let family = "👨\u{200D}👩\u{200D}👧"
+        let d = try read("https://designedbybruno.net/stub/add#title=\(family.addingPercentEncoding(withAllowedCharacters: .alphanumerics)!)&cinema=A%E2%80%AEB").draft
+        #expect(d.title == family && d.title.count == 1)
+        #expect(d.cinema == "A B")
+    }
+
     /// A link with no title still opens the sheet with what it has; Keep waits for a title, as it does for a photograph.
     @Test func noTitleIsNotYetUsable() throws {
         let handed = try read("https://designedbybruno.net/stub/add#cinema=Academy%20Cinemas&seat=F7&unknown=1")
