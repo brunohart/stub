@@ -64,9 +64,9 @@ struct StubDetailView: View {
 
                         Divider().overlay(Ink.ink.opacity(0.15))
 
-                        Text("Read by \(stub.readBy == "foundation-models" ? "the on-device model" : stub.readBy) · confidence \(Int(stub.confidence * 100))%")
+                        Text("Read by \(ReadBy.words(stub.readBy)) · confidence \(Int(stub.confidence * 100))%")
                             .font(Type.numbers(11)).foregroundStyle(Ink.grey)
-                            .accessibilityLabel("Read by \(stub.readBy == "foundation-models" ? "the on-device model" : stub.readBy), \(Int(stub.confidence * 100)) percent confident.")
+                            .accessibilityLabel("Read by \(ReadBy.words(stub.readBy)), \(Int(stub.confidence * 100)) percent confident.")
 
                         // Honest machinery for the edition too: what it is, and who chose it (DESIGN.md rule 7).
                         if let edition = editions.edition(for: stub.title) {

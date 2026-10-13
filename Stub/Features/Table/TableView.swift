@@ -5,7 +5,8 @@ import SwiftData
 struct TableView: View {
     @Query(sort: \Stub.createdAt, order: .reverse) private var stubs: [Stub]
     @Environment(\.modelContext) private var context
-    @State private var isImporting = false
+    /// The import sheet, blank or on a ticket handed over from outside (ADR-021).
+    @State private var importing: ImportRequest?
     @State private var selected: Stub?
     @State private var showSeason = false
     /// The sentence and the numbers. Hand-counted at once, phrased by the model when it is idle.
@@ -24,7 +25,7 @@ struct TableView: View {
                     VStack(alignment: .leading, spacing: 28) {
                         header
                         if stubs.isEmpty {
-                            EmptyDrawer { isImporting = true }
+                            EmptyDrawer { importing = ImportRequest() }
                         } else {
                             StubTable(stubs: stubs, table: table) { selected = $0 }
                         }
@@ -39,15 +40,15 @@ struct TableView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { isImporting = true } label: {
+                    Button { importing = ImportRequest() } label: {
                         Label("Add a stub", systemImage: "plus")
                     }
                     .tint(Ink.ink)
                 }
             }
             .toolbarBackground(.hidden, for: .navigationBar)
-            .sheet(isPresented: $isImporting) {
-                ImportView()
+            .sheet(item: $importing, onDismiss: takeArrival) { request in
+                ImportView(arrival: request.arrival)
             }
             .sheet(isPresented: $showSeason) {
                 SeasonView(summary: season.summary, sentence: season.sentence)
@@ -61,14 +62,17 @@ struct TableView: View {
             .onChange(of: reach.wantsImport, initial: true) { _, wants in
                 guard wants else { return }
                 reach.wantsImport = false
-                isImporting = true
+                importing = ImportRequest()
             }
+            // A link, a shortcut or a shared ticket. One at a time: an arrival while the sheet is open waits for it to close.
+            .onChange(of: reach.arrival, initial: true) { _, _ in takeArrival() }
+            .onOpenURL { url in reach.open(url) }
             #if DEBUG
             .task {
                 // `-import`: open the import sheet after the seed has settled, so it can be screenshotted.
                 guard DebugDrive.wantsImport else { return }
                 do { try await Task.sleep(for: .seconds(DebugDrive.curtain)) } catch { return }
-                isImporting = true
+                importing = ImportRequest()
             }
             #endif
             .navigationDestination(item: $selected) { stub in
@@ -98,6 +102,12 @@ struct TableView: View {
             }
             #endif
         }
+    }
+
+    private func takeArrival() {
+        guard importing == nil, let arrival = reach.arrival else { return }
+        reach.arrival = nil
+        importing = ImportRequest(arrival: arrival)
     }
 
     private var header: some View {
@@ -195,4 +205,10 @@ struct EmptyDrawer: View {
             .buttonStyle(.plain)
         }
     }
+}
+
+/// One presentation of the import sheet: blank, or on an arrival.
+struct ImportRequest: Identifiable {
+    let id = UUID()
+    var arrival: Arrival?
 }

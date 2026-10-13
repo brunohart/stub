@@ -71,11 +71,88 @@ final class Reach {
 
     /// Set by `LogStubIntent`; the table presents the import sheet and clears it.
     var wantsImport = false
+    /// A ticket handed over from outside (ADR-021). The table opens the import sheet on it and clears it.
+    var arrival: Arrival?
     /// The app's container, lent at launch so an intent does not open a second one.
     var container: ModelContainer?
 
     /// The drawer changed; the widget should say so.
     static func refreshWidgets() {
         WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    /// Hand a ticket to the table, which opens the import sheet on it.
+    func arrive(_ arrival: Arrival) {
+        Self.log.info("Arrival from \(arrival.source.rawValue)")
+        self.arrival = arrival
+    }
+
+    /// A URL the app was opened with. An Add to Stub link becomes an arrival; anything else is said in the log and left.
+    /// Returns whether it was one.
+    @discardableResult
+    func open(_ url: URL) -> Bool {
+        guard let handed = AddLink.read(url) else {
+            Self.log.notice("Opened with a URL that is not an Add to Stub link; ignored")
+            return false
+        }
+        if !handed.unread.isEmpty { Self.log.notice("Add to Stub: could not read \(handed.unread.joined(separator: ", "))") }
+        arrive(Arrival(content: .known(handed.draft, raw: handed.raw, plate: nil), source: .link))
+        return true
+    }
+}
+
+/// The same door as the link, for Shortcuts and for any app that prefers an intent to a URL (BEDIP-220). Opens Stub on the
+/// import sheet with the ticket filled in; the person keeps it or lets it go.
+struct AddStubIntent: AppIntent {
+    static let title: LocalizedStringResource = "Keep a ticket"
+    static let description = IntentDescription("Opens Stub with a ticket filled in, to keep or let go. Nothing is sent anywhere.")
+    static let openAppWhenRun = true
+
+    @Parameter(title: "Film") var film: String
+    @Parameter(title: "Cinema") var cinema: String?
+    @Parameter(title: "Screening") var screening: Date?
+    @Parameter(title: "Screen") var screen: String?
+    @Parameter(title: "Seat") var seat: String?
+    @Parameter(title: "Price") var price: Double?
+    @Parameter(title: "Currency", description: "Three letters: NZD, AUD, EUR.") var currency: String?
+    @Parameter(title: "Booking reference") var reference: String?
+
+    static var parameterSummary: some ParameterSummary {
+        Summary("Keep \(\.$film) in Stub") {
+            \.$cinema
+            \.$screening
+            \.$screen
+            \.$seat
+            \.$price
+            \.$currency
+            \.$reference
+        }
+    }
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        Reach.shared.arrive(Arrival(content: Self.handed(film: film, cinema: cinema, screening: screening, screen: screen,
+                                                         seat: seat, price: price, currency: currency, reference: reference),
+                                    source: .shortcut))
+        return .result()
+    }
+
+    /// The intent's fields as the link's would be: the same cleaning, the same raw read, read by a shortcut.
+    static func handed(film: String, cinema: String?, screening: Date?, screen: String?, seat: String?, price: Double?,
+                       currency: String?, reference: String?) -> Arrival.Content {
+        var ticket = AddLink.Ticket()
+        ticket.title = film
+        ticket.cinema = cinema ?? ""
+        ticket.at = screening
+        ticket.hasTime = screening != nil
+        ticket.screen = screen ?? ""
+        ticket.seat = seat ?? ""
+        if let price, price >= 0, let amount = AddLink.amount(String(format: "%.2f", price)) { ticket.price = amount }
+        if let code = currency?.trimmingCharacters(in: .whitespaces).uppercased(), code.range(of: #"^[A-Z]{3}$"#, options: .regularExpression) != nil {
+            ticket.currency = code
+        }
+        ticket.ref = reference ?? ""
+        let handed = AddLink.handed(ticket, readBy: "shortcut")
+        return .known(handed.draft, raw: handed.raw, plate: nil)
     }
 }

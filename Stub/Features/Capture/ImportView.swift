@@ -5,6 +5,8 @@ import PhotosUI
 /// Bring a stub in. From the library today; from the camera when there is a device to hold. Keep it and you get two
 /// things back (ADR-015): the stub as scanned, filed in the drawer, and its edition, printed here before your eyes.
 struct ImportView: View {
+    /// A ticket handed over from outside (ADR-021): the sheet opens prefilled, or reading it.
+    var arrival: Arrival? = nil
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     /// The drawer, so a kept stub's edition knows which viewing of its release it is.
@@ -21,6 +23,7 @@ struct ImportView: View {
     @State private var failure: String?
     @State private var showRaw = false
     @State private var isScanning = false
+    @State private var received = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -40,8 +43,13 @@ struct ImportView: View {
                                     .clipShape(RoundedRectangle(cornerRadius: 3))
                                     .animation(reduceMotion ? Motion.plain : Motion.settle, value: stage)
                                     .accessibilityLabel(stage == .done ? "The stub, printed on parchment." : "The photograph of the stub, being read.")
-                            } else {
+                            } else if arrival == nil {
                                 picker
+                            }
+                            if let arrival {
+                                Text(arrival.sentence)
+                                    .font(Type.italic(17)).foregroundStyle(Ink.navy)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
 
                             if let stage, stage != .done {
@@ -93,6 +101,11 @@ struct ImportView: View {
             .onChange(of: pick) { _, item in
                 guard let item else { return }
                 Task { await load(item) }
+            }
+            .task {
+                guard let arrival, !received else { return }
+                received = true
+                await receive(arrival)
             }
             .fullScreenCover(isPresented: $isScanning) {
                 ScanSheet { scan in Task { await scanned(scan) } }
@@ -185,10 +198,24 @@ struct ImportView: View {
             .font(Type.words(15))
             .tint(Ink.orange)
             if draft.readBy != "manual", draft.isUsable {
-                Text("Read by \(draft.readBy == "foundation-models" ? "the on-device model" : "heuristics") · confidence \(Int(draft.confidence * 100))%")
+                Text("Read by \(ReadBy.words(draft.readBy)) · confidence \(Int(draft.confidence * 100))%")
                     .font(Type.numbers(11)).foregroundStyle(Ink.grey)
-                    .accessibilityLabel("Read by \(draft.readBy == "foundation-models" ? "the on-device model" : "heuristics"), \(Int(draft.confidence * 100)) percent confident.")
+                    .accessibilityLabel("Read by \(ReadBy.words(draft.readBy)), \(Int(draft.confidence * 100)) percent confident.")
             }
+        }
+    }
+
+    /// A ticket from outside. Known fields land in the form as they are, with what was handed over as the raw read; a
+    /// page is read as a photograph is.
+    private func receive(_ arrival: Arrival) async {
+        switch arrival.content {
+        case .known(let known, let raw, let plate):
+            if let plate, let cg = PlateImage.decode(plate, maxPixelSize: PlateImage.intake) { image = UIImage(cgImage: cg) }
+            reading = StubReading(text: raw)
+            stage = .done
+            withAnimation(reduceMotion ? Motion.plain : Motion.place) { draft = known }
+        case .page(let data):
+            await read(data)
         }
     }
 
@@ -196,12 +223,20 @@ struct ImportView: View {
         failure = nil
         // Upright and no larger than the reader needs, decoded off the main thread: a portrait photograph
         // reaches Vision the right way up, and a 48 MP one is not carried through the crop at 48 MP.
+        guard let data = try? await item.loadTransferable(type: Data.self) else {
+            failure = "That photograph could not be opened."
+            return
+        }
+        await read(data)
+    }
+
+    /// A photograph of a ticket (or a page, or a screenshot) through the reader.
+    private func read(_ data: Data) async {
         let size = PlateImage.intake
-        guard let data = try? await item.loadTransferable(type: Data.self),
-              let cg = await Task.detached(priority: .userInitiated, operation: {
+        guard let cg = await Task.detached(priority: .userInitiated, operation: {
                   PlateImage.decode(data, maxPixelSize: size)
               }).value else {
-            failure = "That photograph could not be opened."
+            failure = "That picture could not be opened."
             return
         }
         image = UIImage(cgImage: cg)

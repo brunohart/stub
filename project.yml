@@ -48,10 +48,13 @@ targets:
         # ProMotion at its full 120 Hz, so the press wheel's in-betweens are not capped at 60 (ADR-016).
         CADisableMinimumFrameDurationOnPhone: true
     # The drawer lives in an App Group so the widget can read it (Day 5). Generated, like Info.plist.
+    # Add to Stub links open the app (ADR-021); a Debug build reads the association file straight from the site
+    # (STUB_APPLINKS_MODE), since Apple's CDN takes a day to see a new one.
     entitlements:
       path: Stub/Stub.entitlements
       properties:
         com.apple.security.application-groups: [group.com.designedbybruno.stub]
+        com.apple.developer.associated-domains: ["applinks:designedbybruno.net$(STUB_APPLINKS_MODE)"]
     dependencies:
       - target: StubWidget
     settings:
@@ -65,9 +68,12 @@ targets:
         # The icon is drawn by scripts/make-icon.swift into Stub/Resources/Assets.xcassets (Day 6).
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
       configs:
+        Debug:
+          STUB_APPLINKS_MODE: "?mode=developer"
         # The fixtures are for the seed and the tests, both Debug only; a phone's Release build does not carry them.
         Release:
           EXCLUDED_SOURCE_FILE_NAMES: "stub-*.png"
+          STUB_APPLINKS_MODE: ""
   # The widget: the last stub on the lock screen and the home screen. Shares the model, the inks, the type
   # tokens and the store with the app by compiling the same files; nothing it shares may need Metal or UIKit.
   StubWidget:
