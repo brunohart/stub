@@ -37,6 +37,10 @@ enum Motion {
     static let breath = Animation.spring(response: 0.9, dampingFraction: 0.7)
     /// Reduce Motion: critically damped, no overshoot. Callers also drop the rotation.
     static let plain = Animation.spring(response: 0.26, dampingFraction: 1)
+    /// A finger landing on a stamp: down onto the plate inside two frames, no bounce. The bounce is the release's.
+    static let touchDown = Animation.spring(response: 0.1, dampingFraction: 1)
+    /// A card dropped onto the table: it falls a little turned, lands, skids a degree past its tilt and settles (ADR-022).
+    static let drop = Animation.spring(response: 0.5, dampingFraction: 0.62)
 
     /// The press spring for this user: the stamp, or the plain settle when Reduce Motion is on.
     static func press(reduceMotion: Bool) -> Animation { reduceMotion ? plain : stamp }

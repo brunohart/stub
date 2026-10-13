@@ -61,6 +61,7 @@ struct SeasonTests {
     @Test func rulesAreChecked() {
         #expect(SeasonRules.judge("  Four films, three cinemas, and March did most of the work ") == .accepted("Four films, three cinemas, and March did most of the work."))
         #expect(SeasonRules.judge("“Mostly Fridays at the Embassy.”") == .accepted("Mostly Fridays at the Embassy."))
+        #expect(SeasonRules.judge("you've been going to the cinema a lot") == .accepted("You've been going to the cinema a lot."))
         #expect(SeasonRules.judge("What a season!") == .rejected("exclamation mark"))
         #expect(SeasonRules.judge("Four films in 2024.") == .rejected("digits"))
         #expect(SeasonRules.judge("Four films 🎬") == .rejected("emoji"))

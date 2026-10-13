@@ -4,6 +4,8 @@ import SwiftUI
 struct SeasonView: View {
     let summary: SeasonSummary
     let sentence: String
+    /// The figures are put down one after another when the sheet opens.
+    @State private var placed = false
 
     var body: some View {
         ZStack {
@@ -20,17 +22,23 @@ struct SeasonView: View {
 
                     VStack(alignment: .leading, spacing: 22) {
                         Count("\(summary.films)", summary.films == 1 ? "film" : "films")
+                            .placedInTurn(0, placed: placed)
                         Count("\(summary.cinemas.count)", summary.cinemas.count == 1 ? "cinema" : "cinemas")
+                            .placedInTurn(1, placed: placed)
                         if let most = summary.mostVisited, most.count >= 2 {
                             Named(most.name, "most visited, \(SeasonSummary.times(most.count))")
+                                .placedInTurn(2, placed: placed)
                         }
                         if let month = summary.busiestMonth {
                             Count(month.name, "busiest month, \(SeasonSummary.spelled(month.count)) \(month.count == 1 ? "film" : "films")", size: 22)
+                                .placedInTurn(3, placed: placed)
                         }
                         if !summary.paid.isEmpty {
                             Count(paidLine, "paid", size: summary.paid.count == 1 ? 34 : 22)
+                                .placedInTurn(4, placed: placed)
                         }
                     }
+                    .onAppear { placed = true }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 24)

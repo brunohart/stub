@@ -47,8 +47,8 @@ struct ImportView: View {
                                 picker
                             }
                             if let arrival {
-                                Text(arrival.sentence)
-                                    .font(Type.italic(17)).foregroundStyle(Ink.navy)
+                                Label(arrival.sentence, systemImage: arrival.symbol)
+                                    .font(Type.words(15)).foregroundStyle(Ink.ink.opacity(0.75))
                                     .fixedSize(horizontal: false, vertical: true)
                             }
 
@@ -89,12 +89,25 @@ struct ImportView: View {
             .toolbar {
                 if kept == nil {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") { dismiss() }.tint(Ink.ink)
+                        Button("Cancel") { dismiss() }.buttonStyle(.stamp(.quiet))
                     }
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Keep") { keep() }
-                            .tint(Ink.ink)
-                            .disabled(!draft.isUsable)
+                    .sharedBackgroundVisibility(.hidden)
+                }
+            }
+            // Keep is the sheet's one act, so it is a stamp where the thumb is, not a word in the corner (ADR-022). It
+            // waits, printed faint, until there is a title to keep.
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if kept == nil {
+                    Button { keep() } label: {
+                        Text(draft.isUsable ? "Keep it" : "Keep it, once it has a title").frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.stamp(.ink))
+                    .disabled(!draft.isUsable)
+                    .padding(.horizontal, 20).padding(.top, 18).padding(.bottom, 8)
+                    .background {
+                        LinearGradient(stops: [.init(color: Ink.paper.opacity(0), location: 0), .init(color: Ink.paper, location: 0.4)],
+                                       startPoint: .top, endPoint: .bottom)
+                            .ignoresSafeArea(edges: .bottom)
                     }
                 }
             }
@@ -127,30 +140,22 @@ struct ImportView: View {
                     HStack(spacing: 12) {
                         Image(systemName: "camera.viewfinder")
                         Text("Scan the stub with the camera")
-                            .font(Type.words(16))
                     }
-                    .foregroundStyle(Ink.paper)
-                    .padding(.horizontal, 16).padding(.vertical, 14)
-                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                    .background(Ink.ink, in: RoundedRectangle(cornerRadius: 6))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.stamp(.ink, wide: true))
                 .accessibilityHint("Opens the camera and reads the print live.")
             }
             PhotosPicker(selection: $pick, matching: .images, photoLibrary: .shared()) {
                 HStack(spacing: 12) {
                     Image(systemName: "photo.on.rectangle.angled")
                     Text("Choose a photograph of the stub")
-                        .font(Type.words(16))
                 }
-                .foregroundStyle(scannable ? Ink.ink : Ink.paper)
-                .padding(.horizontal, 16).padding(.vertical, 14)
-                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                .background(scannable ? Ink.ink.opacity(0.08) : Ink.ink, in: RoundedRectangle(cornerRadius: 6))
             }
+            .buttonStyle(.stamp(scannable ? .paper : .ink, wide: true))
             .accessibilityHint("Opens your photo library.")
-            Text("Or type it. The reader is a shortcut, not a gate.")
-                .font(Type.italic(16)).foregroundStyle(Ink.navy)
+            Text("Or type it in below. The reader is a shortcut, not a gate.")
+                .font(Type.words(15)).foregroundStyle(Ink.ink.opacity(0.7))
+                .fixedSize(horizontal: false, vertical: true)
             Text(StubReader.modelStatus)
                 .font(Type.numbers(11)).foregroundStyle(Ink.grey)
         }
@@ -285,14 +290,12 @@ struct ImportView: View {
             VStack(alignment: .leading, spacing: 22) {
                 Keepsake(stub: stub, copy: Copy(stub: stub, among: drawer), turned: $keptTurned, pressesOnAppear: true)
                 Button { dismiss() } label: {
-                    Text("Into the drawer")
-                        .font(Type.words(17))
-                        .foregroundStyle(Ink.paper)
-                        .padding(.horizontal, 18).padding(.vertical, 12)
-                        .frame(minHeight: 44)
-                        .background(Ink.ink, in: RoundedRectangle(cornerRadius: 6))
+                    HStack(spacing: 8) {
+                        Text("Into the drawer")
+                        Image(systemName: "arrow.down").font(.system(size: 14, weight: .medium))
+                    }
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.stamp(.ink))
             }
             .padding(20)
         }
@@ -330,7 +333,7 @@ struct StageLine: View {
     var body: some View {
         HStack(spacing: 10) {
             ProgressView().tint(Ink.orange)
-            Text(label).font(Type.italic(16)).foregroundStyle(Ink.navy)
+            Text(label).font(Type.words(15)).foregroundStyle(Ink.ink.opacity(0.75))
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(label)

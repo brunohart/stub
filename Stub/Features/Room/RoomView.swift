@@ -26,21 +26,17 @@ struct RoomView: View {
                 .ignoresSafeArea()
                 .accessibilityLabel("The camera, with the edition of \(composition.copy.title) on the table")
 
-            // A slip of parchment: the one italic line, and the way out.
-            HStack(alignment: .firstTextBaseline, spacing: 16) {
+            // A slip of parchment: what is happening, and the way out.
+            HStack(alignment: .center, spacing: 16) {
                 Text(line)
-                    .font(Type.italic(17))
-                    .foregroundStyle(Ink.navy)
+                    .font(Type.words(16))
+                    .foregroundStyle(Ink.ink.opacity(0.8))
                     .fixedSize(horizontal: false, vertical: true)
                     .contentTransition(.opacity)
                     .animation(Motion.place, value: line)
                 Spacer(minLength: 0)
-                Button { dismiss() } label: {
-                    Text("Done").font(Type.words(16)).foregroundStyle(Ink.ink)
-                        .frame(minWidth: 44, minHeight: 44)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
+                Button("Done") { dismiss() }
+                    .buttonStyle(.stamp(.ink))
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 10)

@@ -71,19 +71,19 @@ struct Keepsake: View {
             .accessibilityAction(named: "Lift the print") { hold(!holding) }
             .accessibilityAction(named: "Take it to the press") { if edition != nil, !choosing { takeToPress?() } }
 
-            // The one italic sentence under the card: what the press is doing, or what the card will do.
-            HStack(spacing: 10) {
-                if choosing { ProgressView().tint(Ink.orange) }
-                Text(choosing ? "Choosing an edition for \(stub.title)…"
-                     : turned ? "Hold it to lift the print."
-                     : takeToPress != nil && !editions.hasBeenToPress(stub.title) ? "Hold it to take it to the press."
-                     : "Turn it over for the one you were handed.")
-                    .font(Type.italic(16)).foregroundStyle(Ink.navy)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .contentTransition(.opacity)
-                    .animation(Motion.place, value: turned)
+            // A line under the card only when there is something to say: the press is choosing, or the back can be held.
+            // What the card can do is a row of stamps where there is a row (the detail's), never an italic hint (ADR-022).
+            if let caption {
+                HStack(spacing: 10) {
+                    if choosing { ProgressView().tint(Ink.orange) }
+                    Text(caption)
+                        .font(Type.words(14)).foregroundStyle(Ink.ink.opacity(choosing ? 0.75 : 0.55))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .contentTransition(.opacity)
+                }
+                .animation(Motion.place, value: turned)
+                .accessibilityHidden(!choosing)
             }
-            .accessibilityHidden(!choosing)
         }
         .task(id: stub.id) { await press() }
         .task(id: copy.message) { code = Aztec.mask(for: copy.message) }
@@ -111,6 +111,14 @@ struct Keepsake: View {
         #if DEBUG
         .onChange(of: DebugDrive.shared.holding) { _, held in if turned { hold(held) } }
         #endif
+    }
+
+    private var caption: String? {
+        if choosing { return "Choosing an edition for \(stub.title)…" }
+        if turned { return "Hold the photograph to lift the print." }
+        // Where there is no row of actions (the import sheet's press), the one thing to know is that it turns.
+        if takeToPress == nil { return "Tap the card to turn it over." }
+        return nil
     }
 
     /// The finger, the gyroscope and (in Debug) the driver, as one tilt.

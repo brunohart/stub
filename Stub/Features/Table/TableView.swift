@@ -3,7 +3,8 @@ import SwiftData
 
 /// The drawer. Stubs laid out like they were tipped onto a table, not filed in a grid.
 struct TableView: View {
-    @Query(sort: \Stub.createdAt, order: .reverse) private var stubs: [Stub]
+    /// Animated, so a stub kept from the import sheet is dropped onto the table rather than appearing on it (ADR-022).
+    @Query(sort: \Stub.createdAt, order: .reverse, animation: Motion.drop) private var stubs: [Stub]
     @Environment(\.modelContext) private var context
     /// The import sheet, blank or on a ticket handed over from outside (ADR-021).
     @State private var importing: ImportRequest?
@@ -35,18 +36,18 @@ struct TableView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 20)
                     .padding(.top, 8)
-                    .padding(.bottom, 120)
+                    .padding(.bottom, 32)
                 }
             }
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { importing = ImportRequest() } label: {
-                        Label("Add a stub", systemImage: "plus")
-                    }
-                    .tint(Ink.ink)
+            // The two places to go from the drawer, at the bottom where a thumb is, named (ADR-022). The empty drawer has
+            // its own one button, so the dock waits for the first stub.
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if !stubs.isEmpty {
+                    Dock(films: summary.films) { showSeason = true } keep: { importing = ImportRequest() }
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
-            .toolbarBackground(.hidden, for: .navigationBar)
+            .toolbar(.hidden, for: .navigationBar)
             .sheet(item: $importing, onDismiss: takeArrival) { request in
                 ImportView(arrival: request.arrival)
             }
@@ -113,6 +114,7 @@ struct TableView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 10) {
             DisplayTitle("Stub", size: 44)
+                .padding(.top, 12)
             // The one italic sentence. Counted by hand on Day 0; written by the on-device model from Day 4,
             // with the hand count as the floor (ADR-011). Tap it for the numbers.
             Button {
@@ -142,13 +144,30 @@ struct StubTable: View {
     let table: Namespace.ID
     let open: (Stub) -> Void
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// The cards have been dealt. Once a launch: coming back from a stub does not deal them again.
+    @State private var dealt = false
 
     var body: some View {
-        if typeSize.isAccessibilitySize {
-            // At the accessibility sizes the narrow column would wrap every title to a word a line. The stubs
-            // become a stack in the hand, one under the other, still tilted (ADR-013).
-            column(stubs)
-        } else {
+        Group {
+            if typeSize.isAccessibilitySize {
+                // At the accessibility sizes the narrow column would wrap every title to a word a line. The stubs
+                // become a stack in the hand, one under the other, still tilted (ADR-013).
+                column(stubs)
+            } else {
+                columns
+            }
+        }
+        // A beat after the table is there, so the deal is seen and not lost in the launch's own fade.
+        .task {
+            guard !dealt else { return }
+            if !reduceMotion { try? await Task.sleep(for: .milliseconds(260)) }
+            dealt = true
+        }
+    }
+
+    private var columns: some View {
+        Group {
             let left = stubs.enumerated().filter { $0.offset % 2 == 0 }.map(\.element)
             let right = stubs.enumerated().filter { $0.offset % 2 == 1 }.map(\.element)
             // 1.15fr / 0.85fr, overlapping by 6pt. The container is the scroll view; 40pt is the table's own margin.
@@ -165,13 +184,36 @@ struct StubTable: View {
     private func column(_ items: [Stub]) -> some View {
         VStack(spacing: 22) {
             ForEach(items) { stub in
+                let order = stubs.firstIndex(of: stub) ?? 0
                 StubCard(stub: stub)
                     .matchedTransitionSource(id: stub.id, in: table)
                     .onTapGesture { open(stub) }
                     // The press gesture keeps the card from being a Button; VoiceOver's double-tap comes in here.
                     .accessibilityAction { open(stub) }
+                    // Dealt onto the table the first time the drawer opens, newest first, one after another.
+                    .modifier(Dropped(airborne: !dealt, order: order))
+                    .animation(reduceMotion ? nil : Motion.drop.delay(min(Double(order), 9) * 0.055), value: dealt)
+                    .transition(reduceMotion ? .opacity : .modifier(active: Dropped(airborne: true, order: 0),
+                                                                    identity: Dropped(airborne: false, order: 0)))
             }
         }
+    }
+}
+
+/// A card in the air above the table, about to land (ADR-022): a little higher, a little larger, turned a few degrees
+/// further than it will lie, and not yet there. Animated to `airborne: false` with `Motion.drop`, it falls, skids a
+/// fraction of a degree past its own tilt, and settles. Alternate cards fall from alternate sides, as a hand deals them.
+struct Dropped: ViewModifier {
+    var airborne: Bool
+    var order: Int
+
+    func body(content: Content) -> some View {
+        let side: Double = order.isMultiple(of: 2) ? -1 : 1
+        content
+            .rotationEffect(.degrees(airborne ? 4.5 * side : 0))
+            .scaleEffect(airborne ? 1.06 : 1, anchor: .center)
+            .offset(x: airborne ? 10 * side : 0, y: airborne ? -26 : 0)
+            .opacity(airborne ? 0 : 1)
     }
 }
 
@@ -195,14 +237,12 @@ struct EmptyDrawer: View {
                     }
                 }
             Button(action: add) {
-                Text("Add the first stub")
-                    .font(Type.words(17))
-                    .foregroundStyle(Ink.paper)
-                    .padding(.horizontal, 18).padding(.vertical, 12)
-                    .frame(minHeight: 44)
-                    .background(Ink.ink, in: RoundedRectangle(cornerRadius: 6))
+                HStack(spacing: 8) {
+                    Image(systemName: "plus").font(.system(size: 15, weight: .medium))
+                    Text("Keep the first stub")
+                }
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.stamp(.ink))
         }
     }
 }
@@ -211,4 +251,45 @@ struct EmptyDrawer: View {
 struct ImportRequest: Identifiable {
     let id = UUID()
     var arrival: Arrival?
+}
+
+/// The drawer's two doors, at the bottom of the table where a thumb is (ADR-022): the season, with how many films it
+/// counts, and Keep a stub, the one act the app is for. Stamps on the parchment, which fades in under them; no glass.
+struct Dock: View {
+    let films: Int
+    let season: () -> Void
+    let keep: () -> Void
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Button(action: season) {
+                HStack(spacing: 8) {
+                    Text("The season")
+                    Text("\(films)").font(Type.numbers(14)).foregroundStyle(Ink.grey)
+                }
+            }
+            .buttonStyle(.stamp(.paper))
+            .accessibilityLabel("The season, \(films) \(films == 1 ? "film" : "films")")
+            .accessibilityHint("The numbers behind the sentence.")
+
+            Button(action: keep) {
+                HStack(spacing: 8) {
+                    Image(systemName: "plus").font(.system(size: 15, weight: .medium))
+                    Text("Keep a stub")
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.stamp(.ink))
+            .accessibilityHint("Photograph a ticket, or type one in.")
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 44)
+        .padding(.bottom, 8)
+        .background {
+            LinearGradient(stops: [.init(color: Ink.paper.opacity(0), location: 0), .init(color: Ink.paper.opacity(0.85), location: 0.38),
+                                   .init(color: Ink.paper, location: 0.55)],
+                           startPoint: .top, endPoint: .bottom)
+                .ignoresSafeArea(edges: .bottom)
+        }
+    }
 }

@@ -42,6 +42,17 @@ struct Lever: View {
                 .offset(y: 8 + travel)
         }
         .frame(width: 44, height: Self.length + 44, alignment: .top)
+        // Named, so the way to pull a proof is not a thing to guess (ADR-022); the word goes as the handle comes down.
+        .overlay(alignment: .bottom) {
+            VStack(spacing: 2) {
+                Image(systemName: "arrow.down").font(.system(size: 11, weight: .medium))
+                Text("Pull").font(Type.words(12))
+            }
+            .foregroundStyle(Ink.grey)
+            .opacity(1 - Double(travel / Self.length) * 1.6)
+            .offset(y: 26)
+            .accessibilityHidden(true)
+        }
         .contentShape(Rectangle())
         .gesture(
             DragGesture(minimumDistance: 0)

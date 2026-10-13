@@ -46,6 +46,10 @@ struct StubDetailView: View {
                         Keepsake(stub: stub, copy: copy, turned: $turned, takeToPress: { pressing = true }, pressSource: press)
                             .rotationEffect(.degrees(reduceMotion ? 0 : tilt))
 
+                        // What can be done with the card, named, right under it (ADR-022). A tap on the card turns it and a
+                        // hold takes it to the press, but neither gesture is the only way there.
+                        actions
+
                         VStack(alignment: .leading, spacing: 6) {
                             Text(stub.title).displayText(34).fixedSize(horizontal: false, vertical: true)
                             if let cinema = stub.cinema {
@@ -73,16 +77,6 @@ struct StubDetailView: View {
                             Text("Edition: \(edition.described.lowercased()) · \(edition.directedBy.words)")
                                 .font(Type.numbers(11)).foregroundStyle(Ink.grey)
                                 .fixedSize(horizontal: false, vertical: true)
-                            // Only where the phone can find a table: the simulator and older phones never see it.
-                            if RoomView.isSupported {
-                                Button { inRoom = true } label: {
-                                    Text("Put it on the table").font(Type.words(14)).foregroundStyle(Ink.ink)
-                                        .frame(minHeight: 44)
-                                        .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityHint("Shows the edition at its real size on a table, through the camera.")
-                            }
                         }
 
                         // What the press keeps: the whole difference between this card and the title's, as it is stored
@@ -120,10 +114,8 @@ struct StubDetailView: View {
                             dismiss()
                         } label: {
                             Text("Throw this stub away").font(Type.words(14)).foregroundStyle(Ink.rust)
-                                .frame(minHeight: 44)
-                                .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.stamp(.quiet))
                         .padding(.top, 12)
                     }
                     .padding(20)
@@ -155,36 +147,6 @@ struct StubDetailView: View {
                     composition: composition, photo: PlateImage.image(for: stub.id, in: .detail, data: stub.imageData),
                     tilt: stub.tilt, code: Aztec.mask(for: copy.message), pencil: Pencil(edition: edition),
                     signature: Signatures.shared.image))
-            }
-        }
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                if let shareable, let edition = editions.edition(for: stub.title) {
-                    // The still, and beside it the card turning in the light: a still is the wrong share for a card whose
-                    // point is light (brief §6.4). The clip is drawn when a destination asks for it. Vertical first, so a
-                    // Story shows all of it (BEDIP-221); the card-sized clip and the still are still there.
-                    let composition = Composition(edition: edition, copy: copy)
-                    let invitation = marked ? Text(ShareMark.link.absoluteString) : nil
-                    Menu {
-                        ShareLink(item: EditionClip(composition: composition, format: .vertical, marked: marked), message: invitation,
-                                  preview: SharePreview("An edition of \(stub.title), turning in the light", image: shareable)) {
-                            Label("Share it turning in the light", systemImage: "film")
-                        }
-                        ShareLink(item: EditionClip(composition: composition, format: .card, marked: marked), message: invitation,
-                                  preview: SharePreview("An edition of \(stub.title), turning in the light", image: shareable)) {
-                            Label("Share it turning, close up", systemImage: "rectangle.portrait")
-                        }
-                        ShareLink(item: shareable, preview: SharePreview("An edition of \(stub.title)", image: shareable)) {
-                            Label("Share the still", systemImage: "photo")
-                        }
-                        Divider()
-                        // The mark is on until the person turns it off; nobody is made to advertise.
-                        Toggle("Say \u{201C}kept in Stub\u{201D}", isOn: $marked)
-                    } label: {
-                        Label("Share the edition", systemImage: "square.and.arrow.up")
-                    }
-                    .tint(Ink.ink)
-                }
             }
         }
         .onAppear {
@@ -231,6 +193,62 @@ struct StubDetailView: View {
             pressing = true
         }
         #endif
+    }
+
+    /// The card's actions as a row of paper stamps: turn it, take it to the press, share it, and (where the phone can find
+    /// a table) put it on one. Two to a row at the accessibility sizes.
+    private var actions: some View {
+        let edition = editions.edition(for: stub.title)
+        let count = typeSize.isAccessibilitySize ? 2 : (RoomView.isSupported ? 4 : 3)
+        return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: count), spacing: 10) {
+            Button { turned.toggle() } label: {
+                StampLabel(title: turned ? "Turn back" : "Turn over", symbol: "rectangle.portrait.rotate")
+            }
+            .accessibilityHint(turned ? "Shows the edition again." : "Shows the stub as it was scanned, on the back.")
+            Button { pressing = true } label: { StampLabel(title: "The press", symbol: "dial.medium") }
+                .disabled(edition == nil)
+                .accessibilityHint("Pull your own proof of the edition.")
+            share(edition)
+            if RoomView.isSupported {
+                Button { inRoom = true } label: { StampLabel(title: "On the table", symbol: "arkit") }
+                    .disabled(edition == nil)
+                    .accessibilityHint("Shows the edition at its real size on a table, through the camera.")
+            }
+        }
+        .buttonStyle(.stamp(.paper, tight: true))
+    }
+
+    /// The still, and beside it the card turning in the light: a still is the wrong share for a card whose point is light
+    /// (brief §6.4). The clip is drawn when a destination asks for it. Vertical first, so a Story shows all of it
+    /// (BEDIP-221); the card-sized clip and the still are still there.
+    @ViewBuilder
+    private func share(_ edition: Edition?) -> some View {
+        if let shareable, let edition {
+            let composition = Composition(edition: edition, copy: copy)
+            let invitation = marked ? Text(ShareMark.link.absoluteString) : nil
+            Menu {
+                ShareLink(item: EditionClip(composition: composition, format: .vertical, marked: marked), message: invitation,
+                          preview: SharePreview("An edition of \(stub.title), turning in the light", image: shareable)) {
+                    Label("Share it turning in the light", systemImage: "film")
+                }
+                ShareLink(item: EditionClip(composition: composition, format: .card, marked: marked), message: invitation,
+                          preview: SharePreview("An edition of \(stub.title), turning in the light", image: shareable)) {
+                    Label("Share it turning, close up", systemImage: "rectangle.portrait")
+                }
+                ShareLink(item: shareable, preview: SharePreview("An edition of \(stub.title)", image: shareable)) {
+                    Label("Share the still", systemImage: "photo")
+                }
+                Divider()
+                // The mark is on until the person turns it off; nobody is made to advertise.
+                Toggle("Say \u{201C}kept in Stub\u{201D}", isOn: $marked)
+            } label: {
+                StampLabel(title: "Share", symbol: "square.and.arrow.up")
+            }
+            .menuStyle(.button)
+            .accessibilityLabel("Share the edition")
+        } else {
+            Button {} label: { StampLabel(title: "Share", symbol: "square.and.arrow.up") }.disabled(true)
+        }
     }
 
     /// This stub's copy of its edition, counted against the drawer.

@@ -16,7 +16,7 @@ final class PressSession {
     private(set) var proof: Proof
     /// The part in hand.
     private(set) var focus: Part?
-    /// A part that rolls nothing, just touched: the italic line says why it will not turn.
+    /// A part that rolls nothing, just touched: the status line says why it will not turn.
     private(set) var explaining: Part?
     /// The wheel, in takes, for the part in hand. Fractional mid-turn; a whole number at rest.
     var position: Double = 0
@@ -36,7 +36,7 @@ final class PressSession {
     var turned = false
     /// Counts the pulls: the platen comes down and the ink is wet each time.
     private(set) var pulls = 0
-    /// The proof was pulled a moment ago and nothing has changed since: the italic line says what next.
+    /// The proof was pulled a moment ago and nothing has changed since: the status line says what next.
     private(set) var justPulled = false
     #if DEBUG
     /// `-wet 0.6`: the ink held that wet, for a screenshot.
@@ -309,7 +309,7 @@ final class PressSession {
 
     // MARK: Words
 
-    /// The one italic sentence on the screen: what is in hand and which take, why a part will not turn, or what the
+    /// The status line between the card and the bench, as words (and what VoiceOver reads): what is in hand and which take, why a part will not turn, or what the
     /// card is.
     func sentence(at position: Double) -> String {
         if turned {
@@ -366,7 +366,7 @@ final class PressSession {
 
     static func capitalised(_ s: String) -> String { s.prefix(1).uppercased() + s.dropFirst() }
 
-    /// A number in words, as the italic sentence prints them: "fourteen", "ninety-nine".
+    /// A number in words, as the status line says them aloud: "fourteen", "ninety-nine".
     static func spelled(_ n: Int) -> String {
         let f = NumberFormatter()
         f.locale = Locale(identifier: "en")

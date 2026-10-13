@@ -8,7 +8,7 @@ One intent, then rules. The intent decides how the constraints are used; the con
 
 ## Rules that follow
 
-1. **Type is constant and quiet.** Host Grotesk for the words, Newsreader italic for exactly one sentence per screen, Fragment Mono for numbers. Nothing tracked-out and boxed. No eyebrows.
+1. **Type is constant and quiet.** Host Grotesk for the words, Fragment Mono for numbers. Newsreader italic is the drawer's voice and nothing else: the season's sentence, and what an edition prints. It is never an instruction, a status or a way somewhere (ADR-022). Nothing tracked-out and boxed. No eyebrows.
 2. **All grit lives in the image layer, and none of it is noise.** The stub photograph is the thing that gets silkscreened and misregistered. The parchment is a flat warm colour; nothing is grained, because noise laid over an app reads as fake (ADR-017). The type is clean.
 3. **Nothing sits level.** Each stub has a tilt fixed at creation (between −1.5° and 1.5°, never 0). It sits up straight when touched and lies back down when released.
 4. **Two uneven columns**, 1.15 to 0.85, overlapping by six points, the right column starting lower. Photos pinned to a corkboard, not tiles.
@@ -17,6 +17,9 @@ One intent, then rules. The intent decides how the constraints are used; the con
 7. **Honest machinery.** Every stub says who read it (the on-device model, heuristics, or you) and how sure it was. The raw read is one tap away.
 8. **Respect the platform.** Reduce Motion removes tilt and overshoot. Dynamic Type is honoured. Touch targets are 44pt. Haptics punctuate, they do not decorate.
 9. **When in doubt, remove.** The empty drawer has a blank stub, one sentence, one button.
+10. **Every way somewhere is a named control.** The drawer's two doors (the season, Keep a stub) sit at the bottom where a thumb is; the card's acts (turn over, the press, share, on the table) are a row of stamps under it; the press's lever says Pull. A gesture (a tap that turns the card, a hold that takes it to the press, a pinch that parts the plates) is a shortcut to something that is also a button, never the only way there (ADR-022).
+11. **Buttons are stamps.** The ink sits a few points out of register with its plate (orange under ink, navy under paper). Pressed, it goes down onto the plate and prints in register, with one firm tap at contact; let go, it springs back with one overshoot. Words alone (Cancel, Throw this stub away) dip and fade and have no plate. No glass, no system capsules on the parchment.
+12. **Things are put down, not faded in.** The cards are dealt onto the table the first time the drawer opens, newest first, each falling from a little above and a few degrees further turned, skidding a fraction past its tilt and settling. A kept stub is dropped onto the table the same way. The season's figures are put down one after another. Under Reduce Motion they are simply there. The launch screen is the parchment, so nothing ever fades in from white.
 
 ## Editions
 
@@ -39,7 +42,7 @@ The person who kept a stub can pull their own proof of its edition (ADR-016, `do
 2. **Only what you are holding moves.** A part is turned on its own die; the rest of the poster stands still while it redraws.
 3. **Going back is one step.** A proof is a difference laid over the edition, never a replacement; deleting it shows the title's (or the model's) edition exactly.
 4. **The front is the film's; the back is yours.** Nothing is added to the front but what the strip already prints. The owner's pencil (a signature, A/P, the takes) goes on the back.
-5. **The press room is chrome, not an edition.** Parchment, `Ink`, the three faces, one italic sentence a screen. No dark deck, no glass, no tracked uppercase labels.
+5. **The press room is chrome, not an edition.** Parchment, `Ink`, the three faces. The line between the card and the bench says what is in hand and its take (the number in the mono), or what to do next, in words, not the italic. The bench's choices are stamps, the open one inked. No dark deck, no glass, no tracked uppercase labels.
 6. **Haptics are the stock's.** The wheel's detents, the lever's resistance and the platen are felt at the stock's own sharpness, and punctuate what the hand does.
 7. **One light, and nothing moves on its own,** except wet ink drying for a moment after a pull, which is the consequence of an act and ends.
 

@@ -22,7 +22,18 @@ struct Arrival: Identifiable, Equatable, Sendable {
 
     static func == (a: Arrival, b: Arrival) -> Bool { a.id == b.id }
 
-    /// The sheet's one italic sentence about where the ticket came from.
+    /// A mark for where it came from, beside the sentence.
+    var symbol: String {
+        switch source {
+        case .link: "link"
+        case .shortcut: "square.2.layers.3d"
+        case .pass: "wallet.pass"
+        case .pdf: "doc.richtext"
+        case .screenshot: "rectangle.on.rectangle"
+        }
+    }
+
+    /// The sheet's line about where the ticket came from.
     var sentence: String {
         switch source {
         case .link: return "Handed over in a link. Nothing was fetched to open it."

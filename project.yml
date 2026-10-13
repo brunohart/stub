@@ -30,7 +30,9 @@ targets:
         CFBundleDisplayName: Stub
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
-        UILaunchScreen: {}
+        # Parchment from the first frame: an empty launch screen is white, and the drawer faded in from white (ADR-022).
+        UILaunchScreen:
+          UIColorName: LaunchPaper
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false

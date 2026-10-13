@@ -145,7 +145,7 @@ struct StubScannerView: UIViewControllerRepresentable {
     }
 }
 
-/// The scanner as a sheet: the viewfinder, one italic line of guidance, one button. Nothing else.
+/// The scanner as a sheet: the viewfinder, one line of guidance, one button. Nothing else.
 struct ScanSheet: View {
     @Environment(\.dismiss) private var dismiss
     let onScan: @MainActor (StubScanner.Scan) -> Void
@@ -164,19 +164,15 @@ struct ScanSheet: View {
 
                 VStack(alignment: .leading, spacing: 14) {
                     Text(failure ?? guidance)
-                        .font(Type.italic(18))
-                        .foregroundStyle(failure == nil ? Ink.navy : Ink.rust)
+                        .font(Type.words(17))
+                        .foregroundStyle(failure == nil ? Ink.ink.opacity(0.8) : Ink.rust)
                         .fixedSize(horizontal: false, vertical: true)
                     Button {
                         wantsScan = true
                     } label: {
-                        Text("Read this stub")
-                            .font(Type.words(17))
-                            .foregroundStyle(Ink.paper)
-                            .frame(maxWidth: .infinity, minHeight: 44)
-                            .background(Ink.ink, in: RoundedRectangle(cornerRadius: 6))
+                        Text("Read this stub").frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.stamp(.ink))
                     .disabled(lineCount == 0 || failure != nil)
                     .accessibilityHint("Reads the \(lineCount) lines the camera can see and fills in the fields.")
                 }

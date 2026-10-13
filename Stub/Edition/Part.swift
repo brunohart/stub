@@ -23,7 +23,7 @@ struct Part: Sendable, Equatable, Identifiable {
     }
 
     let id: ID
-    /// What it is called aloud and in the italic line: "the disc".
+    /// What it is called aloud and in the status line: "the disc".
     let name: String
     let kind: Kind
     /// Reads the frame's outputs, so turning the frame may move it.

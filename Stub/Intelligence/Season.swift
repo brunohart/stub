@@ -153,6 +153,8 @@ enum SeasonRules {
         let words = s.split(whereSeparator: { $0.isWhitespace }).count
         if words > maximumWords { return .rejected("\(words) words") }
         if !s.hasSuffix(".") && !s.hasSuffix("?") { s += "." }
+        // A sentence starts with a capital. The model sometimes forgets ("you've been going to the cinema a lot").
+        s = s.prefix(1).uppercased() + s.dropFirst()
         return .accepted(s)
     }
 }

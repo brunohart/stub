@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The press room (ADR-016, DESIGN.md › The press). Where the person who kept a stub pulls their own proof of its
-/// edition: the card on the bed, lit by the phone; the bench below it; one italic sentence between them. Touch a part
+/// edition: the card on the bed, lit by the phone; the bench below it; one line of words between them. Touch a part
 /// and everything else knocks back to a ghost; turn the wheel and that part redraws through its in-betweens while the
 /// rest of the poster stands still. You choose between drawings. You never move a mark.
 ///
@@ -59,16 +59,17 @@ struct PressRoom: View {
                 .padding(.trailing, 6)
                 .padding(.top, 4)
 
-                // The status line: the only italic on the screen.
-                Text(session.sentence(at: session.position))
-                    .font(Type.italic(18))
-                    .foregroundStyle(Ink.navy)
+                // The status line: what is in hand and which take, or what to do next. Words, and the take in the mono:
+                // an instruction is not the app's voice, so it is not the italic (ADR-022).
+                status
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, minHeight: 48)
                     .padding(.horizontal, 28)
                     .contentTransition(.opacity)
                     .animation(Motion.place, value: session.focus?.id)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(session.sentence(at: session.position))
                     .accessibilityAddTraits(.updatesFrequently)
 
                 bench
@@ -110,6 +111,29 @@ struct PressRoom: View {
             take(movement)
         }
         #endif
+    }
+
+    /// A part in hand reads as its name and its take, the number in the mono; anything else is the session's sentence.
+    @ViewBuilder
+    private var status: some View {
+        if let focus = session.focus, focus.kind != .frame, !session.turned, session.explaining == nil {
+            let take = Int(min(max(session.position, 0), 99).rounded())
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(PressSession.capitalised(focus.name)).font(Type.display(20)).foregroundStyle(Ink.ink)
+                if take == 0 {
+                    Text("as the title drew it").font(Type.words(15)).foregroundStyle(Ink.grey)
+                } else {
+                    Text("take").font(Type.words(15)).foregroundStyle(Ink.grey)
+                    Text("\(take)").font(Type.numbers(19)).foregroundStyle(Ink.ink)
+                        .contentTransition(.numericText(value: Double(take)))
+                        .animation(Motion.stamp, value: take)
+                }
+            }
+        } else {
+            Text(session.sentence(at: session.position))
+                .font(Type.words(16))
+                .foregroundStyle(Ink.ink.opacity(0.75))
+        }
     }
 
     // MARK: The bed
@@ -300,17 +324,11 @@ struct PressRoom: View {
             }
     }
 
-    private func benchButton(_ title: String, action: @escaping () -> Void) -> some View {
+    private func benchButton(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Text(title)
-                .font(Type.words(15))
-                .foregroundStyle(Ink.ink)
-                .padding(.horizontal, 16)
-                .frame(minHeight: 44)
-                .overlay(Capsule().stroke(Ink.ink.opacity(0.25), lineWidth: 0.75))
-                .contentShape(Capsule())
+            Label(title, systemImage: symbol).font(Type.words(15))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.stamp(.paper))
     }
 
     /// New inks spreading across the card from `origin`, about half a second to its far corner (a fifth of a second's
@@ -400,7 +418,7 @@ struct PressRoom: View {
             VStack(spacing: 18) {
                 // The genome's three choices are the front's; on the back there is only the margin.
                 if !session.turned {
-                    HStack(alignment: .top, spacing: 30) {
+                    HStack(alignment: .top, spacing: 10) {
                         choice(.movement, "Movement", session.edition.movement.rawValue.capitalized)
                         choice(.inks, "Inks", session.edition.palette.rawValue.capitalized)
                         choice(.stock, "Stock", session.edition.stock.words)
@@ -423,11 +441,12 @@ struct PressRoom: View {
                     HStack(spacing: 12) {
                         // Separations are a pinch on the card, and a button for anyone who does not pinch.
                         if !session.turned {
-                            benchButton(session.separation > 0 ? "Press them together" : "See the plates") {
+                            benchButton(session.separation > 0 ? "Press them together" : "See the plates",
+                                        symbol: session.separation > 0 ? "square.stack.3d.down.forward" : "square.stack.3d.up") {
                                 separate(session.separation == 0)
                             }
                         }
-                        benchButton(session.turned ? "Turn it back" : "Turn it over") { turn() }
+                        benchButton(session.turned ? "Turn it back" : "Turn it over", symbol: "rectangle.portrait.rotate") { turn() }
                     }
                     .padding(.top, 12)
                     .transition(Self.benchChange)
@@ -436,6 +455,7 @@ struct PressRoom: View {
             // The three words stay where they are whatever is open, so opening and closing moves nothing but the object.
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .padding(.top, 22)
+            .padding(.horizontal, 20)
             .transition(Self.benchChange)
         }
     }
@@ -524,14 +544,15 @@ extension PressRoom {
                 session.bench = open ? .rest : bench
             }
         } label: {
-            VStack(spacing: 4) {
-                Text(value).font(Type.words(17)).foregroundStyle(other ? Ink.grey : Ink.ink)
-                Text(label).font(Type.words(12)).foregroundStyle(Ink.grey)
+            VStack(spacing: 3) {
+                Text(value).font(Type.words(16))
+                Text(label).font(Type.words(12)).opacity(0.6)
             }
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
+            .frame(maxWidth: .infinity)
+            .opacity(other ? 0.55 : 1)
         }
-        .buttonStyle(.plain)
+        // The open one is inked: the bench says which object is out (ADR-022).
+        .buttonStyle(.stamp(open ? .ink : .paper, tight: true))
         .accessibilityLabel("\(label), \(value)")
         .accessibilityHint(open ? "Closes it." : "Opens the choices.")
         .accessibilityAddTraits(open ? .isSelected : [])
