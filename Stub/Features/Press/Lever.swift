@@ -36,9 +36,9 @@ struct Lever: View {
             Capsule()
                 .fill(Ink.ink.opacity(0.16))
                 .frame(width: 3, height: Self.length + 28)
-            // The handle: a short bar across the rail, in the ink.
+            // The handle: a short bar across the rail, in the ink; orange when there is something to keep.
             Capsule()
-                .fill(Ink.ink)
+                .fill(ready ? Ink.orange : Ink.ink)
                 .frame(width: 28, height: 12)
                 .shadow(color: .black.opacity(0.22), radius: 2, x: 0, y: 1.5)
                 .offset(y: 8 + travel)
@@ -46,16 +46,25 @@ struct Lever: View {
         .frame(width: 44, height: Self.length + 44, alignment: .top)
         // Named, so the way to pull a proof is not a thing to guess (ADR-022); the word goes as the handle comes down.
         .overlay(alignment: .bottom) {
-            VStack(spacing: 2) {
-                Image(systemName: "arrow.down").font(.system(size: 11, weight: .medium))
-                Text("Pull").font(Type.words(12))
+            VStack(spacing: 1) {
+                Image(systemName: "arrow.down").font(.system(size: 11, weight: .semibold))
+                Text("Pull").font(Type.display(12))
+                Text("to keep").font(Type.words(11))
             }
             .foregroundStyle(ready ? Ink.orange : Ink.grey)
-            .scaleEffect(ready ? 1.08 : 1)
-            .animation(Motion.stamp, value: ready)
+            .animation(Motion.settle, value: ready)
             .opacity(1 - Double(travel / Self.length) * 1.6)
-            .offset(y: 26)
+            .offset(y: 36)
             .accessibilityHidden(true)
+        }
+        // When there is something new to keep, the handle dips once and comes back, so it is seen to move.
+        .onChange(of: ready) { was, now in
+            guard now, !was, !reduceMotion, travel == 0 else { return }
+            Task {
+                withAnimation(.spring(response: 0.22, dampingFraction: 0.8)) { travel = 18 }
+                try? await Task.sleep(for: .milliseconds(240))
+                if !gave { withAnimation(.spring(response: 0.42, dampingFraction: 0.55)) { travel = 0 } }
+            }
         }
         .contentShape(Rectangle())
         .gesture(
@@ -81,7 +90,7 @@ struct Lever: View {
         )
         .accessibilityElement()
         .accessibilityLabel("The lever")
-        .accessibilityHint("Pulls the proof.")
+        .accessibilityHint(ready ? "Pulls the proof and keeps it as the card. Nothing else keeps it." : "Pulls the proof.")
         .accessibilityAddTraits(.isButton)
         .accessibilityAction(named: "Pull the proof") {
             feel.platen()

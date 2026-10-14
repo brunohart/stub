@@ -35,6 +35,9 @@ struct PressRoom: View {
     /// The stub as it was scanned, and its code: the back of the card.
     @State private var photo: UIImage?
     @State private var code: CGImage?
+    /// Leaving with a proof on the press that is not kept: asked once (ADR-030).
+    @State private var leaving = false
+    @Environment(\.dismiss) private var dismiss
     private let signatures = Signatures.shared
 
     init(stub: Stub, copy: Copy) {
@@ -46,6 +49,10 @@ struct PressRoom: View {
         ZStack {
             Paper()
             VStack(spacing: 0) {
+                // Whether what is on the press is kept: pulling is the only way it becomes the card (ADR-030).
+                KeepLine(unkept: session.somethingToPull && !session.turned, justPulled: session.justPulled)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 6)
                 HStack(alignment: .top, spacing: 4) {
                     bed
                     // The lever runs down the right of the bed.
@@ -77,6 +84,14 @@ struct PressRoom: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
+        // Back asks once when the proof on the press is not kept: it would stay on the press, not on the card.
+        .modifier(LeaveCheck(asking: $leaving, back: leave, keep: {
+            pull()
+            Task {
+                try? await Task.sleep(for: .milliseconds(reduceMotion ? 100 : 700))
+                dismiss()
+            }
+        }, leave: { dismiss() }))
         .sensoryFeedback(.impact(weight: .heavy, intensity: 1), trigger: closings)
         // A light tap for each plate of a reprint, a heavy one for the foil: the press, felt.
         .sensoryFeedback(trigger: session.printed) { old, new in
@@ -277,6 +292,11 @@ struct PressRoom: View {
             .offset(x: r.minX * scale, y: r.minY * scale)
             .transition(.opacity.animation(Motion.settle.delay(0.35)))
         }
+    }
+
+    /// Back to the card, asking first when the proof on the press is not the card.
+    private func leave() {
+        if session.somethingToPull { leaving = true } else { dismiss() }
     }
 
     /// The lever has given: the proof on the press is pulled.
@@ -669,5 +689,68 @@ private struct Brackets: Shape {
             p.addLine(to: CGPoint(x: corner.x, y: corner.y + dy * arm))
         }
         return p
+    }
+}
+
+/// The line over the bed that says whether the card on the press is kept (ADR-030). Not kept: an orange dot and the one way
+/// to keep it. Just pulled: a tick and that this is the card now. Otherwise nothing, so it never nags.
+private struct KeepLine: View {
+    let unkept: Bool
+    let justPulled: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        HStack(spacing: 8) {
+            if unkept {
+                Circle().fill(Ink.orange).frame(width: 7, height: 7)
+                Text("Not kept yet").font(Type.display(14)).foregroundStyle(Ink.ink)
+                Text("Pull the lever to keep it").font(Type.words(14)).foregroundStyle(Ink.grey)
+                Image(systemName: "arrow.right").font(.system(size: 11, weight: .semibold)).foregroundStyle(Ink.orange)
+            } else if justPulled {
+                Image(systemName: "checkmark").font(.system(size: 12, weight: .semibold)).foregroundStyle(Ink.ink)
+                Text("Kept. This is the card now.").font(Type.display(14)).foregroundStyle(Ink.ink)
+            }
+        }
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
+        .padding(.horizontal, unkept || justPulled ? 14 : 0)
+        .frame(height: 34)
+        .background {
+            if unkept || justPulled {
+                Capsule(style: .continuous).fill(Ink.cream)
+                    .overlay(Capsule(style: .continuous).strokeBorder(unkept ? Ink.orange.opacity(0.45) : Ink.ink.opacity(0.1), lineWidth: 0.75))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .trailing)
+        .animation(reduceMotion ? Motion.plain : Motion.settle, value: unkept)
+        .animation(reduceMotion ? Motion.plain : Motion.settle, value: justPulled)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.updatesFrequently)
+    }
+}
+
+/// The press room's own back: it asks once when the proof on the press is not kept (ADR-030).
+private struct LeaveCheck: ViewModifier {
+    @Binding var asking: Bool
+    let back: () -> Void
+    let keep: () -> Void
+    let leave: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .navigationBarBackButtonHidden(true)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(action: back) { Image(systemName: "chevron.left").font(.system(size: 17, weight: .semibold)) }
+                        .accessibilityLabel("Back")
+                }
+            }
+            .confirmationDialog("This proof is not kept yet", isPresented: $asking, titleVisibility: .visible) {
+                Button("Pull it and keep it", action: keep)
+                Button("Leave it on the press", action: leave)
+                Button("Stay", role: .cancel) {}
+            } message: {
+                Text("Only a pulled proof becomes the card. Left on the press, it waits here and the card stays as it was.")
+            }
     }
 }

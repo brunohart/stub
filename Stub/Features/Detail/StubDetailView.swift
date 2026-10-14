@@ -48,15 +48,13 @@ struct StubDetailView: View {
                         Keepsake(stub: stub, copy: copy, turned: $turned, takeToPress: { pressing = true }, pressSource: press)
                             .rotationEffect(.degrees(reduceMotion ? 0 : tilt))
 
-                        // What can be done with the card, named, right under it (ADR-022). A hold on the card also takes it to
-                        // the press; a tap turns it over, which the card teaches once.
-                        actions
-
                         VStack(alignment: .leading, spacing: 6) {
                             Text(stub.title).displayText(34).fixedSize(horizontal: false, vertical: true)
                             if let cinema = stub.cinema {
                                 Text(cinema).font(Type.reading(20)).foregroundStyle(Ink.ink.opacity(0.8))
                             }
+                            // Which drawers it is filed in, and the way to file it: one quiet line (ADR-026, ADR-030).
+                            file.padding(.top, 4)
                         }
 
                         // Four figures in a row; at the accessibility sizes they would not fit, so they stack.
@@ -147,6 +145,25 @@ struct StubDetailView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
+        // Share, where a phone keeps it, and the card's other acts in one menu beside it (ADR-030). The press and turning
+        // over are the card's own gestures, said under it; they are here too, for anyone who would rather choose.
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                share(editions.edition(for: stub.title))
+                Menu {
+                    Button("Take it to the press", systemImage: "dial.medium") { pressing = true }
+                        .disabled(editions.edition(for: stub.title) == nil)
+                    Button(turned ? "Turn it back" : "Turn it over", systemImage: "arrow.trianglehead.2.clockwise.rotate.90") { turned.toggle() }
+                    if RoomView.isSupported {
+                        Button("Put it on the table", systemImage: "arkit") { inRoom = true }
+                            .disabled(editions.edition(for: stub.title) == nil)
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                }
+                .accessibilityLabel("More")
+            }
+        }
         // The press room: full screen, grown from the card, closed with the system's back.
         .navigationDestination(isPresented: $pressing) {
             PressRoom(stub: stub, copy: copy)
@@ -224,26 +241,6 @@ struct StubDetailView: View {
         #endif
     }
 
-    /// The card's actions as a row of paper stamps: take it to the press, share it, and (where the phone can find a table) put
-    /// it on one. Turning it over is the card's own: a tap on it. One to a row at the accessibility sizes.
-    private var actions: some View {
-        let edition = editions.edition(for: stub.title)
-        let count = typeSize.isAccessibilitySize ? 1 : (RoomView.isSupported ? 4 : 3)
-        return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: count), spacing: 10) {
-            Button { pressing = true } label: { ActionLabel(title: "The press", symbol: "dial.medium") }
-                .disabled(edition == nil)
-                .accessibilityHint("Pull your own proof of the edition.")
-            share(edition)
-            file
-            if RoomView.isSupported {
-                Button { inRoom = true } label: { ActionLabel(title: "On the table", symbol: "arkit") }
-                    .disabled(edition == nil)
-                    .accessibilityHint("Shows the edition at its real size on a table, through the camera.")
-            }
-        }
-        .buttonStyle(.stub(.paper, tight: true))
-    }
-
     /// File it in a drawer: the drawers with a mark against the ones it is in, and a new one (ADR-026). The same as carrying it
     /// onto a drawer's label in the drawer, for anyone who would rather choose from a list.
     private var file: some View {
@@ -258,10 +255,18 @@ struct StubDetailView: View {
             }
             Button("New drawer…", systemImage: "plus") { naming = true }
         } label: {
-            ActionLabel(title: filed.isEmpty ? "File" : filed.count == 1 ? filed[0].name : "In \(filed.count) drawers",
-                       symbol: filed.isEmpty ? "tray.and.arrow.down" : "tray.full")
+            HStack(spacing: 6) {
+                Image(systemName: filed.isEmpty ? "tray.and.arrow.down" : "tray.full").font(.system(size: 13))
+                Text(filed.isEmpty ? "File in a drawer" : "In " + ListFormatter.localizedString(byJoining: filed.map(\.name)))
+                    .font(Type.words(14))
+                Image(systemName: "chevron.up.chevron.down").font(.system(size: 9, weight: .semibold)).foregroundStyle(Ink.grey)
+            }
+            .foregroundStyle(Ink.ink.opacity(0.75))
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
         }
         .menuStyle(.button)
+        .buttonStyle(.plain)
         .accessibilityLabel(filed.isEmpty ? "File in a drawer" : "Filed in \(filed.map(\.name).joined(separator: ", "))")
         .sheet(isPresented: $naming) {
             NameDrawerSheet(title: "A new drawer") { name in
@@ -294,12 +299,12 @@ struct StubDetailView: View {
                     Label("Share the still", systemImage: "photo")
                 }
             } label: {
-                ActionLabel(title: "Share", symbol: "square.and.arrow.up")
+                Image(systemName: "square.and.arrow.up")
             }
-            .menuStyle(.button)
             .accessibilityLabel("Share the edition")
         } else {
-            Button {} label: { ActionLabel(title: "Share", symbol: "square.and.arrow.up") }.disabled(true)
+            Button {} label: { Image(systemName: "square.and.arrow.up") }.disabled(true)
+                .accessibilityLabel("Share the edition")
         }
     }
 

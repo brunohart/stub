@@ -16,6 +16,8 @@ Screenshots: `2026-10-15-drawer-tickets.png`, `-drawer-editions.png`, `-holding.
 
 **Later the same morning: the buttons** (ADR-029). Bruno had gone off the stamps, so every button is now a clean capsule in the same inks: ink for the one primary act, cream with a hairline for the rest, words alone for Cancel. Pressed, a button goes into the page with one soft tap and comes back on a spring; the out-of-register plate, the tip and the ring of ink are gone. Tickets or Editions is a segmented control with a sliding thumb, and the shutter is a plain paper disc whose ring turns orange when the marks lock on. Screenshot: `2026-10-15-buttons.png`.
 
+**And then the card and the press** (ADR-030). Share went to the top right with a ⋯ menu; the row of acts under the card went; the card says "Tap to turn over · Hold for the press" under it and draws an orange line round its edge while it is held, lifting for the press when the line closes. In the press, "Not kept yet · Pull the lever to keep it" sits over the bed whenever the proof differs from the card, the lever says Pull to keep and dips once, and going back with a proof that is not kept asks first. Proved in the simulator end to end: held into the press, inks changed to Blush, back, "Pull it and keep it", the card in Blush. Screenshots: `2026-10-15-card-and-press.png`.
+
 **Still rough.** Whether the drawer scrolls when a carried stub reaches the edge of the screen is unchecked (the simulator's drag is a scripted path); closing the years between is the way meanwhile. The edition widget's foil is a gradient, not the app's lit shader. Search is the next thing a cabinet of a few hundred stubs will want.
 
 ## 2026-10-13 — Beyond the account: the link, the share sheet, iCloud, the 9:16 share, and a design pass

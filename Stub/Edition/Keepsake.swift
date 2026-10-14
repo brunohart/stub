@@ -34,10 +34,10 @@ struct Keepsake: View {
     @State private var lastY: CGFloat?
     /// Held long enough on the front: the card has lifted off the table and is on its way to the press.
     @State private var lifted = false
+    /// A finger is holding the front: an orange line runs round the card's edge until it lifts (ADR-030).
+    @State private var charging = false
     @State private var holdTimer: Task<Void, Never>?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    /// Whether this person has ever turned a card over: the hint under the card is for the first time only.
-    @AppStorage("taught.turn") private var hasTurned = false
 
     init(stub: Stub, copy: Copy, turned: Binding<Bool>, pressesOnAppear: Bool = false,
          takeToPress: (() -> Void)? = nil, pressSource: Namespace.ID? = nil) {
@@ -73,19 +73,25 @@ struct Keepsake: View {
             .accessibilityAction(named: "Lift the print") { hold(!holding) }
             .accessibilityAction(named: "Take it to the press") { if edition != nil, !choosing { takeToPress?() } }
 
-            // A line under the card only when there is something to say: the press is choosing, or the back can be held.
-            // What the card can do is a row of stamps where there is a row (the detail's), never an italic hint (ADR-022).
-            if let caption {
-                HStack(spacing: 10) {
-                    if choosing { ProgressView().tint(Ink.orange) }
-                    Text(caption)
-                        .font(Type.words(14)).foregroundStyle(Ink.ink.opacity(choosing ? 0.75 : 0.55))
-                        .fixedSize(horizontal: false, vertical: true)
-                        .contentTransition(.opacity)
+            // What the card does under a finger, said plainly under it every time (ADR-030): a tap turns it over, a hold
+            // takes it to the press; on the back, a hold lifts the print. While the press is choosing, that is said instead.
+            Group {
+                if choosing {
+                    HStack(spacing: 10) {
+                        ProgressView().tint(Ink.orange)
+                        Text("Choosing an edition for \(stub.title)…")
+                            .font(Type.words(14)).foregroundStyle(Ink.ink.opacity(0.75))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                } else {
+                    GestureLegend(items: turned
+                        ? [("hand.tap", "Tap to turn back"), ("hand.point.up.braille", "Hold the photo to lift the print")]
+                        : takeToPress == nil ? [("hand.tap", "Tap to turn over")]
+                        : [("hand.tap", "Tap to turn over"), ("hand.point.up.braille", "Hold for the press")])
                 }
-                .animation(Motion.place, value: turned)
-                .accessibilityHidden(!choosing)
             }
+            .frame(maxWidth: .infinity)
+            .animation(Motion.place, value: turned)
         }
         .task(id: stub.id) { await press() }
         .task(id: copy.message) { code = Aztec.mask(for: copy.message) }
@@ -99,7 +105,6 @@ struct Keepsake: View {
             texture.end()
         }
         .onChange(of: turned) { _, now in
-            if now { hasTurned = true }
             withAnimation(reduceMotion ? Motion.plain : Motion.settle) { angle = now ? 180 : 0 }
             if !now { hold(false) }
         }
@@ -110,18 +115,13 @@ struct Keepsake: View {
         .sensoryFeedback(.impact(weight: .light, intensity: 0.5), trigger: turned)
         // The card lifting off the table on its way to the press.
         .sensoryFeedback(.impact(weight: .light, intensity: 0.8), trigger: lifted) { _, now in now }
-        .onAppear { lifted = false }
+        .onAppear {
+            lifted = false
+            charging = false
+        }
         #if DEBUG
         .onChange(of: DebugDrive.shared.holding) { _, held in if turned { hold(held) } }
         #endif
-    }
-
-    private var caption: String? {
-        if choosing { return "Choosing an edition for \(stub.title)…" }
-        if turned { return "Hold the photograph to lift the print." }
-        // Turning over is the card's own gesture, not a button: it is said until the person has done it once.
-        if !hasTurned { return "Tap the card to turn it over." }
-        return nil
     }
 
     /// The finger, the gyroscope and (in Debug) the driver, as one tilt.
@@ -162,6 +162,17 @@ struct Keepsake: View {
             }
         }
         .frame(width: Card.width, height: Card.height)
+        // The hold, shown: a line of the marks' orange drawn round the edge while the finger stays, so holding is seen to
+        // be doing something; the card lifts for the press when it closes.
+        .overlay {
+            if takeToPress != nil, angle < 90 {
+                TicketOutline()
+                    .trim(from: 0, to: charging ? 1 : 0)
+                    .stroke(Ink.orange, style: StrokeStyle(lineWidth: 3.5, lineCap: .round, lineJoin: .round))
+                    .opacity(charging || lifted ? 1 : 0)
+                    .allowsHitTesting(false)
+            }
+        }
         .rotation3DEffect(.degrees(Double(tilt.x) * lean), axis: (x: 0, y: 1, z: 0), perspective: 0.45)
         .rotation3DEffect(.degrees(Double(-tilt.y) * lean), axis: (x: 1, y: 0, z: 0), perspective: 0.45)
         // Lifted off the table on its way to the press: a little larger, its shadow deeper and further away.
@@ -184,7 +195,7 @@ struct Keepsake: View {
                     if turned { hold(true) } else { waitForHold() }
                 }
                 let t = value.translation
-                if (t.width * t.width + t.height * t.height).squareRoot() > 8 { holdTimer?.cancel() }
+                if (t.width * t.width + t.height * t.height).squareRoot() > 8 { cancelHold() }
                 finger = CGPoint(x: max(-1, min(1, value.translation.width / 180)),
                                  y: max(-1, min(1, value.translation.height / 180)))
                 let v = value.velocity
@@ -194,7 +205,7 @@ struct Keepsake: View {
                 lastY = y
             }
             .onEnded { value in
-                holdTimer?.cancel()
+                cancelHold()
                 texture.end()
                 hold(false)
                 if lifted {
@@ -214,18 +225,31 @@ struct Keepsake: View {
             }
     }
 
+    /// How long the line takes to run round the card: the hold that takes it to the press.
+    static let hold = 0.55
+
     /// A finger held still on the front for a moment lifts the card and takes it to the press.
     private func waitForHold() {
         // Only a printed card goes to the press: not a blank one while its edition is being chosen, nor mid-run.
         guard takeToPress != nil, !choosing, printed == Plate.foil, editions.edition(for: stub.title) != nil else { return }
         holdTimer?.cancel()
         holdTimer = Task {
-            do { try await Task.sleep(for: .milliseconds(450)) } catch { return }
+            // A beat before the line starts, so a tap never shows it.
+            do { try await Task.sleep(for: .milliseconds(120)) } catch { return }
+            withAnimation(.linear(duration: Self.hold)) { charging = true }
+            do { try await Task.sleep(for: .seconds(Self.hold)) } catch { return }
             withAnimation(reduceMotion ? Motion.plain : Motion.stamp) { lifted = true }
             texture.end()
             do { try await Task.sleep(for: .milliseconds(reduceMotion ? 60 : 200)) } catch { return }
             takeToPress?()
         }
+    }
+
+    /// The finger moved or lifted before the line closed: it runs back.
+    private func cancelHold() {
+        holdTimer?.cancel()
+        guard charging, !lifted else { return }
+        withAnimation(.easeOut(duration: 0.2)) { charging = false }
     }
 
     private func hold(_ pressing: Bool) {
@@ -333,5 +357,50 @@ final class CompositionMemo {
         let composition = Composition(edition: edition, copy: copy)
         last = composition
         return composition
+    }
+}
+
+/// What a card does under a finger, as small marks and words under it: two at most, the gesture's symbol and what it does.
+struct GestureLegend: View {
+    let items: [(symbol: String, words: String)]
+
+    var body: some View {
+        HStack(spacing: 18) {
+            ForEach(items, id: \.words) { item in
+                HStack(spacing: 6) {
+                    Image(systemName: item.symbol).font(.system(size: 13, weight: .regular))
+                    Text(item.words).font(Type.words(13))
+                }
+                .foregroundStyle(Ink.ink.opacity(0.6))
+            }
+        }
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// The card's edge alone, one stroke from the top left round to where it started: the rounded corners and the two notches at
+/// the perforation, none of the holes. What the hold traces.
+struct TicketOutline: Shape {
+    func path(in rect: CGRect) -> Path {
+        let s = rect.width / Card.width
+        let r = Card.corner * s, notch: CGFloat = 8 * s
+        let y = rect.minY + Card.poster * rect.height / Card.height
+        var p = Path()
+        p.move(to: CGPoint(x: rect.minX + r, y: rect.minY))
+        p.addLine(to: CGPoint(x: rect.maxX - r, y: rect.minY))
+        p.addArc(center: CGPoint(x: rect.maxX - r, y: rect.minY + r), radius: r, startAngle: .degrees(-90), endAngle: .degrees(0), clockwise: false)
+        p.addLine(to: CGPoint(x: rect.maxX, y: y - notch))
+        p.addArc(center: CGPoint(x: rect.maxX, y: y), radius: notch, startAngle: .degrees(-90), endAngle: .degrees(90), clockwise: true)
+        p.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - r))
+        p.addArc(center: CGPoint(x: rect.maxX - r, y: rect.maxY - r), radius: r, startAngle: .degrees(0), endAngle: .degrees(90), clockwise: false)
+        p.addLine(to: CGPoint(x: rect.minX + r, y: rect.maxY))
+        p.addArc(center: CGPoint(x: rect.minX + r, y: rect.maxY - r), radius: r, startAngle: .degrees(90), endAngle: .degrees(180), clockwise: false)
+        p.addLine(to: CGPoint(x: rect.minX, y: y + notch))
+        p.addArc(center: CGPoint(x: rect.minX, y: y), radius: notch, startAngle: .degrees(90), endAngle: .degrees(-90), clockwise: true)
+        p.addLine(to: CGPoint(x: rect.minX, y: rect.minY + r))
+        p.addArc(center: CGPoint(x: rect.minX + r, y: rect.minY + r), radius: r, startAngle: .degrees(180), endAngle: .degrees(270), clockwise: false)
+        return p
     }
 }
