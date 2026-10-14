@@ -75,8 +75,11 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         SWIFT_EMIT_LOC_STRINGS: YES
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: ""
-        # The icon is drawn by scripts/make-icon.swift into Stub/Resources/Assets.xcassets (Day 6).
+        # The icons are drawn by scripts/make-icons.swift into Stub/Resources/Assets.xcassets (ADR-028): Torn is the app's,
+        # the other nine are the icon drawer's, chosen in Your card.
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: "AppIcon-Roll AppIcon-Label AppIcon-Riso AppIcon-Punched AppIcon-Letterpress AppIcon-Edition AppIcon-Marquee AppIcon-Hand AppIcon-Scallop"
+        ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: NO
       configs:
         Debug:
           STUB_APPLINKS_MODE: "?mode=developer"
