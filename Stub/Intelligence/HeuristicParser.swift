@@ -194,10 +194,7 @@ struct HeuristicParser: StubParsing {
             && upper.range(of: #"\b(SCREEN|SCR|AUD|HALL)\s*\d"#, options: .regularExpression) == nil
     }
 
-    static func stripFormats(_ title: String) -> String {
-        title.replacingOccurrences(of: #"(?i)\s*\(?\b(2D|3D|IMAX|4DX|ATMOS|DOLBY|VMAX|GOLD CLASS|OC|CC|M|PG|R13|R16|R18|G)\b\)?\s*$"#, with: "", options: .regularExpression)
-            .trimmingCharacters(in: .whitespaces)
-    }
+    static func stripFormats(_ title: String) -> String { Release.stripFormats(title) }
 
     static func titleCase(_ s: String) -> String {
         let small: Set<String> = ["of", "the", "and", "a", "an", "as", "in", "on", "at", "to", "for", "by", "or",

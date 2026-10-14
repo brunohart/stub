@@ -132,7 +132,7 @@ struct EditionBack: View {
                     .font(Face.serifItalic.font(14))
                     .foregroundStyle(words)
                 // The serial is the release's hash: every copy of this edition carries the same one.
-                Text(Self.serial(composition.edition))
+                Text(BackLayout.serial(composition.edition))
                     .font(Face.mono.font(11))
                     .foregroundStyle(words.opacity(0.7))
             }
@@ -143,12 +143,12 @@ struct EditionBack: View {
                     .interpolation(.none)
                     .resizable()
                     .foregroundStyle(words)
-                    .frame(width: Self.codeSide, height: Self.codeSide)
+                    .frame(width: BackLayout.codeSide, height: BackLayout.codeSide)
             }
         }
         // `clearZones` measures the same numbers, so a punch never lands on the code or these words.
-        .padding(.horizontal, Self.stripInset.width)
-        .padding(.vertical, Self.stripInset.height)
+        .padding(.horizontal, BackLayout.stripInset.width)
+        .padding(.vertical, BackLayout.stripInset.height)
         .frame(maxHeight: .infinity, alignment: .bottom)
     }
 }

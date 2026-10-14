@@ -115,7 +115,7 @@ enum Remarque {
     static func punches(for edition: Edition, copy: Copy, strip: [Mark]) -> [Punch] {
         guard copy.viewing > 1 else { return [] }
         let r = Punch.radius
-        let keepOut = (strip.map(\.bounds) + EditionBack.clearZones(for: copy, edition: edition).map(mirror))
+        let keepOut = (strip.map(\.bounds) + BackLayout.clearZones(for: copy, edition: edition).map(mirror))
             .map { $0.insetBy(dx: -(r + clearance), dy: -(r + clearance)) }
         var placed: [Punch] = []
         func clear(_ p: CGPoint) -> Bool {
@@ -157,14 +157,21 @@ enum Remarque {
         case 0: nil
         case 1: "punched once"
         case 2: "punched twice"
-        default: "punched \(Pencil.spelled(punches.count)) times"
+        default: "punched \(spelled(punches.count)) times"
         }
+    }
+
+    private static func spelled(_ n: Int) -> String {
+        let f = NumberFormatter()
+        f.locale = Locale(identifier: "en")
+        f.numberStyle = .spellOut
+        return f.string(from: NSNumber(value: n)) ?? String(n)
     }
 }
 
-// Arithmetic on the back's layout, so it belongs to no actor: `EditionBack` is a `View`, main-actor by inference, and a
-// composition is drawn off it (a test, a share).
-extension EditionBack {
+/// Arithmetic on the back's layout, so it belongs to no actor and to no view: a composition is drawn off the main actor (a
+/// test, a share), and the widget draws the front without the back (ADR-027).
+enum BackLayout {
     /// The back's strip: its inset from the card's edges, and the Aztec code's side, in points.
     nonisolated static let stripInset = CGSize(width: 20, height: 22)
     nonisolated static let codeSide: CGFloat = 62

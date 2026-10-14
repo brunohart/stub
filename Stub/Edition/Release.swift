@@ -9,7 +9,7 @@ enum Release {
         var bare = title.trimmingCharacters(in: .whitespacesAndNewlines)
         // A ticket can print more than one format after the title ("Dune Part Two IMAX 2D"); strip until none is left.
         for _ in 0..<3 {
-            let stripped = HeuristicParser.stripFormats(bare)
+            let stripped = stripFormats(bare)
             if stripped == bare { break }
             bare = stripped
         }
@@ -19,6 +19,13 @@ enum Release {
             .replacingOccurrences(of: "&", with: " and ")
         let kept = folded.unicodeScalars.map { CharacterSet.alphanumerics.contains($0) ? Character($0) : " " }
         return String(kept).split(separator: " ").joined(separator: " ")
+    }
+
+    /// A format or a rating printed after a title ("2D", "IMAX", "(M)"), taken off the end. The parser and the release key
+    /// share it; it lives here so the widget, which draws editions and reads no tickets, has it too.
+    static func stripFormats(_ title: String) -> String {
+        title.replacingOccurrences(of: #"(?i)\s*\(?\b(2D|3D|IMAX|4DX|ATMOS|DOLBY|VMAX|GOLD CLASS|OC|CC|M|PG|R13|R16|R18|G)\b\)?\s*$"#, with: "", options: .regularExpression)
+            .trimmingCharacters(in: .whitespaces)
     }
 
     /// FNV-1a over the key. The same release hashes the same on every phone and every launch: `Hashable` is

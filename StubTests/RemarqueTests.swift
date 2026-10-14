@@ -33,7 +33,7 @@ struct RemarqueTests {
                 copy.viewings = viewing
                 let c = Composition(edition: edition(movement, copy.title), copy: copy)
                 #expect(c.punches.count == viewing - 1, "\(movement) viewing \(viewing) of \(copy.title): \(c.punches.count) punches")
-                let back = EditionBack.clearZones(for: copy, edition: c.edition).map(Remarque.mirror)
+                let back = BackLayout.clearZones(for: copy, edition: c.edition).map(Remarque.mirror)
                 for (i, punch) in c.punches.enumerated() {
                     #expect(punch.die == movement.punch)
                     for mark in c.strip {

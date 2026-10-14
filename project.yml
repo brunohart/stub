@@ -51,6 +51,10 @@ targets:
         CADisableMinimumFrameDurationOnPhone: true
         # CloudKit's silent pushes say another phone changed the drawer (ADR-024).
         UIBackgroundModes: [remote-notification]
+        # stub://stub/<id> opens a stub: how the widget's card says where it goes (ADR-027).
+        CFBundleURLTypes:
+          - CFBundleURLName: com.designedbybruno.stub
+            CFBundleURLSchemes: [stub]
     # The drawer lives in an App Group so the widget can read it (Day 5). Generated, like Info.plist.
     # Add to Stub links open the app (ADR-021); a Debug build reads the association file straight from the site
     # (STUB_APPLINKS_MODE), since Apple's CDN takes a day to see a new one.
@@ -87,8 +91,8 @@ targets:
         Release:
           EXCLUDED_SOURCE_FILE_NAMES: "stub-*.png stub-*.pdf"
           STUB_APPLINKS_MODE: ""
-  # The widget: the last stub on the lock screen and the home screen. Shares the model, the inks, the type
-  # tokens and the store with the app by compiling the same files; nothing it shares may need Metal or UIKit.
+  # The widget: a stub's edition on the home screen and the lock screen (ADR-027). Shares the model, the inks, the type,
+  # the store and the edition's composition with the app by compiling the same files; nothing it shares may need Metal.
   StubWidget:
     type: app-extension
     platform: iOS
@@ -99,9 +103,28 @@ targets:
       - path: Stub/Design/Type.swift
       - path: Stub/Reach/SharedStore.swift
       - path: Stub/Reach/AppGroup.swift
+      - path: Stub/Reach/Deck.swift
+      # The edition, drawn from its marks (ADR-027): everything but the light, the stock's shaders and the back.
+      - path: Stub/Edition/Edition.swift
+      - path: Stub/Edition/Composition.swift
+      - path: Stub/Edition/Marks.swift
+      - path: Stub/Edition/Part.swift
+      - path: Stub/Edition/PaletteInks.swift
+      - path: Stub/Edition/Release.swift
+      - path: Stub/Edition/Remarque.swift
+      - path: Stub/Edition/Patina.swift
+      - path: Stub/Edition/Proof.swift
+      - path: Stub/Edition/Printer.swift
+      - path: Stub/Edition/InBetween.swift
+      - path: Stub/Edition/HitTest.swift
+      - path: Stub/Edition/Movements
       - path: Stub/Resources/Fonts/HostGrotesk-Variable.ttf
         buildPhase: resources
       - path: Stub/Resources/Fonts/FragmentMono-Regular.ttf
+        buildPhase: resources
+      - path: Stub/Resources/Fonts/Newsreader-Variable.ttf
+        buildPhase: resources
+      - path: Stub/Resources/Fonts/Newsreader-Italic-Variable.ttf
         buildPhase: resources
     info:
       path: StubWidget/Info.plist
@@ -114,6 +137,8 @@ targets:
         UIAppFonts:
           - HostGrotesk-Variable.ttf
           - FragmentMono-Regular.ttf
+          - Newsreader-Variable.ttf
+          - Newsreader-Italic-Variable.ttf
     entitlements:
       path: StubWidget/StubWidget.entitlements
       properties:
