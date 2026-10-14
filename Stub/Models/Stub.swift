@@ -1,10 +1,12 @@
 import Foundation
 import SwiftData
 
-/// One ticket stub. One night in a room with strangers. The current version of the drawer's schema (ADR-024).
-typealias Stub = StubSchemaV2.Stub
+/// One ticket stub. One night in a room with strangers. The current version of the drawer's schema (ADR-024, ADR-026).
+typealias Stub = StubSchemaV3.Stub
 /// What the press keeps, kept with the stubs so it goes where they go (ADR-024).
-typealias PressRecord = StubSchemaV2.PressRecord
+typealias PressRecord = StubSchemaV3.PressRecord
+/// A drawer the person made and named, and the stubs filed in it, in their order (ADR-026).
+typealias StubDrawer = StubSchemaV3.StubDrawer
 
 /// The drawer as it was from Day 0 to 2026-10-13: one model, an id SwiftData kept unique, nothing defaulted. Frozen
 /// exactly, so a store made by those builds is recognised as this version and migrated, never reopened as something else.
@@ -133,11 +135,131 @@ enum StubSchemaV2: VersionedSchema {
     }
 }
 
+/// The drawer from 2026-10-15 (ADR-026): version 2, frozen above, plus where each stub stands in its year when the person
+/// has moved it by hand, and the drawers the person makes. Still what CloudKit can carry: defaults everywhere, nothing
+/// unique, no relationships (a drawer keeps its stubs' ids, in order, so a stub deleted on another phone is simply skipped).
+enum StubSchemaV3: VersionedSchema {
+    static let versionIdentifier = Schema.Version(3, 0, 0)
+    static var models: [any PersistentModel.Type] { [Stub.self, PressRecord.self, StubDrawer.self] }
+
+    @Model
+    final class Stub {
+        var id: UUID = UUID()
+        var title: String = ""
+        var cinema: String?
+        var screenedAt: Date?
+        var screen: String?
+        var seat: String?
+        var price: Decimal?
+        var currency: String?
+
+        /// Everything the reader saw, verbatim. Kept so the human can correct the machine.
+        var rawText: String = ""
+        @Attribute(.externalStorage) var imageData: Data?
+
+        /// Who produced the structured fields: `foundation-models`, `heuristic`, `wallet-pass`, `link`, `shortcut` or `manual`.
+        var readBy: String = "manual"
+        var confidence: Double = 1
+
+        /// Authored imperfection. Fixed at creation so the stub never fidgets on its own.
+        var tilt: Double = -0.8
+        var createdAt: Date = Date.now
+
+        /// The cinema's name, normalised: the same room however a ticket spelt it (ADR-024). The raw `cinema` is kept.
+        var venue: String?
+        /// The chain the venue belongs to ("Event", "Hoyts", "Lighthouse"), "independent", or nil when Stub does not know.
+        var circuit: String?
+
+        /// Where the person stood this stub in its year, when they have moved it (ADR-026): lower is nearer the front. `nil`
+        /// until then, and a stub kept since stands at the front of its year, newest night first.
+        var handOrder: Double?
+
+        init(
+            id: UUID = UUID(),
+            title: String,
+            cinema: String? = nil,
+            screenedAt: Date? = nil,
+            screen: String? = nil,
+            seat: String? = nil,
+            price: Decimal? = nil,
+            currency: String? = nil,
+            rawText: String = "",
+            imageData: Data? = nil,
+            readBy: String = "manual",
+            confidence: Double = 1,
+            tilt: Double = Stub.randomTilt(),
+            createdAt: Date = .now,
+            venue: String? = nil,
+            circuit: String? = nil,
+            handOrder: Double? = nil
+        ) {
+            self.id = id
+            self.title = title
+            self.cinema = cinema
+            self.screenedAt = screenedAt
+            self.screen = screen
+            self.seat = seat
+            self.price = price
+            self.currency = currency
+            self.rawText = rawText
+            self.imageData = imageData
+            self.readBy = readBy
+            self.confidence = confidence
+            self.tilt = tilt
+            self.createdAt = createdAt
+            self.venue = venue
+            self.circuit = circuit
+            self.handOrder = handOrder
+        }
+
+        /// Between -1.5° and 1.5°, never level. Rounded so two stubs rarely share a tilt.
+        static func randomTilt() -> Double {
+            let candidates: [Double] = [-1.5, -1.1, -0.8, -0.5, 0.4, 0.7, 1.2]
+            return candidates.randomElement() ?? -0.8
+        }
+    }
+
+    /// One thing the press keeps, as bytes under a name. Unchanged from version 2.
+    @Model
+    final class PressRecord {
+        var kind: String = ""
+        var key: String = ""
+        var data: Data = Data()
+        var updatedAt: Date = Date.distantPast
+
+        init(kind: String, key: String, data: Data, updatedAt: Date = .now) {
+            self.kind = kind; self.key = key; self.data = data; self.updatedAt = updatedAt
+        }
+    }
+
+    /// A drawer of the cabinet the person made and named: "Festival 2025", "With Mum". Every stub is in the drawer the
+    /// app opens on; a drawer like this holds the ones the person filed in it, as ids in the order they stand. A stub can
+    /// be filed in more than one, as a card catalogue cross-files a book.
+    @Model
+    final class StubDrawer {
+        var id: UUID = UUID()
+        var name: String = ""
+        var createdAt: Date = Date.now
+        /// Where the drawer sits in the cabinet, left to right after the drawer of every stub.
+        var position: Double = 0
+        /// The stubs filed here, front to back.
+        var stubIDs: [UUID] = []
+
+        init(id: UUID = UUID(), name: String, createdAt: Date = .now, position: Double = 0, stubIDs: [UUID] = []) {
+            self.id = id; self.name = name; self.createdAt = createdAt; self.position = position; self.stubIDs = stubIDs
+        }
+    }
+}
+
 /// Version 1 to version 2 is lightweight: a uniqueness constraint dropped, defaults added, two optional properties and a
-/// new model. Every stub is kept with its id, its photograph and its tilt.
+/// new model. Every stub is kept with its id, its photograph and its tilt. Version 2 to 3 is lightweight too: one optional
+/// property and a new model.
 enum StubMigrationPlan: SchemaMigrationPlan {
-    static var schemas: [any VersionedSchema.Type] { [StubSchemaV1.self, StubSchemaV2.self] }
-    static var stages: [MigrationStage] { [.lightweight(fromVersion: StubSchemaV1.self, toVersion: StubSchemaV2.self)] }
+    static var schemas: [any VersionedSchema.Type] { [StubSchemaV1.self, StubSchemaV2.self, StubSchemaV3.self] }
+    static var stages: [MigrationStage] {
+        [.lightweight(fromVersion: StubSchemaV1.self, toVersion: StubSchemaV2.self),
+         .lightweight(fromVersion: StubSchemaV2.self, toVersion: StubSchemaV3.self)]
+    }
 }
 
 extension Stub {

@@ -12,6 +12,10 @@ struct StubDetailView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// The whole drawer, so the edition can say which viewing of its release this stub was.
     @Query private var drawer: [Stub]
+    /// The drawers the person made, to file this stub in (ADR-026).
+    @Query(sort: \StubDrawer.position) private var drawers: [StubDrawer]
+    @State private var naming = false
+    @State private var throwingAway = false
     @State private var tilt: Double
     @State private var turned: Bool
     @State private var showRaw = false
@@ -108,13 +112,23 @@ struct StubDetailView: View {
                         }
 
                         Button(role: .destructive) {
-                            context.delete(stub)
-                            dismiss()
+                            throwingAway = true
                         } label: {
                             Text("Throw this stub away").font(Type.words(14)).foregroundStyle(Ink.rust)
                         }
                         .buttonStyle(.stamp(.quiet))
                         .padding(.top, 12)
+                        // Nothing else in the drawer is lost in one tap: the stub, its photograph and its place in every
+                        // drawer go, on every phone it syncs to, so it is asked once.
+                        .confirmationDialog("Throw away \(stub.title)?", isPresented: $throwingAway, titleVisibility: .visible) {
+                            Button("Throw it away", role: .destructive) {
+                                for drawer in drawers { Cabinet.takeOut(stub.id, of: drawer) }
+                                context.delete(stub)
+                                dismiss()
+                            }
+                        } message: {
+                            Text("The stub and its photograph go from every drawer, here and in your iCloud. Its edition stays with the film.")
+                        }
                     }
                     .padding(20)
                     .padding(.bottom, 80)
@@ -214,12 +228,13 @@ struct StubDetailView: View {
     /// it on one. Turning it over is the card's own: a tap on it. One to a row at the accessibility sizes.
     private var actions: some View {
         let edition = editions.edition(for: stub.title)
-        let count = typeSize.isAccessibilitySize ? 1 : (RoomView.isSupported ? 3 : 2)
+        let count = typeSize.isAccessibilitySize ? 1 : (RoomView.isSupported ? 4 : 3)
         return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: count), spacing: 10) {
             Button { pressing = true } label: { StampLabel(title: "The press", symbol: "dial.medium") }
                 .disabled(edition == nil)
                 .accessibilityHint("Pull your own proof of the edition.")
             share(edition)
+            file
             if RoomView.isSupported {
                 Button { inRoom = true } label: { StampLabel(title: "On the table", symbol: "arkit") }
                     .disabled(edition == nil)
@@ -227,6 +242,35 @@ struct StubDetailView: View {
             }
         }
         .buttonStyle(.stamp(.paper, tight: true))
+    }
+
+    /// File it in a drawer: the drawers with a mark against the ones it is in, and a new one (ADR-026). The same as carrying it
+    /// onto a drawer's label in the drawer, for anyone who would rather choose from a list.
+    private var file: some View {
+        let filed = drawers.filter { $0.stubIDs.contains(stub.id) }
+        return Menu {
+            ForEach(drawers) { drawer in
+                let isIn = drawer.stubIDs.contains(stub.id)
+                Button(drawer.name, systemImage: isIn ? "checkmark" : "tray") {
+                    if isIn { Cabinet.takeOut(stub.id, of: drawer) } else { Cabinet.file(stub, in: drawer, among: self.drawer) }
+                    try? context.save()
+                }
+            }
+            Button("New drawer…", systemImage: "plus") { naming = true }
+        } label: {
+            StampLabel(title: filed.isEmpty ? "File" : filed.count == 1 ? filed[0].name : "In \(filed.count) drawers",
+                       symbol: filed.isEmpty ? "tray.and.arrow.down" : "tray.full")
+        }
+        .menuStyle(.button)
+        .accessibilityLabel(filed.isEmpty ? "File in a drawer" : "Filed in \(filed.map(\.name).joined(separator: ", "))")
+        .sheet(isPresented: $naming) {
+            NameDrawerSheet(title: "A new drawer") { name in
+                let made = StubDrawer(name: name, position: Cabinet.nextPosition(after: drawers))
+                context.insert(made)
+                Cabinet.file(stub, in: made, among: drawer)
+                try? context.save()
+            }
+        }
     }
 
     /// The still, and beside it the card turning in the light: a still is the wrong share for a card whose point is light

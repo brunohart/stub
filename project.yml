@@ -51,6 +51,11 @@ targets:
         CADisableMinimumFrameDurationOnPhone: true
         # CloudKit's silent pushes say another phone changed the drawer (ADR-024).
         UIBackgroundModes: [remote-notification]
+        # A stub carried by a finger inside the app, to move it or file it (ADR-026). Never offered to another app.
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.designedbybruno.stub.card
+            UTTypeDescription: Stub card
+            UTTypeConformsTo: [public.data]
         # stub://stub/<id> opens a stub: how the widget's card says where it goes (ADR-027).
         CFBundleURLTypes:
           - CFBundleURLName: com.designedbybruno.stub
@@ -222,6 +227,8 @@ schemes:
         StubTests: [test]
     run:
       config: Debug
+      # The icon drawer, sold in Xcode's test store when the app is run from Xcode (ADR-028).
+      storeKitConfiguration: Stub.storekit
     test:
       config: Debug
       targets: [StubTests]

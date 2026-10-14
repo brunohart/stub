@@ -35,6 +35,7 @@ struct StubApp: App {
         if DebugSeed.resets {
             try? context.delete(model: Stub.self)
             try? context.delete(model: PressRecord.self)
+            try? context.delete(model: StubDrawer.self)
             try? context.save()
         }
         #endif

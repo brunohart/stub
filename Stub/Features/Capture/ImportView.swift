@@ -2,15 +2,20 @@ import SwiftUI
 import SwiftData
 import PhotosUI
 
-/// Bring a stub in. From the library today; from the camera when there is a device to hold. Keep it and you get two
-/// things back (ADR-015): the stub as scanned, filed in the drawer, and its edition, printed here before your eyes.
+/// Bring a stub in. Keep a stub opens on the camera (ADR-025); the photograph, or one from the library, is read here, and
+/// typing it in is always there. Keep it and you get two things back (ADR-015): the stub as scanned, filed in the drawer,
+/// and its edition, printed here before your eyes.
 struct ImportView: View {
     /// A ticket handed over from outside (ADR-021): the sheet opens prefilled, or reading it.
     var arrival: Arrival? = nil
+    /// The drawer that was open when Keep a stub was pressed: a stub kept is filed there too (ADR-026).
+    var drawer: StubDrawer? = nil
+    /// Keep a stub opens on the viewfinder; an arrival, or typing, on the form.
+    var startsWithCamera = false
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     /// The drawer, so a kept stub's edition knows which viewing of its release it is.
-    @Query private var drawer: [Stub]
+    @Query private var everyStub: [Stub]
     /// The stub just kept. Set, the sheet stops being a form and becomes the press.
     @State private var kept: Stub?
     @State private var keptTurned = false
@@ -22,11 +27,41 @@ struct ImportView: View {
     @State private var draft = StubDraft()
     @State private var failure: String?
     @State private var showRaw = false
-    @State private var isScanning = false
     @State private var received = false
+    /// Holding the camera up to the ticket, or the form it fills in.
+    @State private var onCamera = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    init(arrival: Arrival? = nil, drawer: StubDrawer? = nil, startsWithCamera: Bool = false) {
+        self.arrival = arrival
+        self.drawer = drawer
+        self.startsWithCamera = startsWithCamera
+        _onCamera = State(initialValue: startsWithCamera && arrival == nil)
+    }
+
     var body: some View {
+        ZStack {
+            form
+                .opacity(onCamera ? 0 : 1)
+            if onCamera {
+                Viewfinder { photo in
+                    image = UIImage(cgImage: photo)
+                    withAnimation(reduceMotion ? Motion.plain : Motion.place) { onCamera = false }
+                    Task { await read(photo) }
+                } library: { item in
+                    withAnimation(reduceMotion ? Motion.plain : Motion.place) { onCamera = false }
+                    Task { await load(item) }
+                } type: {
+                    withAnimation(reduceMotion ? Motion.plain : Motion.place) { onCamera = false }
+                } cancel: {
+                    dismiss()
+                }
+                .transition(.opacity)
+            }
+        }
+    }
+
+    private var form: some View {
         NavigationStack {
             ZStack {
                 Paper()
@@ -134,9 +169,6 @@ struct ImportView: View {
                 dismiss()
                 #endif
             }
-            .fullScreenCover(isPresented: $isScanning) {
-                ScanSheet { scan in Task { await scanned(scan) } }
-            }
         }
     }
 
@@ -145,61 +177,30 @@ struct ImportView: View {
         return false
     }
 
+    /// Typing it in, with nothing photographed yet: the camera and the library are a tap away still.
     private var picker: some View {
-        // The camera, when there is one to hold (Day 6). The simulator has none, and keeps the Photos path.
-        let scannable = StubScanner.isUsable
-        return VStack(alignment: .leading, spacing: 14) {
-            if scannable {
-                Button { isScanning = true } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: "camera.viewfinder")
-                        Text("Scan the stub with the camera")
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Button { withAnimation(reduceMotion ? Motion.plain : Motion.place) { onCamera = true } } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "camera")
+                        Text("Photograph it")
                     }
                 }
-                .buttonStyle(.stamp(.ink, wide: true))
-                .accessibilityHint("Opens the camera and reads the print live.")
-            }
-            PhotosPicker(selection: $pick, matching: .images, photoLibrary: .shared()) {
-                HStack(spacing: 12) {
-                    Image(systemName: "photo.on.rectangle.angled")
-                    Text("Choose a photograph of the stub")
+                .buttonStyle(.stamp(.paper))
+                .accessibilityHint("Opens the camera.")
+                PhotosPicker(selection: $pick, matching: .images, photoLibrary: .shared()) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "photo.on.rectangle.angled")
+                        Text("Photos")
+                    }
                 }
+                .buttonStyle(.stamp(.paper))
+                .accessibilityHint("Opens your photo library.")
             }
-            .buttonStyle(.stamp(scannable ? .paper : .ink, wide: true))
-            .accessibilityHint("Opens your photo library.")
-            Text("Or type it in below. The reader is a shortcut, not a gate.")
-                .font(Type.words(15)).foregroundStyle(Ink.ink.opacity(0.7))
-                .fixedSize(horizontal: false, vertical: true)
             Text(StubReader.modelStatus)
-                .font(Type.numbers(11)).foregroundStyle(Ink.grey)
+                .font(Type.words(12)).foregroundStyle(Ink.grey)
         }
-    }
-
-    /// The camera's lines go through the same parsers as a photograph's (ADR-010); the frame, cropped, is the plate.
-    private func scanned(_ scan: StubScanner.Scan) async {
-        failure = nil
-        reading = nil
-        if let photo = scan.photo { image = UIImage(cgImage: photo) }
-        guard !scan.reading.lines.isEmpty else {
-            stage = .done
-            failure = "The camera read nothing. Hold the stub flatter, or type it in."
-            return
-        }
-        // A frame the camera could not give is a blank stub in the drawer, which the card already knows how to print.
-        let plate = scan.photo ?? blankPlate
-        let result = await StubReader.read(scan.reading, plate: plate, progress: { stage in
-            withAnimation(reduceMotion ? Motion.plain : Motion.settle) { self.stage = stage }
-        }, partial: { snapshot in
-            withAnimation(Motion.place) { draft = snapshot }
-        })
-        reading = result.reading
-        if result.cropped { image = UIImage(cgImage: result.plate) }
-        withAnimation(Motion.place) { draft = result.draft }
-    }
-
-    private var blankPlate: CGImage {
-        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 8, height: 8))
-        return renderer.image { ctx in UIColor(Ink.cream).setFill(); ctx.fill(CGRect(x: 0, y: 0, width: 8, height: 8)) }.cgImage!
     }
 
     private var fields: some View {
@@ -272,6 +273,12 @@ struct ImportView: View {
             failure = "That picture could not be opened."
             return
         }
+        await read(cg, whole: whole)
+    }
+
+    /// The photograph, upright, through the reader: found, cropped, read, understood.
+    private func read(_ cg: CGImage, whole: Bool = false) async {
+        failure = nil
         image = UIImage(cgImage: cg)
         do {
             let result = try await StubReader.read(cg, whole: whole, progress: { stage in
@@ -312,6 +319,7 @@ struct ImportView: View {
             circuit: place.circuit
         )
         context.insert(stub)
+        if let drawer { Cabinet.file(stub, in: drawer, among: everyStub + [stub]) }
         // Not dismissed: the stub is in the drawer, and now its edition is printed.
         withAnimation(reduceMotion ? Motion.plain : Motion.place) { kept = stub }
     }
@@ -320,7 +328,7 @@ struct ImportView: View {
     private func press(_ stub: Stub) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                Keepsake(stub: stub, copy: Copy(stub: stub, among: drawer), turned: $keptTurned, pressesOnAppear: true)
+                Keepsake(stub: stub, copy: Copy(stub: stub, among: everyStub), turned: $keptTurned, pressesOnAppear: true)
                 Button { dismiss() } label: {
                     HStack(spacing: 8) {
                         Text("Into the drawer")

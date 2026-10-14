@@ -4,7 +4,7 @@
 #                       [--proof spec] [--keeps] [--open title] [--press] [--part id] [--take n] [--scrub x]
 #                       [--separated s] [--bench name] [--flood p] [--pulled] [--wet w] [--signed] [--record path.mov]
 #                       [--viewings n] [--age years] [--room] [--clip out.mp4] [--clip-card] [--inbox file] [--preview]
-#                       [--type size] [--look metal|swiftui] [--wait-for regex] [--shot path.png]
+#                       [--face ticket|edition] [--cabinet] [--drawer name] [--carry] [--type size] [--look metal|swiftui] [--wait-for regex] [--shot path.png]
 # --drive: after the seed, press, open, hold and close on a timer (see DebugDrive) so the run can be filmed.
 # --season: open the season sheet once the seed has settled.
 # --import: open the import sheet once the seed has settled (Day 6).
@@ -32,6 +32,10 @@
 #   app opens the import sheet on it. A relative path is from the repo.
 # --preview: the App Store preview's story on a clock (BEDIP-221); with --inbox, the stub that arrives. scripts/preview.sh
 #   films it and cuts it to Apple's sizes.
+# --face ticket|edition: the drawer shows that face (ADR-026). --cabinet: once the seed has settled, make two drawers and
+#   file stubs in them. --drawer "With Mum": open that drawer. --carry: hold a stub up, so the cabinet's rail shows.
+# --keep: press Keep a stub once the drawer settles (ADR-025). --camera file: the viewfinder looks at that photograph (the
+#   simulator has no camera). --shutter: take it once the marks lock on the ticket.
 # --type: set the simulator's Dynamic Type size for the run (medium, extra-extra-large, accessibility-extra-large …)
 #   and put it back to medium afterwards.
 # --wait-for: instead of sleeping STUB_SETTLE seconds, poll the app's log for a line matching the regex
@@ -55,6 +59,9 @@ while [ $# -gt 0 ]; do case "$1" in
   --clip-card) ARGS+=(-clipformat card);;
   --inbox) ARGS+=(-inbox "$(cd "$(dirname "$2")" && pwd)/$(basename "$2")"); shift;;
   --preview) ARGS+=(-preview);;
+  --face) ARGS+=(-face "$2"); shift;; --cabinet) ARGS+=(-cabinet);; --drawer) ARGS+=(-drawer "$2"); shift;;
+  --carry) ARGS+=(-carry);; --keep) ARGS+=(-keep);; --shutter) ARGS+=(-shutter);;
+  --camera) ARGS+=(-camera "$(cd "$(dirname "$2")" && pwd)/$(basename "$2")"); shift;;
   --look) ARGS+=(-look "$2"); shift;; --wait-for) WAIT="$2"; shift;;
   --shot) SHOT="$2"; shift;; *) echo "unknown $1" >&2; exit 2;; esac; shift; done
 SIM="$(scripts/sim.sh)"

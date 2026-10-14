@@ -22,8 +22,8 @@ enum SharedStore {
     /// The person's own private iCloud database: never a server of ours (ADR-024).
     static let cloudContainer = "iCloud.com.designedbybruno.stub"
 
-    /// The schema the drawer is opened with, version 2, migrating a version 1 store the first time.
-    static var schema: Schema { Schema(versionedSchema: StubSchemaV2.self) }
+    /// The schema the drawer is opened with, version 3, migrating a version 1 or 2 store the first time.
+    static var schema: Schema { Schema(versionedSchema: StubSchemaV3.self) }
 
     /// The container at `url`, migrated to the current schema. The widget opens it read-only: one writer, one file, no
     /// argument. `sync` mirrors it to the person's private iCloud database; when that cannot be set up (no iCloud

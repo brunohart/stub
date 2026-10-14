@@ -1,0 +1,36 @@
+{
+  "identifier" : "5A2F6C1E",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : true,
+      "internalID" : "6754120001",
+      "localizations" : [
+        {
+          "description" : "Nine more icons for Stub, to choose from in Your card. Yours for good.",
+          "displayName" : "The icon drawer",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.designedbybruno.stub.icons",
+      "referenceName" : "The icon drawer",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6754120000",
+    "_developerTeamID" : "",
+    "_locale" : "en_NZ",
+    "_storefront" : "NZL"
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

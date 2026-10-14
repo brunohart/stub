@@ -6,18 +6,41 @@ import SwiftUI
 /// its sheen moves with the phone as the edition's foil does (one light, the phone's), and stays where it is under Reduce
 /// Motion and in the simulator, which has no gyroscope. Pressed, the card goes a shade into its holder; it opens the season.
 struct DrawerLabel: View {
-    let summary: SeasonSummary
-    /// The years the drawer spans, "2024–2026", or one year, or nothing for an empty drawer.
-    let years: String?
-    var open: () -> Void
+    /// What is typed on the card.
+    enum Typed: Equatable {
+        /// The drawer of every stub: the years, the stubs, the cinemas.
+        case every(films: Int, cinemas: Int, years: String?)
+        /// A drawer the person made: its name, and under it how many stubs and the years.
+        case made(name: String, films: Int, years: String?)
+        /// A blank card in an empty holder: a drawer not made yet.
+        case blank
+    }
+
+    let typed: Typed
+    /// A stub is being held over it: the drawer slides out a little to take it (ADR-026).
+    var open = false
+    var action: () -> Void
 
     @State private var attitude = Attitude()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     static let size = CGSize(width: 264, height: 80)
 
+    /// The drawer of every stub's label, from the drawer's numbers.
+    init(summary: SeasonSummary, years: String?, open: @escaping () -> Void) {
+        self.init(.every(films: summary.films, cinemas: summary.cinemas.count, years: years), action: open)
+    }
+
+    init(_ typed: Typed, open: Bool = false, action: @escaping () -> Void) {
+        self.typed = typed
+        self.open = open
+        self.action = action
+    }
+
+    private var isEmptyEvery: Bool { if case .every(0, _, _) = typed { true } else { false } }
+
     var body: some View {
-        Button(action: open) {
+        Button(action: action) {
             ZStack {
                 plate
                 card
@@ -31,15 +54,19 @@ struct DrawerLabel: View {
                 .padding(.horizontal, 11)
             }
             .frame(width: Self.size.width, height: Self.size.height)
+            .scaleEffect(open ? 1.06 : 1)
+            .offset(y: open ? 6 : 0)
+            .animation(Motion.stamp, value: open)
         }
         .buttonStyle(LabelPress())
-        .disabled(summary.films == 0)
+        .disabled(isEmptyEvery)
+        .sensoryFeedback(.impact(weight: .medium, intensity: 0.7), trigger: open) { _, now in now }
         .onAppear { if !reduceMotion { attitude.start() } }
         .onDisappear { attitude.stop() }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(spoken)
-        .accessibilityHint(summary.films == 0 ? "" : "Opens the season: the numbers behind the drawer.")
-        .accessibilityAddTraits(summary.films == 0 ? [] : .isButton)
+        .accessibilityHint(hint)
+        .accessibilityAddTraits(isEmptyEvery ? [] : .isButton)
     }
 
     // MARK: Brass
@@ -99,30 +126,70 @@ struct DrawerLabel: View {
             }
             .overlay {
                 VStack(spacing: 2) {
-                    Text(years ?? "Empty")
-                        .font(years == nil ? Type.words(19) : Type.numbers(19))
-                        .foregroundStyle(Ink.ink)
-                        .minimumScaleFactor(0.7)
-                        .lineLimit(1)
-                    if summary.films > 0 {
-                        let films = Text("\(summary.films)").font(Type.numbers(11))
-                        let cinemas = Text("\(summary.cinemas.count)").font(Type.numbers(11))
-                        Text("\(films) \(summary.films == 1 ? "stub" : "stubs")  ·  \(cinemas) \(summary.cinemas.count == 1 ? "cinema" : "cinemas")")
-                            .font(Type.words(11))
-                            .foregroundStyle(Ink.grey)
-                            .lineLimit(1)
+                    switch typed {
+                    case .every(let films, let cinemas, let years):
+                        Text(years ?? "Empty")
+                            .font(years == nil ? Type.words(19) : Type.numbers(19))
+                            .foregroundStyle(Ink.ink)
                             .minimumScaleFactor(0.7)
+                            .lineLimit(1)
+                        if films > 0 {
+                            counts(films, unit: films == 1 ? "stub" : "stubs", then: "\(cinemas)", cinemas == 1 ? "cinema" : "cinemas")
+                        }
+                    case .made(let name, let films, let years):
+                        Text(name)
+                            .font(Type.display(18))
+                            .foregroundStyle(Ink.ink)
+                            .minimumScaleFactor(0.6)
+                            .lineLimit(1)
+                        if films > 0, let years {
+                            counts(films, unit: films == 1 ? "stub" : "stubs", then: years, nil)
+                        } else {
+                            Text("Nothing filed yet").font(Type.words(11)).foregroundStyle(Ink.grey)
+                        }
+                    case .blank:
+                        HStack(spacing: 6) {
+                            Image(systemName: "plus").font(.system(size: 13, weight: .medium))
+                            Text("New drawer").font(Type.words(16))
+                        }
+                        .foregroundStyle(Ink.ink.opacity(0.55))
                     }
                 }
                 .padding(.horizontal, 8)
             }
     }
 
+    /// "11 stubs · 9 cinemas", the numbers in the mono.
+    private func counts(_ films: Int, unit: String, then figure: String, _ unit2: String?) -> some View {
+        let first = Text("\(films)").font(Type.numbers(11))
+        let second = Text(figure).font(Type.numbers(11))
+        let line = unit2.map { Text("\(first) \(unit)  ·  \(second) \($0)") } ?? Text("\(first) \(unit)  ·  \(second)")
+        return line
+            .font(Type.words(11))
+            .foregroundStyle(Ink.grey)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+    }
+
     private var spoken: String {
-        guard summary.films > 0 else { return "The drawer, empty." }
-        let span = years?.replacingOccurrences(of: "–", with: " to ") ?? ""
-        return "The drawer: \(span), \(summary.films) \(summary.films == 1 ? "stub" : "stubs"), "
-            + "\(summary.cinemas.count) \(summary.cinemas.count == 1 ? "cinema" : "cinemas")."
+        switch typed {
+        case .every(let films, let cinemas, let years):
+            guard films > 0 else { return "The drawer, empty." }
+            let span = years?.replacingOccurrences(of: "–", with: " to ") ?? ""
+            return "The drawer of every stub: \(span), \(films) \(films == 1 ? "stub" : "stubs"), \(cinemas) \(cinemas == 1 ? "cinema" : "cinemas")."
+        case .made(let name, let films, _):
+            return "\(name), a drawer: \(films == 0 ? "nothing filed yet" : "\(films) \(films == 1 ? "stub" : "stubs")")."
+        case .blank:
+            return "New drawer"
+        }
+    }
+
+    private var hint: String {
+        switch typed {
+        case .every(let films, _, _): films == 0 ? "" : "Opens the season: the numbers behind the drawer."
+        case .made: "Opens the drawer's season, where it can be renamed or taken out."
+        case .blank: "Names a new drawer to file stubs in."
+        }
     }
 
     /// The years the stubs were seen in: "2024–2026", "2025", or `nil` for an empty drawer. A stub without a date counts by

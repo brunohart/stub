@@ -4,6 +4,10 @@ import SwiftUI
 struct SeasonView: View {
     let summary: SeasonSummary
     let sentence: String
+    /// A drawer the person made: its name heads the sheet, and the sheet is where it is renamed or taken out (ADR-026).
+    var drawer: String? = nil
+    var rename: (() -> Void)? = nil
+    var remove: (() -> Void)? = nil
     /// The figures are put down one after another when the sheet opens.
     @State private var placed = false
 
@@ -12,6 +16,11 @@ struct SeasonView: View {
             Paper()
             ScrollView {
                 VStack(alignment: .leading, spacing: 34) {
+                    if let drawer {
+                        Text(drawer).displayText(17).foregroundStyle(Ink.grey)
+                            .accessibilityAddTraits(.isHeader)
+                            .padding(.bottom, -18)
+                    }
                     Text(sentence)
                         .font(Type.italic(26))
                         .foregroundStyle(Ink.navy)
@@ -54,6 +63,21 @@ struct SeasonView: View {
                                                : "Kept on this phone only. Settings › Stub keeps it in your iCloud too.")
                         .font(Type.words(12)).foregroundStyle(Ink.grey)
                         .fixedSize(horizontal: false, vertical: true)
+
+                    if let drawer, rename != nil || remove != nil {
+                        HStack(spacing: 18) {
+                            if let rename {
+                                Button("Rename \(drawer)", action: rename).buttonStyle(.stamp(.quiet))
+                            }
+                            if let remove {
+                                Button(action: remove) {
+                                    Text("Take the drawer out").foregroundStyle(Ink.rust)
+                                }
+                                .buttonStyle(.stamp(.quiet))
+                            }
+                        }
+                        .font(Type.words(14))
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 24)

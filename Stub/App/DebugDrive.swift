@@ -83,6 +83,22 @@ final class DebugDrive {
         return args[i + 1]
     }
 
+    /// `-camera /path/to/photo.png`: the viewfinder shows this photograph as if the camera were looking at it, and the
+    /// shutter takes it (ADR-025). The simulator has no camera.
+    static let cameraFile: String? = value(after: "-camera")
+    /// `-keep`: open Keep a stub's viewfinder once the drawer has settled, as the dock's button would.
+    static var wantsKeep: Bool { ProcessInfo.processInfo.arguments.contains("-keep") }
+    /// `-shutter`: with `-keep` and `-camera`, take the photograph once the marks have locked onto the ticket.
+    static var wantsShutter: Bool { ProcessInfo.processInfo.arguments.contains("-shutter") }
+    /// `-face edition`: the drawer shows this face at launch (ADR-026).
+    static let face: DrawerFace? = value(after: "-face").flatMap(DrawerFace.init(rawValue:))
+    /// `-cabinet`: once the seed has settled, make two drawers and file stubs in them, as a person would (ADR-026).
+    static var wantsCabinet: Bool { ProcessInfo.processInfo.arguments.contains("-cabinet") }
+    /// `-drawer "With Mum"`: open the drawer with this name at launch.
+    static let drawerName: String? = value(after: "-drawer")
+    /// `-carry`: with the drawer settled, hold its second stub up as a finger would, so the cabinet's rail can be seen.
+    static var wantsCarry: Bool { ProcessInfo.processInfo.arguments.contains("-carry") }
+
     /// `-keeps`: with `-edition`, open "What the press keeps" in the detail and scroll to it.
     static var wantsKeeps: Bool { ProcessInfo.processInfo.arguments.contains("-keeps") }
     /// `-proof "disc=14,bars=3"`: a proof pulled over each release as it is first printed (ADR-016). Parts are named

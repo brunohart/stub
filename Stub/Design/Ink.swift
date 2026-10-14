@@ -41,6 +41,8 @@ enum Motion {
     static let touchDown = Animation.spring(response: 0.1, dampingFraction: 1)
     /// A card dropped onto the table: it falls a little turned, lands, skids a degree past its tilt and settles (ADR-022).
     static let drop = Animation.spring(response: 0.5, dampingFraction: 0.62)
+    /// A folder closing on its stubs, or opening: heavier than a card, one small bounce as the front meets the back (ADR-026).
+    static let file = Animation.spring(response: 0.46, dampingFraction: 0.78)
 
     /// The press spring for this user: the stamp, or the plain settle when Reduce Motion is on.
     static func press(reduceMotion: Bool) -> Animation { reduceMotion ? plain : stamp }
