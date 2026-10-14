@@ -130,7 +130,7 @@ Every number here was set on purpose, and most were tuned by eye and thumb. The 
 | **Share** | `ImageRenderer`, AVFoundation | The still, and three seconds of the card turning in the light, drawn frame by frame through the same shaders |
 | **Keep** | SwiftData (versioned), an App Group, a CloudKit private database | On the device and in your own iCloud; no account of ours, no server ([ADR-005](DECISIONS.md#adr-005--private-by-construction), [ADR-012](DECISIONS.md#adr-012--one-drawer-in-an-app-group-the-app-writes-it-the-widget-reads-it-an-intent-runs-inside-the-app), [ADR-024](DECISIONS.md)) |
 | **Take in** | A share extension, the Wallet pass format, PDFKit | Passes read from their fields, PDFs from their text, screenshots as photographs; left in an inbox for the app, the drawer's one writer ([ADR-023](DECISIONS.md)) |
-| **Reach** | App Intents, universal links, WidgetKit, VisionKit | "Log a stub in Stub"; Add to Stub links and the Keep a ticket action ([ADR-021](DECISIONS.md)); the last stub on the lock screen; live text from the camera |
+| **Reach** | App Intents, universal links, WidgetKit, AVFoundation | "Log a stub in Stub"; Add to Stub links and the Keep a ticket action ([ADR-021](DECISIONS.md)); the drawer's editions on the home screen, dealt and turned in place ([ADR-027](DECISIONS.md)); a viewfinder whose marks lock onto the ticket ([ADR-025](DECISIONS.md)) |
 | **Access** | VoiceOver, Dynamic Type, Reduce Motion | Every card says what it knows; one column at the accessibility sizes; a rotor for the parts of a poster; the wheel is one adjustable control ([ADR-013](DECISIONS.md#adr-013--the-table-is-two-columns-until-the-type-gets-large-at-the-accessibility-sizes-it-is-one)) |
 
 ---
