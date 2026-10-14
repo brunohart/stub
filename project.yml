@@ -122,6 +122,7 @@ targets:
       - path: Stub/Edition/Printer.swift
       - path: Stub/Edition/InBetween.swift
       - path: Stub/Edition/HitTest.swift
+      - path: Stub/Edition/Treatment.swift
       - path: Stub/Edition/Movements
       - path: Stub/Resources/Fonts/HostGrotesk-Variable.ttf
         buildPhase: resources

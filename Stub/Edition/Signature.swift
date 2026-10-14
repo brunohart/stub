@@ -129,9 +129,9 @@ final class Signatures {
 /// that differ from the title's, the way a printmaker notes a state ("disc 14 · bars 3").
 struct Pencil: Equatable {
     var artistsProof: Bool
-    /// "disc 14 · bars 3", in the order the parts are drawn.
+    /// "disc echo · bars smaller", in the order the parts are drawn.
     var takes: String?
-    /// For VoiceOver: "disc take fourteen, bars take three".
+    /// For VoiceOver: "disc echoed, bars turned".
     var spokenTakes: String?
 
     init?(edition: Edition) {
@@ -141,8 +141,10 @@ struct Pencil: Equatable {
             guard let take = edition.takes[part.id], take != 0 else { return nil }
             return (part.name.replacingOccurrences(of: "the ", with: ""), take)
         }
-        takes = turned.isEmpty ? nil : turned.map { "\($0.0) \($0.1)" }.joined(separator: " · ")
-        spokenTakes = turned.isEmpty ? nil : turned.map { "\($0.0) take \(Self.spelled($0.1))" }.joined(separator: ", ")
+        // The moves by name (ADR-031): "disc echo · bars turned".
+        func move(_ take: Int) -> Treatment { Treatment(rawValue: take) ?? .redrawn }
+        takes = turned.isEmpty ? nil : turned.map { "\($0.0) \(move($0.1).name.lowercased())" }.joined(separator: " · ")
+        spokenTakes = turned.isEmpty ? nil : turned.map { "\($0.0) \(move($0.1).sentence)" }.joined(separator: ", ")
     }
 
     /// "Signed, artist's proof, disc take fourteen."

@@ -20,7 +20,8 @@ struct Proof: Codable, Equatable, Sendable {
     var version: Int = Genome.version
 
     /// A person who wants take 100 wants a different movement.
-    static let takeRange = 0...99
+    /// One a move on the dial, As drawn to Redrawn (ADR-031).
+    static let takeRange = Treatment.range
 
     init(release: String, movement: Movement? = nil, palette: Palette? = nil, stock: Stock? = nil,
          takes: [Part.ID: Int] = [:], pulledAt: Date? = nil, version: Int = Genome.version) {

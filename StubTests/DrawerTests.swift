@@ -124,7 +124,7 @@ struct DrawerTests {
         let edition = Genome.floor(for: "The Brutalist")
         editionsA.store(edition)
         var proof = Proof(release: edition.release, version: edition.version)
-        proof.takes[edition.movement.parts.first { $0.turns }!.id] = 14
+        proof.takes[edition.movement.parts.first { $0.turns }!.id] = Treatment.echo.rawValue
         editionsA.pull(proof)
         #expect(editionsA.proof(for: "The Brutalist") != nil)
 

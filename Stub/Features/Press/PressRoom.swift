@@ -78,7 +78,7 @@ struct PressRoom: View {
                     .accessibilityAddTraits(.updatesFrequently)
 
                 bench
-                    .frame(height: session.bench == .rest || session.focus != nil ? 214 : 262)
+                    .frame(height: session.focus != nil ? 268 : session.bench == .rest ? 214 : 262)
                     .animation(reduceMotion ? Motion.plain : Motion.settle, value: session.bench)
             }
         }
@@ -129,18 +129,17 @@ struct PressRoom: View {
     /// A part in hand reads as its name and its take, the number in the mono; anything else is the session's sentence.
     @ViewBuilder
     private var status: some View {
-        if let focus = session.focus, focus.kind != .frame, !session.turned, session.explaining == nil {
-            let take = Int(min(max(session.position, 0), 99).rounded())
+        if let focus = session.focus, !session.turned, session.explaining == nil {
+            let move = Treatment(rawValue: Int(min(max(session.position, 0), Double(Treatment.range.upperBound)).rounded())) ?? .asDrawn
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(PressSession.capitalised(focus.name)).font(Type.display(20)).foregroundStyle(Ink.ink)
-                if take == 0 {
-                    Text("as the title drew it").font(Type.words(15)).foregroundStyle(Ink.grey)
-                } else {
-                    Text("take").font(Type.words(15)).foregroundStyle(Ink.grey)
-                    Text("\(take)").font(Type.numbers(19)).foregroundStyle(Ink.ink)
-                        .contentTransition(.numericText(value: Double(take)))
-                        .animation(Motion.stamp, value: take)
-                }
+                Text(move.name).font(Type.words(17)).foregroundStyle(move == .asDrawn ? Ink.grey : Ink.orange)
+                    .contentTransition(.identity)
+                    .transaction { $0.animation = nil }
+            }
+        } else if session.focus == nil, session.bench == .rest, !session.turned, session.separation == 0, session.explaining == nil {
+            PartChips(session: session) { part in
+                withAnimation(reduceMotion ? Motion.plain : Motion.settle) { session.pickUp(part) }
             }
         } else {
             // The words change the moment the press does, never cross-fading under the plates' spring.
@@ -631,6 +630,62 @@ extension Stock {
         case .foil: "Foil"
         case .holographic: "Holographic"
         }
+    }
+}
+
+/// The parts the press can turn, named, as a row of chips under the card (ADR-031): a chip for each, a dot of the ink it is
+/// printed in, and a note of the move it carries if it is not as drawn. Tap one and the press takes hold of it, as a tap
+/// on the card does. Shown whenever nothing is in hand, so what can be changed is never a thing to guess.
+private struct PartChips: View {
+    let session: PressSession
+    let pick: (Part) -> Void
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Text("Tap a part of the poster, or choose one").font(Type.words(13)).foregroundStyle(Ink.grey)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(session.turnable) { part in
+                        let move = Treatment(rawValue: session.take(of: part)) ?? .asDrawn
+                        Button { pick(part) } label: {
+                            HStack(spacing: 7) {
+                                Circle().fill(ink(of: part)).frame(width: 9, height: 9)
+                                    .overlay(Circle().strokeBorder(Ink.ink.opacity(0.15), lineWidth: 0.5))
+                                Text(Self.short(part.name))
+                                    .font(Type.display(14)).foregroundStyle(Ink.ink)
+                                if move != .asDrawn {
+                                    Text(move.name).font(Type.words(12)).foregroundStyle(Ink.orange)
+                                }
+                            }
+                            .padding(.horizontal, 13)
+                            .frame(minHeight: 36)
+                            .background(Capsule(style: .continuous).fill(Ink.cream))
+                            .overlay(Capsule(style: .continuous).strokeBorder(Ink.ink.opacity(0.12), lineWidth: 0.75))
+                            .contentShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(session.spoken(part))
+                        .accessibilityHint("Takes hold of it, so the dial turns it.")
+                    }
+                }
+                .padding(.horizontal, 20)
+            }
+            .scrollClipDisabled()
+        }
+    }
+
+    /// "the torn strip" as a chip says it: "Torn strip".
+    static func short(_ name: String) -> String {
+        let bare = name.hasPrefix("the ") ? String(name.dropFirst(4)) : name
+        return bare.prefix(1).uppercased() + bare.dropFirst()
+    }
+
+    /// The ink the part's first mark is printed in.
+    private func ink(of part: Part) -> Color {
+        let c = session.composition
+        guard let mark = c.poster.first(where: { $0.part == part.id }) else { return Ink.grey }
+        if mark.foil, c.isMetallic { return Color(hex: c.inks.foilBase) }
+        return c.inks.color(mark.role)
     }
 }
 

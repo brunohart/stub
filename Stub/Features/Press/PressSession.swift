@@ -330,8 +330,8 @@ final class PressSession {
         if let focus {
             let name = Self.capitalised(focus.name)
             if focus.kind == .frame { return "\(name). Everything on it moves with it." }
-            let take = Int(min(max(position, 0), 99).rounded())
-            return take == 0 ? "\(name), as the title drew it." : "\(name). Take \(Self.spelled(take))."
+            let move = Treatment(rawValue: Int(min(max(position, 0), Double(Treatment.range.upperBound)).rounded())) ?? .asDrawn
+            return "\(name), \(move.sentence)."
         }
         if separation > 0.5 {
             return composition.isMetallic ? "Five sheets: the stock, two plates, the foil and the type."
@@ -339,7 +339,7 @@ final class PressSession {
         }
         // With nothing in hand the press's one move is the thing to say, every time: the marks on the card show where,
         // and the lever says Pull on its own once there is something to pull (ADR-022).
-        return "Tap a part of the poster, then turn the dial."
+        return "Tap a part of the poster, or choose one."
     }
 
     /// VoiceOver's name for a part in the rotor: "The disc, second ink, take three."
@@ -347,8 +347,7 @@ final class PressSession {
         let first = composition.poster.first { $0.part == part.id }
         var words = [Self.capitalised(part.name)]
         if let first { words.append(inkWords(first)) }
-        let take = self.take(of: part)
-        words.append(take == 0 ? "as the title drew it" : "take \(Self.spelled(take))")
+        words.append((Treatment(rawValue: take(of: part)) ?? .asDrawn).sentence)
         return words.joined(separator: ", ")
     }
 

@@ -25,8 +25,8 @@ struct PressTests {
         return edition
     }
 
-    /// For every movement and every part the press can turn, takes 1 to 20: every mark outside the part is the mark
-    /// take 0 drew. A frame is exempt for what hangs from it and nowhere else. `forksAreIndependent`, from the die to
+    /// For every movement and every part the press can turn, every move on the dial (ADR-031): every mark outside the part is
+    /// the mark As drawn drew. A frame is exempt for what hangs from it and nowhere else. `forksAreIndependent`, from the die to
     /// the drawing.
     @Test(arguments: Movement.allCases)
     func partsAreIndependent(_ movement: Movement) {
@@ -39,7 +39,7 @@ struct PressTests {
                     : [part.id]
                 func outside(_ marks: [Mark]) -> [Mark] { marks.filter { !exempt.contains($0.part ?? "") } }
                 var moved = false
-                for take in 1...20 {
+                for take in 1...Treatment.range.upperBound {
                     var turned = base
                     turned.takes = [part.id: take]
                     let c = Composition(edition: turned, copy: copy)
@@ -47,7 +47,7 @@ struct PressTests {
                     #expect(outside(c.poster) == outside(first.poster), "\(part.id) take \(take) moved another part (\(copy.title))")
                     if c.poster != first.poster { moved = true }
                 }
-                #expect(moved, "\(part.id): twenty takes and not one draws anything new")
+                #expect(moved, "\(part.id): every move on the dial and not one draws anything new")
             }
         }
     }
@@ -85,18 +85,19 @@ struct PressTests {
         #expect(Composition(edition: applied, copy: copy).poster == Composition(edition: brutalist, copy: copy).poster)
         #expect(brutalist.dice("constructivist/disc", take: 0).seed == Dice(seed: brutalist.seed).fork("constructivist/disc").seed)
 
-        let disc = brutalist.applying(Proof(release: brutalist.release, takes: ["constructivist/disc": 14]))
+        let disc = brutalist.applying(Proof(release: brutalist.release, takes: ["constructivist/disc": Treatment.echo.rawValue]))
         #expect(disc.directedBy == .you)
-        #expect(disc.takes == ["constructivist/disc": 14])
+        #expect(disc.takes == ["constructivist/disc": Treatment.echo.rawValue])
         #expect(disc.movement == brutalist.movement && disc.seed == brutalist.seed)
-        #expect(brutalist.applying(Proof(release: "anora", takes: ["constructivist/disc": 14])) == brutalist, "another release's proof")
-        #expect(brutalist.applying(Proof(release: brutalist.release, takes: ["constructivist/disc": 400])).takes["constructivist/disc"] == 99)
+        #expect(brutalist.applying(Proof(release: "anora", takes: ["constructivist/disc": 4])) == brutalist, "another release's proof")
+        #expect(brutalist.applying(Proof(release: brutalist.release, takes: ["constructivist/disc": 400])).takes["constructivist/disc"]
+                == Treatment.range.upperBound, "a take from before the dial had names is the last move")
     }
 
     @Test func proofsRoundTrip() throws {
         let brutalist = Genome.floor(for: "The Brutalist")
         let proof = Proof(release: brutalist.release, movement: .riso, palette: .moss,
-                          takes: ["riso/disc": 3, "riso/register": 11, "constructivist/disc": 14],
+                          takes: ["riso/disc": 3, "riso/register": 5, "constructivist/disc": 4],
                           pulledAt: Date(timeIntervalSince1970: 1_790_000_000))
         let back = try Proof.decoder.decode(Proof.self, from: proof.json)
         #expect(back == proof)
@@ -160,8 +161,8 @@ struct PressTests {
 
     @Test func proofsParseFromWords() {
         let brutalist = Genome.floor(for: "The Brutalist")
-        let (disc, unread) = Proof.parsing("disc=14, bars=3", over: brutalist)
-        #expect(disc.takes == ["constructivist/disc": 14, "constructivist/bars": 3])
+        let (disc, unread) = Proof.parsing("disc=4, bars=3", over: brutalist)
+        #expect(disc.takes == ["constructivist/disc": 4, "constructivist/bars": 3])
         #expect(unread.isEmpty)
         let (riso, _) = Proof.parsing("register=4,movement=riso,inks=moss,disc=2", over: brutalist)
         #expect(riso.movement == .riso && riso.palette == .moss)
@@ -204,10 +205,11 @@ struct PressTests {
         expect(brutalist[2], "constructivist/bars", [28.5342435858888, 250.129660585817, 242.795657140146, 7], rot: 20.0451445337161)
         expect(brutalist[3], "constructivist/bars", [45.0150069774047, 264.129660585817, 102.032033009733, 3], rot: 20.0451445337161)
 
-        let fourteen = poster("The Brutalist", takes: ["constructivist/disc": 14])
-        expect(fourteen[0], "constructivist/diagonal", [-255, 144.111262193877, 840, 90.0183983919402], rot: 20.0451445337161)
-        expect(fourteen[1], "constructivist/disc", [231, 88.7510409432022, 77.1083972626525])
-        expect(fourteen[2], "constructivist/bars", [28.5342435858888, 250.129660585817, 242.795657140146, 7], rot: 20.0451445337161)
+        // Redrawn rolls the disc's next take; the mirror draws only As drawn, so here the rest of the poster is held to it.
+        let redrawn = poster("The Brutalist", takes: ["constructivist/disc": Treatment.redrawn.rawValue])
+        expect(redrawn[0], "constructivist/diagonal", [-255, 144.111262193877, 840, 90.0183983919402], rot: 20.0451445337161)
+        #expect(redrawn[1].part == "constructivist/disc" && redrawn[1] != brutalist[1], "the disc is drawn from another roll")
+        expect(redrawn[2], "constructivist/bars", [28.5342435858888, 250.129660585817, 242.795657140146, 7], rot: 20.0451445337161)
 
         let dune = poster("Dune Part Two")
         try #require(dune.count >= 2)
@@ -239,8 +241,8 @@ struct PressRoomTests {
     @Test(arguments: Movement.allCases)
     func inBetweensMeetTheirEnds(_ movement: Movement) {
         for part in movement.parts where part.turns {
-            let a = composition(movement, takes: [part.id: 13])
-            let b = composition(movement, takes: [part.id: 14])
+            let a = composition(movement, takes: [part.id: Treatment.larger.rawValue])
+            let b = composition(movement, takes: [part.id: Treatment.smaller.rawValue])
             #expect(Composition.between(a, b, t: 0) == a.poster)
             #expect(Composition.between(a, b, t: 1) == b.poster)
             let half = Composition.between(a, b, t: 0.5)
@@ -251,8 +253,8 @@ struct PressRoomTests {
     }
 
     @Test func aDiscGlides() throws {
-        let a = composition(.constructivist, takes: ["constructivist/disc": 13])
-        let b = composition(.constructivist, takes: ["constructivist/disc": 14])
+        let a = composition(.constructivist, takes: ["constructivist/disc": Treatment.larger.rawValue])
+        let b = composition(.constructivist, takes: ["constructivist/disc": Treatment.smaller.rawValue])
         let half = Composition.between(a, b, t: 0.5)
         #expect(half.count == a.poster.count, "one disc, interpolated, not two cross-fading")
         let i = try #require(a.poster.firstIndex { $0.part == "constructivist/disc" })
@@ -294,15 +296,14 @@ struct PressRoomTests {
         #expect(!mark.contains(CGPoint(x: 50, y: 0), slop: 0))
     }
 
-    @MainActor @Test func theSentenceSpellsTheTake() {
+    @MainActor @Test func theSentenceNamesTheMove() {
         #expect(PressSession.spelled(14) == "fourteen")
-        #expect(PressSession.spelled(99) == "ninety-nine")
         let session = PressSession(title: "The Brutalist", copy: copy, editions: Editions(defaults: UserDefaults(suiteName: "press-room-\(UUID().uuidString)")!))
-        #expect(session.sentence(at: 0) == "Tap a part of the poster, then turn the dial.")
+        #expect(session.sentence(at: 0) == "Tap a part of the poster, or choose one.")
         let disc = Parts.Constructivist.disc
         session.pickUp(disc)
         #expect(session.sentence(at: 0) == "The disc, as the title drew it.")
-        #expect(session.sentence(at: 14) == "The disc. Take fourteen.")
+        #expect(session.sentence(at: 4) == "The disc, echoed.")
         session.pickUp(Parts.Constructivist.diagonal)
         #expect(session.sentence(at: 3) == "The diagonal. Everything on it moves with it.")
     }
@@ -316,11 +317,11 @@ struct PressRoomTests {
         editions.store(floor)
         let session = PressSession(title: "The Brutalist", copy: copy, editions: editions)
         session.pickUp(Parts.Constructivist.disc)
-        session.settle(on: 14)
+        session.settle(on: 4)
         #expect(editions.edition(for: "The Brutalist") == floor, "nothing is pulled until the lever is")
-        #expect(Editions(defaults: defaults).pressProof(for: "The Brutalist").takes == ["constructivist/disc": 14])
+        #expect(Editions(defaults: defaults).pressProof(for: "The Brutalist").takes == ["constructivist/disc": 4])
         let again = PressSession(title: "The Brutalist", copy: copy, editions: Editions(defaults: defaults))
-        #expect(again.take(of: Parts.Constructivist.disc) == 14, "the next visit continues where you stopped")
+        #expect(again.take(of: Parts.Constructivist.disc) == 4, "the next visit continues where you stopped")
     }
 }
 
@@ -469,19 +470,19 @@ struct PullTests {
 
         undo.beginUndoGrouping()
         session.pickUp(Parts.Constructivist.disc)
-        session.settle(on: 14)
+        session.settle(on: 4)
         undo.endUndoGrouping()
         #expect(session.somethingToPull)
-        #expect(session.sentence(at: 14) == "The disc. Take fourteen.")
+        #expect(session.sentence(at: 4) == "The disc, echoed.")
         session.putDown()
         // Put down, the line says the press's one move again; the lever says Pull on its own (ADR-022).
-        #expect(session.sentence(at: 0) == "Tap a part of the poster, then turn the dial.")
+        #expect(session.sentence(at: 0) == "Tap a part of the poster, or choose one.")
         #expect(session.somethingToPull, "the lever is ready")
 
         undo.beginUndoGrouping()
         session.pull()
         undo.endUndoGrouping()
-        #expect(editions.proof(for: "The Brutalist")?.takes == ["constructivist/disc": 14])
+        #expect(editions.proof(for: "The Brutalist")?.takes == ["constructivist/disc": 4])
         #expect(editions.edition(for: "The Brutalist")?.directedBy == .you)
         #expect(!session.somethingToPull)
         #expect(session.pulls == 1)
@@ -489,7 +490,7 @@ struct PullTests {
         undo.undo()
         #expect(editions.proof(for: "The Brutalist") == nil, "the pull undone")
         undo.redo()
-        #expect(editions.proof(for: "The Brutalist")?.takes == ["constructivist/disc": 14], "and done again")
+        #expect(editions.proof(for: "The Brutalist")?.takes == ["constructivist/disc": 4], "and done again")
 
         undo.undo()   // the pull
         undo.undo()   // the take
@@ -499,11 +500,11 @@ struct PullTests {
     @Test func thePencilSaysWhatDiffers() throws {
         var edition = Genome.floor(for: "The Brutalist")
         #expect(Pencil(edition: edition) == nil, "only a proof is written on")
-        edition = edition.applying(Proof(release: edition.release, takes: ["constructivist/bars": 3, "constructivist/disc": 14]))
+        edition = edition.applying(Proof(release: edition.release, takes: ["constructivist/bars": 3, "constructivist/disc": 4]))
         let pencil = try #require(Pencil(edition: edition))
         #expect(pencil.artistsProof)
-        #expect(pencil.takes == "disc 14 · bars 3", "in the order the parts are drawn")
-        #expect(pencil.spoken(signed: true) == "Signed, artist's proof, disc take fourteen, bars take three.")
+        #expect(pencil.takes == "disc echo · bars turned", "in the order the parts are drawn")
+        #expect(pencil.spoken(signed: true) == "Signed, artist's proof, disc echoed, bars turned.")
         #expect(edition.colophon == "Constructivist, sand inks, foil on coated card. Artist's proof, pulled by you.")
         let inks = Genome.floor(for: "The Brutalist").applying(Proof(release: edition.release, palette: .moss))
         #expect(Pencil(edition: inks)?.takes == nil, "A/P alone when no take differs")

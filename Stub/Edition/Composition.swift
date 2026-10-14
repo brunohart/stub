@@ -31,13 +31,14 @@ struct Composition: Sendable, Equatable {
         self.inks = edition.palette.inks
         self.copy = copy
         let composer = Composer(edition: edition, inks: inks, copy: copy)
-        poster = composer.poster()
+        // The press's moves made over the movement's drawing (ADR-031): As drawn changes nothing.
+        poster = composer.treated(composer.poster())
         posterField = edition.movement == .noir ? .dark : .ground
         stripField = edition.movement == .noir ? .dark : .ground
         strip = composer.strip(on: stripField)
         inBetween = nil
         punches = Remarque.punches(for: edition, copy: copy, strip: strip)
-        patina = Patina(age: copy.age, seed: edition.seed, viewing: copy.viewing)
+        patina = Patina(age: copy.age, seed: edition.seed, viewing: copy.viewing, handled: copy.handled)
     }
 
     /// This composition with another poster: an in-between, drawn by `between`.
@@ -69,10 +70,10 @@ struct Composer {
     var ph: CGFloat { Card.poster }
     var pad: CGFloat { Card.pad }
 
-    /// The die for one part, at the take the edition asks for (take 0 unless a proof says otherwise). A part that
-    /// is `set` rolls nothing and never asks.
+    /// The die for one part: its own, or for Redrawn the next roll of it (ADR-031). A part that is `set` rolls nothing and
+    /// never asks.
     func dice(_ part: Part) -> Dice {
-        edition.dice(part.id, take: edition.takes[part.id] ?? 0)
+        edition.dice(part.id, take: edition.treatment(of: part.id).take)
     }
 
     func poster() -> [Mark] {
