@@ -45,7 +45,7 @@ struct YourCard: View {
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }.buttonStyle(.stamp(.quiet))
+                    Button("Done") { dismiss() }.buttonStyle(.stub(.quiet))
                 }
                 .sharedBackgroundVisibility(.hidden)
             }
@@ -80,7 +80,7 @@ struct YourCard: View {
                 .onSubmit(saveName)
                 .padding(.vertical, 10)
                 .overlay(alignment: .bottom) { Rectangle().fill(Ink.ink.opacity(0.18)).frame(height: 1) }
-            Button("Type it", action: saveName).buttonStyle(.stamp(.ink, tight: true))
+            Button("Type it", action: saveName).buttonStyle(.stub(.ink, tight: true))
         }
         .onAppear { typing = true }
         .sensoryFeedback(.impact(flexibility: .rigid, intensity: 0.35), trigger: name)
@@ -124,10 +124,10 @@ struct YourCard: View {
                                 Text("Open the icon drawer · \(icons.price)")
                             }
                         }
-                        .buttonStyle(.stamp(.ink))
+                        .buttonStyle(.stub(.ink))
                         .disabled(icons.buying)
                         Button("Restore") { Task { await icons.restore() } }
-                            .buttonStyle(.stamp(.quiet))
+                            .buttonStyle(.stub(.quiet))
                     }
                 }
             }
@@ -155,7 +155,7 @@ struct YourCard: View {
                     Text("The drawer as a spreadsheet")
                 }
             }
-            .buttonStyle(.stamp(.paper))
+            .buttonStyle(.stub(.paper))
             .disabled(stubs.isEmpty)
         }
     }

@@ -67,13 +67,13 @@ struct SeasonView: View {
                     if let drawer, rename != nil || remove != nil {
                         HStack(spacing: 18) {
                             if let rename {
-                                Button("Rename \(drawer)", action: rename).buttonStyle(.stamp(.quiet))
+                                Button("Rename \(drawer)", action: rename).buttonStyle(.stub(.quiet))
                             }
                             if let remove {
                                 Button(action: remove) {
                                     Text("Take the drawer out").foregroundStyle(Ink.rust)
                                 }
-                                .buttonStyle(.stamp(.quiet))
+                                .buttonStyle(.stub(.quiet))
                             }
                         }
                         .font(Type.words(14))

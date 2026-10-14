@@ -256,7 +256,7 @@ struct TableView: View {
                         Button { choosing = open } label: {
                             Image(systemName: "checklist").font(.system(size: 17)).frame(width: 44, height: 44)
                         }
-                        .buttonStyle(.stamp(.quiet))
+                        .buttonStyle(.stub(.quiet))
                         .accessibilityLabel("Choose the stubs in \(open.name)")
                     }
                 }
@@ -586,7 +586,7 @@ struct Invitation: View {
                     Text(button)
                 }
             }
-            .buttonStyle(.stamp(.ink))
+            .buttonStyle(.stub(.ink))
             .padding(.top, 6)
         }
         .padding(.horizontal, 20)
@@ -603,7 +603,7 @@ extension Dock {
             }
             .frame(maxWidth: .infinity)
         }
-        .buttonStyle(.stamp(.ink))
+        .buttonStyle(.stub(.ink))
         .accessibilityHint("Opens the camera on a ticket. A photograph or typing it in are there too.")
     }
 }
@@ -682,7 +682,7 @@ struct EmptyDrawer: View {
                     Text("Keep the first stub")
                 }
             }
-            .buttonStyle(.stamp(.ink))
+            .buttonStyle(.stub(.ink))
         }
     }
 }
@@ -714,7 +714,7 @@ struct Dock: View {
                 }
                 .frame(maxWidth: typeSize.isAccessibilitySize ? .infinity : nil)
             }
-            .buttonStyle(.stamp(.paper))
+            .buttonStyle(.stub(.paper))
             .accessibilityLabel("The season, \(films) \(films == 1 ? "film" : "films")")
             .accessibilityHint("The numbers behind the sentence.")
 

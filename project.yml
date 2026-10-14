@@ -172,7 +172,7 @@ targets:
       - path: Stub/Intelligence/StubDraft.swift
       - path: Stub/Design/Ink.swift
       - path: Stub/Design/Type.swift
-      - path: Stub/Design/Stamp.swift
+      - path: Stub/Design/Buttons.swift
       - path: Stub/Resources/Fonts/HostGrotesk-Variable.ttf
         buildPhase: resources
       - path: Stub/Resources/Fonts/FragmentMono-Regular.ttf

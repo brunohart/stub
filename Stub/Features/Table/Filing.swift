@@ -286,27 +286,13 @@ private extension String {
     var capitalizedFirst: String { prefix(1).uppercased() + dropFirst() }
 }
 
-/// Tickets or editions: what the drawer shows. Two stamps side by side, the one showing inked.
+/// Tickets or editions: what the drawer shows, as one control with a sliding thumb (ADR-029).
 struct FacePicker: View {
     @Binding var face: DrawerFace
 
     var body: some View {
-        HStack(spacing: 8) {
-            ForEach(DrawerFace.allCases, id: \.self) { option in
-                Button {
-                    face = option
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: option == .ticket ? "ticket" : "rectangle.portrait.on.rectangle.portrait")
-                            .font(.system(size: 13, weight: .medium))
-                        Text(option.name).font(Type.words(14))
-                    }
-                    .fixedSize()
-                    .padding(.horizontal, 4)
-                }
-                .buttonStyle(.stamp(face == option ? .ink : .paper, tight: true))
-                .accessibilityAddTraits(face == option ? .isSelected : [])
-            }
+        Segmented(options: DrawerFace.allCases, selection: $face) { option in
+            (option.name, option == .ticket ? "ticket" : "rectangle.portrait.on.rectangle.portrait")
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Show the drawer as")
@@ -343,9 +329,9 @@ struct NameDrawerSheet: View {
                 .overlay(alignment: .bottom) { Rectangle().fill(Ink.ink.opacity(0.18)).frame(height: 1) }
                 .padding(.horizontal, 24)
             HStack(spacing: 14) {
-                Button("Cancel") { dismiss() }.buttonStyle(.stamp(.quiet))
+                Button("Cancel") { dismiss() }.buttonStyle(.stub(.quiet))
                 Button(action: finish) { Text("Label the drawer").frame(maxWidth: .infinity) }
-                    .buttonStyle(.stamp(.ink))
+                    .buttonStyle(.stub(.ink))
                     .disabled(Cabinet.name(name) == nil)
             }
             .padding(.horizontal, 20)
@@ -392,7 +378,7 @@ struct ChooseStubsSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }.buttonStyle(.stamp(.quiet))
+                    Button("Done") { dismiss() }.buttonStyle(.stub(.quiet))
                 }
                 .sharedBackgroundVisibility(.hidden)
             }

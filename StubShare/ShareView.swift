@@ -10,7 +10,7 @@ struct ShareView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack {
-                Button("Cancel", action: cancel).buttonStyle(.stamp(.quiet))
+                Button("Cancel", action: cancel).buttonStyle(.stub(.quiet))
                 Spacer()
                 Text("Keep in Stub").font(Type.display(17)).foregroundStyle(Ink.ink)
                 Spacer()
@@ -78,7 +78,7 @@ struct ShareView: View {
                 }
                 .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.stamp(.ink))
+            .buttonStyle(.stub(.ink))
             Text("Nothing leaves the phone. Stub files it when you keep it.")
                 .font(Type.words(12)).foregroundStyle(Ink.grey)
         default:

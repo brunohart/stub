@@ -36,7 +36,7 @@ struct RoomView: View {
                     .animation(Motion.place, value: line)
                 Spacer(minLength: 0)
                 Button("Done") { dismiss() }
-                    .buttonStyle(.stamp(.ink))
+                    .buttonStyle(.stub(.ink))
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 10)

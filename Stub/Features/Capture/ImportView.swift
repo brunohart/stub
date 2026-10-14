@@ -124,7 +124,7 @@ struct ImportView: View {
             .toolbar {
                 if kept == nil {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") { dismiss() }.buttonStyle(.stamp(.quiet))
+                        Button("Cancel") { dismiss() }.buttonStyle(.stub(.quiet))
                     }
                     .sharedBackgroundVisibility(.hidden)
                 }
@@ -136,7 +136,7 @@ struct ImportView: View {
                     Button { keep() } label: {
                         Text(draft.isUsable ? "Keep it" : "Keep it, once it has a title").frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.stamp(.ink))
+                    .buttonStyle(.stub(.ink))
                     .disabled(!draft.isUsable)
                     .padding(.horizontal, 20).padding(.top, 18).padding(.bottom, 8)
                     .background {
@@ -187,7 +187,7 @@ struct ImportView: View {
                         Text("Photograph it")
                     }
                 }
-                .buttonStyle(.stamp(.paper))
+                .buttonStyle(.stub(.paper))
                 .accessibilityHint("Opens the camera.")
                 PhotosPicker(selection: $pick, matching: .images, photoLibrary: .shared()) {
                     HStack(spacing: 8) {
@@ -195,7 +195,7 @@ struct ImportView: View {
                         Text("Photos")
                     }
                 }
-                .buttonStyle(.stamp(.paper))
+                .buttonStyle(.stub(.paper))
                 .accessibilityHint("Opens your photo library.")
             }
             Text(StubReader.modelStatus)
@@ -335,7 +335,7 @@ struct ImportView: View {
                         Image(systemName: "arrow.down").font(.system(size: 14, weight: .medium))
                     }
                 }
-                .buttonStyle(.stamp(.ink))
+                .buttonStyle(.stub(.ink))
             }
             .padding(20)
         }

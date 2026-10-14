@@ -403,19 +403,19 @@ private struct Kept: View {
     }
 }
 
-/// The widget's buttons: small paper stamps, the word beside its mark.
+/// The widget's buttons: small cream capsules with a hairline edge, the app's paper buttons at the widget's size (ADR-029).
 private struct Stamp: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(Type.words(11))
+            .font(Type.display(12))
             .labelStyle(.titleAndIcon)
             .foregroundStyle(Ink.ink)
             .lineLimit(1)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .background(RoundedRectangle(cornerRadius: 5, style: .continuous).fill(Ink.cream))
-            .background(RoundedRectangle(cornerRadius: 5, style: .continuous).fill(Ink.navy.opacity(0.16)).offset(x: 2, y: 2.5))
-            .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous).strokeBorder(Ink.ink.opacity(0.14), lineWidth: 0.75))
+            .padding(.horizontal, 11)
+            .padding(.vertical, 7)
+            .background(Capsule(style: .continuous).fill(Ink.cream))
+            .overlay(Capsule(style: .continuous).strokeBorder(Ink.ink.opacity(0.1), lineWidth: 0.75))
+            .shadow(color: Ink.ink.opacity(0.06), radius: 3, x: 0, y: 1.5)
             .opacity(configuration.isPressed ? 0.7 : 1)
     }
 }

@@ -341,7 +341,7 @@ struct PressRoom: View {
                 .contentTransition(.identity)
                 .transaction { $0.animation = nil }
         }
-        .buttonStyle(.stamp(.paper))
+        .buttonStyle(.stub(.paper))
     }
 
     /// New inks spreading across the card from `origin`, about half a second to its far corner (a fifth of a second's
@@ -570,7 +570,7 @@ extension PressRoom {
             .opacity(other ? 0.55 : 1)
         }
         // The open one is inked: the bench says which object is out (ADR-022).
-        .buttonStyle(.stamp(open ? .ink : .paper, tight: true))
+        .buttonStyle(.stub(open ? .ink : .paper, tight: true))
         .accessibilityLabel("\(label), \(value)")
         .accessibilityHint(open ? "Closes it." : "Opens the choices.")
         .accessibilityAddTraits(open ? .isSelected : [])

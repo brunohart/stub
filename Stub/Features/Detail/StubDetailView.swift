@@ -116,7 +116,7 @@ struct StubDetailView: View {
                         } label: {
                             Text("Throw this stub away").font(Type.words(14)).foregroundStyle(Ink.rust)
                         }
-                        .buttonStyle(.stamp(.quiet))
+                        .buttonStyle(.stub(.quiet))
                         .padding(.top, 12)
                         // Nothing else in the drawer is lost in one tap: the stub, its photograph and its place in every
                         // drawer go, on every phone it syncs to, so it is asked once.
@@ -230,18 +230,18 @@ struct StubDetailView: View {
         let edition = editions.edition(for: stub.title)
         let count = typeSize.isAccessibilitySize ? 1 : (RoomView.isSupported ? 4 : 3)
         return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: count), spacing: 10) {
-            Button { pressing = true } label: { StampLabel(title: "The press", symbol: "dial.medium") }
+            Button { pressing = true } label: { ActionLabel(title: "The press", symbol: "dial.medium") }
                 .disabled(edition == nil)
                 .accessibilityHint("Pull your own proof of the edition.")
             share(edition)
             file
             if RoomView.isSupported {
-                Button { inRoom = true } label: { StampLabel(title: "On the table", symbol: "arkit") }
+                Button { inRoom = true } label: { ActionLabel(title: "On the table", symbol: "arkit") }
                     .disabled(edition == nil)
                     .accessibilityHint("Shows the edition at its real size on a table, through the camera.")
             }
         }
-        .buttonStyle(.stamp(.paper, tight: true))
+        .buttonStyle(.stub(.paper, tight: true))
     }
 
     /// File it in a drawer: the drawers with a mark against the ones it is in, and a new one (ADR-026). The same as carrying it
@@ -258,7 +258,7 @@ struct StubDetailView: View {
             }
             Button("New drawer…", systemImage: "plus") { naming = true }
         } label: {
-            StampLabel(title: filed.isEmpty ? "File" : filed.count == 1 ? filed[0].name : "In \(filed.count) drawers",
+            ActionLabel(title: filed.isEmpty ? "File" : filed.count == 1 ? filed[0].name : "In \(filed.count) drawers",
                        symbol: filed.isEmpty ? "tray.and.arrow.down" : "tray.full")
         }
         .menuStyle(.button)
@@ -294,12 +294,12 @@ struct StubDetailView: View {
                     Label("Share the still", systemImage: "photo")
                 }
             } label: {
-                StampLabel(title: "Share", symbol: "square.and.arrow.up")
+                ActionLabel(title: "Share", symbol: "square.and.arrow.up")
             }
             .menuStyle(.button)
             .accessibilityLabel("Share the edition")
         } else {
-            Button {} label: { StampLabel(title: "Share", symbol: "square.and.arrow.up") }.disabled(true)
+            Button {} label: { ActionLabel(title: "Share", symbol: "square.and.arrow.up") }.disabled(true)
         }
     }
 

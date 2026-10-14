@@ -14,6 +14,8 @@ Screenshots: `2026-10-15-drawer-tickets.png`, `-drawer-editions.png`, `-holding.
 
 **For Bruno.** In App Store Connect, the in-app purchase and the Paid Apps agreement (`docs/device.md`, "What only Bruno can do"). On the phone: §3.1 (the camera), §3.3 (the widget at every size, tinted and clear), §3.4 (the icons at 60 points, bought with a sandbox account), §3.14 (holding and filing).
 
+**Later the same morning: the buttons** (ADR-029). Bruno had gone off the stamps, so every button is now a clean capsule in the same inks: ink for the one primary act, cream with a hairline for the rest, words alone for Cancel. Pressed, a button goes into the page with one soft tap and comes back on a spring; the out-of-register plate, the tip and the ring of ink are gone. Tickets or Editions is a segmented control with a sliding thumb, and the shutter is a plain paper disc whose ring turns orange when the marks lock on. Screenshot: `2026-10-15-buttons.png`.
+
 **Still rough.** Whether the drawer scrolls when a carried stub reaches the edge of the screen is unchecked (the simulator's drag is a scripted path); closing the years between is the way meanwhile. The edition widget's foil is a gradient, not the app's lit shader. Search is the next thing a cabinet of a few hundred stubs will want.
 
 ## 2026-10-13 — Beyond the account: the link, the share sheet, iCloud, the 9:16 share, and a design pass

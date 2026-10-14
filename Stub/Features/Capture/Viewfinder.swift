@@ -152,11 +152,11 @@ struct Viewfinder: View {
                 Button {
                     if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
                 } label: { Text("Open Settings") }
-                .buttonStyle(.stamp(.paper, tight: true))
+                .buttonStyle(.stub(.paper, tight: true))
             case .unavailable:
                 EmptyView()
             default:
-                Shutter(enabled: camera.canTake && !taking) { Task { await shoot() } }
+                Shutter(enabled: camera.canTake && !taking, locked: camera.locked) { Task { await shoot() } }
             }
             Spacer()
             Button(action: type) { SideControl(symbol: "keyboard", title: "Type it in") }
@@ -203,32 +203,35 @@ private struct SideControl: View {
     }
 }
 
-/// The shutter, as a stamp: a disc of ink on an orange plate a pass out of register, in a ring of paper. Pressed, the ink
-/// goes down onto its plate and prints in register; let go, the photograph is taken.
+/// The shutter: a paper disc in a ring of paper, as a camera's is. The ring takes the marks' orange when they have found the
+/// ticket. Pressed, the disc goes in; let go, the photograph is taken.
 private struct Shutter: View {
     let enabled: Bool
+    let locked: Bool
     let act: () -> Void
 
     var body: some View {
-        Button(action: act) { EmptyView() }
-            .buttonStyle(ShutterPress())
-            .disabled(!enabled)
-            .opacity(enabled ? 1 : 0.4)
-            .accessibilityLabel("Take the photograph")
+        Button(action: act) {
+            Circle().strokeBorder(locked ? Ink.orange : Ink.paper, lineWidth: 4)
+                .frame(width: 78, height: 78)
+                .animation(Motion.settle, value: locked)
+        }
+        .buttonStyle(ShutterPress())
+        .disabled(!enabled)
+        .opacity(enabled ? 1 : 0.4)
+        .accessibilityLabel("Take the photograph")
     }
 
     private struct ShutterPress: ButtonStyle {
         func makeBody(configuration: Configuration) -> some View {
             let down = configuration.isPressed
             ZStack {
-                Circle().strokeBorder(Ink.paper, lineWidth: 4).frame(width: 78, height: 78)
-                Circle().fill(Ink.orange.opacity(0.85)).frame(width: 58, height: 58).offset(x: 2.5, y: 3)
-                Circle().fill(Ink.paper).frame(width: 58, height: 58)
-                    .offset(down ? CGSize(width: 2.5, height: 3) : .zero)
-                    .scaleEffect(down ? 0.94 : 1)
+                configuration.label
+                Circle().fill(Ink.paper).frame(width: 62, height: 62)
+                    .scaleEffect(down ? 0.86 : 1)
             }
-            .animation(down ? Motion.touchDown : Motion.stamp, value: down)
-            .sensoryFeedback(.impact(weight: .heavy, intensity: 0.8), trigger: down) { _, now in now }
+            .animation(down ? .spring(response: 0.14, dampingFraction: 0.9) : .spring(response: 0.36, dampingFraction: 0.6), value: down)
+            .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.7), trigger: down) { _, now in now }
             .contentShape(Circle())
         }
     }
