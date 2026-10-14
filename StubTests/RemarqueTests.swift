@@ -112,18 +112,25 @@ struct RemarqueTests {
         #expect(Copy(title: "x").age == 0)
     }
 
-    /// Foxing is rare, grows with age, and a spot that has come up never moves.
+    /// Foxing is rare, grows with age, and a spot that has come up never moves. Hands wear the corners and burnish a thumb's
+    /// corner, and a card never held has neither (ADR-032).
     @Test func foxingGrowsAndStays() {
         let seed = Release.seed(for: "the brutalist")
-        #expect(Patina(age: 0.9, seed: seed).spots.isEmpty, "nothing in the first year")
+        #expect(Patina(age: 1.9, seed: seed).spots.isEmpty, "nothing in the first two years")
         let young = Patina(age: 3, seed: seed), old = Patina(age: 9, seed: seed)
         #expect(!young.spots.isEmpty && old.spots.count > young.spots.count)
         #expect(Array(old.spots.prefix(young.spots.count)) == young.spots)
-        #expect(Patina(age: 40, seed: seed).spots.count / 4 <= 7, "rare")
+        #expect(Patina(age: 40, seed: seed).spots.count / 4 <= 12, "a few small clusters at most")
         #expect(Patina(age: 40, seed: seed) == Patina(age: Patina.oldest, seed: seed), "a card stops ageing at ten")
         #expect(Patina(age: 6, seed: seed, viewing: 2).spots != Patina(age: 6, seed: seed, viewing: 1).spots,
                 "each copy foxes in its own places")
         #expect(old.warmth > young.warmth && old.wear > young.wear)
+        let held = Patina(age: 0, seed: seed, handled: 40)
+        #expect(!held.isIdentity && held.burnish > 0 && held.wear > 0 && held.spots.isEmpty, "hands wear it; they do not fox it")
+        #expect(Patina(age: 0, seed: seed, handled: 0).isIdentity)
+        #expect(Patina.words(age: 0, handled: 0, foxed: false) == nil)
+        #expect(Patina.words(age: 3.4, handled: 12, foxed: true)
+                == "3 years since the night, the paper warming at its edges and foxed in places; taken out 12 times, its corners softened where a thumb goes")
         let back = old.mirrored
         for i in stride(from: 0, to: old.spots.count, by: 4) {
             #expect(back.spots[i] == Float(Card.width) - old.spots[i] && back.spots[i + 1] == old.spots[i + 1])

@@ -155,6 +155,8 @@ struct Keepsake: View {
                         .fill(Color(hex: EditionInks.mix(composition.inks.hex(composition.stripField), 0x000000, 0.35)))
                         .offset(x: 1.2 - tilt.x * 1.2, y: 1.8 - tilt.y * 1.2)
                 )
+                // Each punch as a hole cut through card, not a mark printed on it (ADR-032).
+                .overlay { PunchWalls(punches: composition.punches, mirrored: angle > 90, tilt: tilt).allowsHitTesting(false) }
             } else {
                 // Bare card while the edition is being chosen.
                 TicketShape()
@@ -402,5 +404,31 @@ struct TicketOutline: Shape {
         p.addLine(to: CGPoint(x: rect.minX, y: rect.minY + r))
         p.addArc(center: CGPoint(x: rect.minX + r, y: rect.minY + r), radius: r, startAngle: .degrees(180), endAngle: .degrees(270), clockwise: false)
         return p
+    }
+}
+
+/// What a punch looks like from above (ADR-032): a hole with the card's own shadow falling into it from the side the light
+/// comes from, and the cut edge of the stock catching the light on the other side, so it reads as cut through rather than
+/// printed on. The shadow moves as the card tilts.
+struct PunchWalls: View {
+    let punches: [Punch]
+    let mirrored: Bool
+    var tilt: CGPoint = .zero
+
+    var body: some View {
+        Canvas { context, _ in
+            for punch in punches {
+                let hole = punch.path(scale: 1, origin: .zero, mirrored: mirrored)
+                var inside = context
+                inside.clip(to: hole)
+                // The rim's shadow on whatever is under the card, toward the far side from the light.
+                var shade = inside
+                shade.addFilter(.blur(radius: 1.4))
+                shade.stroke(hole.offsetBy(dx: 2.2 - tilt.x * 1.5, dy: 2.8 - tilt.y * 1.5), with: .color(.black.opacity(0.42)), lineWidth: 4.5)
+                // The cut wall where the light reaches it: a hairline of bare fibre.
+                inside.stroke(hole.offsetBy(dx: -1.1, dy: -1.3), with: .color(Color(hex: 0xF4EEDF).opacity(0.55)), lineWidth: 1)
+            }
+        }
+        .frame(width: Card.width, height: Card.height)
     }
 }

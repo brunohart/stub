@@ -182,7 +182,7 @@ struct StockEffect: ViewModifier {
         if LookEngine.current.isMetal {
             content.colorEffect(ShaderLibrary.stock(
                 .boundingRect, .float2(light.vector), .float(stock.fibre), .float(lit ? stock.gloss : 0), .float(seed),
-                .float(patina.age), .float(patina.warmth), .float(patina.wear),
+                .float(patina.age), .float(patina.warmth), .float(patina.wear), .float(lit ? patina.burnish : 0),
                 // Never an empty buffer: a spot of strength zero stands in for none.
                 .floatArray(patina.spots.isEmpty ? [0, 0, 1, 0] : patina.spots)
             ))
@@ -200,7 +200,7 @@ enum EditionShaders {
         let spots: [Float] = [0, 0, 1, 0]
         let colour: [(Shader, Shader.UsageType)] = [
             (ShaderLibrary.stock(.boundingRect, .float2(CGPoint.zero), .float(0), .float(0), .float(0), .float(0), .float(0),
-                                 .float(0), .floatArray(spots)), .colorEffect),
+                                 .float(0), .float(0), .floatArray(spots)), .colorEffect),
             (ShaderLibrary.aged(.boundingRect, .float2(CGPoint.zero), .float2(CGPoint.zero), .float(0), .float(0), .floatArray(spots)), .colorEffect),
             (ShaderLibrary.flood(.float2(CGPoint.zero), .float(0), .float(0), .float(0), .float(0)), .colorEffect),
             (ShaderLibrary.relief(.boundingRect, .float2(CGPoint.zero), .float(0), .float(0), .float(0)), .layerEffect),

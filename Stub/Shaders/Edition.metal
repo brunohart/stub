@@ -60,7 +60,7 @@ static float3 edition_fox(float2 p, device const float *spots, int count) {
         float edge = r * (1.0 + (edition_noise(p * 0.8 + c) - 0.5) * 0.7);
         float core = 1.0 - smoothstep(r * 0.2, edge, d);
         float halo = (1.0 - smoothstep(edge, r * 2.6, d)) * 0.3;
-        f *= mix(float3(1.0), float3(0.8, 0.62, 0.44), spots[i + 3] * max(core, halo));
+        f *= mix(float3(1.0), float3(0.78, 0.66, 0.52), spots[i + 3] * max(core, halo));
     }
     return f;
 }
@@ -69,7 +69,11 @@ static float3 edition_fox(float2 p, device const float *spots, int count) {
 // rubs the four corners light, and the spots are foxing. All three come from `Patina` in Swift, which makes them zero at
 // age 0, and the caller skips this entirely there, so a new card is exactly the stock.
 static float3 edition_patina(float3 rgb, float2 p, float2 size, float warmth, float wear, device const float *spots, int count) {
-    rgb = mix(rgb, rgb * float3(1.0, 0.95, 0.82), warmth);
+    // Paper in a drawer tones from the outside in: half the warmth everywhere, the rest gathered in the last thirty points
+    // to each edge, so an old card has a soft warm frame rather than a yellow cast (ADR-032).
+    float2 near = min(p, size - p);
+    float edge = 1.0 - smoothstep(0.0, 30.0, min(near.x, near.y));
+    rgb = mix(rgb, rgb * float3(1.0, 0.94, 0.8), clamp(warmth * (0.5 + 0.9 * edge), 0.0, 1.0));
     float3 rubbed = mix(rgb, float3(0.93, 0.91, 0.86), 0.6);
     rgb = mix(rgb, rubbed, edition_rub(p, size) * wear);
     return rgb * edition_fox(p, spots, count);
@@ -78,14 +82,21 @@ static float3 edition_patina(float3 rgb, float2 p, float2 size, float warmth, fl
 // The stock. Cotton has a long soft fibre; coated card has a satin gloss that follows the light. No per-pixel grain:
 // speckle over a whole card reads as noise on a screen, not as paper (ADR-017). `age` in years; at 0 there is no patina.
 [[ stitchable ]] half4 stock(float2 position, half4 color, float4 bounds, float2 light, float fibre, float gloss, float seed,
-                             float age, float warmth, float wear, device const float *spots, int count) {
+                             float age, float warmth, float wear, float burnish, device const float *spots, int count) {
     float2 uv = (position - bounds.xy) / max(bounds.zw, float2(1.0));
     // Cotton rag: short fibres, a little longer across than down, two octaves so it reads as paper, not grain.
     float f = edition_noise(position * float2(0.11, 0.32) + seed * 13.0) * 0.65
         + edition_noise(position * float2(0.31, 0.9) + seed * 7.0) * 0.35 - 0.5;
     float s = edition_sheen(uv, light, 2.2) * gloss;
+    // Burnish: where a thumb holds the card, its fibres are pressed smooth and catch the light, a narrow sheen that moves
+    // with it and is gone where the light is not (ADR-032).
+    if (burnish > 0.0) {
+        float2 p = position - bounds.xy;
+        float thumb = 1.0 - smoothstep(6.0, 74.0, distance(p, bounds.zw - float2(36.0, 58.0)));
+        s += edition_sheen(uv, light, 3.4) * burnish * thumb * 0.32;
+    }
     float3 rgb = float3(color.rgb) + f * fibre;
-    if (age > 0.0) {
+    if (age > 0.0 || wear > 0.0) {
         rgb = edition_patina(rgb, position - bounds.xy, bounds.zw, warmth, wear, spots, count);
     }
     rgb += s;

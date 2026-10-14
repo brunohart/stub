@@ -197,12 +197,15 @@ struct Copy: Equatable, Sendable {
     var year: Int?
     /// Years since the night it was seen, in whole days: the card's patina (brief §6.2). 0 when the ticket printed no date.
     var age: Double
+    /// How often it has been taken out on this phone: the wear of hands (ADR-032).
+    var handled: Int
 
     init(title: String, cinema: String? = nil, date: String? = nil, time: String? = nil, screen: String? = nil,
-         seat: String? = nil, price: String? = nil, viewing: Int = 1, viewings: Int? = nil, year: Int? = nil, age: Double = 0) {
+         seat: String? = nil, price: String? = nil, viewing: Int = 1, viewings: Int? = nil, year: Int? = nil, age: Double = 0,
+         handled: Int = 0) {
         self.title = title; self.cinema = cinema; self.date = date; self.time = time; self.screen = screen
         self.seat = seat; self.price = price; self.viewing = viewing; self.viewings = max(viewings ?? viewing, viewing)
-        self.year = year; self.age = age
+        self.year = year; self.age = age; self.handled = handled
     }
 
     /// The copy a stub prints, counted against the drawer it is in.
@@ -232,7 +235,8 @@ struct Copy: Equatable, Sendable {
             viewing: viewing,
             viewings: viewings,
             year: year,
-            age: Patina.age(since: stub.screenedAt)
+            age: Patina.age(since: stub.screenedAt),
+            handled: Handling.count(for: stub.id)
         )
     }
 

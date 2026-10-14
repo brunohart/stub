@@ -36,13 +36,13 @@ Every stub also comes back as an **edition**: a ticket designed for its film's r
 5. **Weight is allowed, the faces are not.** Host Grotesk from Light to ExtraBold, Newsreader, Fragment Mono. No fourth face, even for a Deco title.
 6. **Nothing invented.** No taglines, no plot, no stars, no fake barcode. The Aztec code on the back says what the strip says.
 7. **You can feel it.** A finger dragged across the card feels the stock (cotton is soft, foil is slick) and clicks once at the perforation.
-8. **The card keeps its history.** A second viewing of a release punches the strip, the way a conductor punches a ticket: a remarque in the movement's own die, through both faces, clear of every word and of the code. The card ages from the night it was seen: the stock warms, a spot of foxing comes up now and then, the corners soften. Both are the copy's, never the design's; both are the same on every phone; a first viewing seen tonight has neither.
+8. **The card keeps its history, and says it.** A second viewing of a release punches the strip, the way a conductor punches a ticket: a remarque in the movement's own die, cut through both faces, the card's shadow falling into the hole. The card ages from the night it was seen (the paper warming from its edges in, a few small clusters of foxing after a couple of years) and from being held (corners rubbed, a burnish where a thumb goes, seen only as the light moves). All of it is the copy's, never the design's; a card seen tonight and never held has none of it; and the detail says in one line what each mark means (ADR-032).
 
 ## The press
 
 The person who kept a stub can pull their own proof of its edition (ADR-016, `docs/briefs/the-press.md`). The rules for editions still hold; these are added.
 
-1. **You choose between drawings. You never move a mark.** Another take of a part, another movement, inks or stock from the genome's lists. No colour picker, no drag, no text, no sticker.
+1. **You choose between drawings. You never move a mark.** A named move of a part on the dial (larger, smaller, turned, echo, outline, mirrored, swapped, redrawn), another movement, inks or stock from the genome's lists. No colour picker, no drag, no text, no sticker. The parts are named under the card, so what can be changed is never a guess (ADR-031).
 2. **Only what you are holding moves.** A part is turned on its own die; the rest of the poster stands still while it redraws.
 3. **Going back is one step.** A proof is a difference laid over the edition, never a replacement; deleting it shows the title's (or the model's) edition exactly.
 4. **The front is the film's; the back is yours.** Nothing is added to the front but what the strip already prints. The owner's pencil (a signature, A/P, the takes) goes on the back.

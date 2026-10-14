@@ -76,6 +76,8 @@ final class DebugDrive {
     static var wantsRoom: Bool { ProcessInfo.processInfo.arguments.contains("-room") }
     /// `-age 6`: the detail's stub has been in the drawer this many years, for its patina (brief §6.2).
     static let age: Double? = value(after: "-age").flatMap { Double($0) }
+    /// `-handled 40`: the opened stub has been taken out this many times, for the wear of hands (ADR-032).
+    static let handled: Int? = value(after: "-handled").flatMap { Int($0) }
 
     private static func value(after flag: String) -> String? {
         let args = ProcessInfo.processInfo.arguments

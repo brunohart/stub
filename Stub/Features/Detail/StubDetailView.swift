@@ -79,6 +79,16 @@ struct StubDetailView: View {
                                 .fixedSize(horizontal: false, vertical: true)
                         }
 
+                        // What the card has earned, said plainly: the punches and the patina are its history (ADR-032).
+                        if let history {
+                            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                Image(systemName: "clock.arrow.circlepath").font(.system(size: 12)).foregroundStyle(Ink.grey)
+                                Text(history).font(Type.words(13)).foregroundStyle(Ink.ink.opacity(0.7))
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .accessibilityElement(children: .combine)
+                        }
+
                         // What the press keeps: the whole difference between this card and the title's, as it is stored
                         // (ADR-016). A poster in about sixty bytes is the best evidence that a proof is not an image.
                         if let proof = editions.proof(for: stub.title) {
@@ -179,6 +189,8 @@ struct StubDetailView: View {
             }
         }
         .onAppear {
+            // Taken out of the drawer and held once more: hands wear a card (ADR-032).
+            Handling.touch(stub.id)
             // Sits up straight as it grows. The zoom is the system's; the straightening is ours, on the same clock.
             withAnimation(Motion.settle) { tilt = 0 }
         }
@@ -308,6 +320,21 @@ struct StubDetailView: View {
         }
     }
 
+    /// The card's history in one line: why it is punched, and what time and hands have done to it.
+    private var history: String? {
+        let c = copy
+        var parts: [String] = []
+        if c.viewing > 1 {
+            let times = c.viewing == 2 ? "once" : c.viewing == 3 ? "twice" : "\(c.viewing - 1) times"
+            parts.append("Punched \(times), as a conductor punches a ticket: this is your \(c.viewingWords.lowercased())")
+        }
+        let foxed = Patina.foxing(at: c.age) > 0
+        if let worn = Patina.words(age: c.age, handled: c.handled, foxed: foxed) { parts.append(worn) }
+        guard !parts.isEmpty else { return nil }
+        let line = parts.joined(separator: ". ")
+        return line.prefix(1).uppercased() + line.dropFirst() + "."
+    }
+
     /// This stub's copy of its edition, counted against the drawer.
     private var copy: Copy {
         var copy = Copy(stub: stub, among: drawer)
@@ -318,6 +345,7 @@ struct StubDetailView: View {
             copy.viewings = max(copy.viewings, viewing)
         }
         if let age = DebugDrive.age { copy.age = min(max(age, 0), Patina.oldest) }
+        if let handled = DebugDrive.handled { copy.handled = handled }
         #endif
         return copy
     }
