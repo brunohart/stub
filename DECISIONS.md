@@ -382,3 +382,13 @@ Every button is a `StubButtonStyle` (`Stub/Design/Buttons.swift`): a capsule in 
 **Why.** ADR-022 had already taken the italic away from every instruction, status and way somewhere and left it as the drawer's voice. Seen on the sheet, the voice read as cursive, ornament over the numbers rather than a sentence to read. Upright Newsreader keeps the voice distinct from Host Grotesk and the mono without the flourish.
 
 **Consequences.** Newsreader italic appears only inside an edition (`Face.serifItalic`). A new sentence in the chrome is Newsreader upright for reading or Host Grotesk for words. The screenshots before this date show the italic sentence; they are a record, not a spec.
+
+## ADR-034 — The season sheet is set like a record: figures in a row, the nights by month, a ruled ledger
+
+**Date:** 2026-10-16 · **Status:** decided; built, tested and seen in the simulator at the default and accessibility sizes (`--seed --season`). Refines Day 4's sheet and ADR-024's circuits.
+
+**What changed.** Under the sentence, the sheet was a column of figures one under another at three sizes (34 for films and cinemas, 22 for the rest, a cinema's name at 24 in Host Grotesk). Bruno: the numbers "just being vertical and different font variants make it feel cheap and gimmicky". Now it has three parts. The figures stand in a row, films, cinemas and paid, in the detail's own `Figure` (the ticket's Date, Seat and Paid) at 26, a second currency on its own line under the first. The nights are drawn month by month (`SeasonSummary.nights`): a row for each year from the first night to the last, newest first, a column for each month, a dot for each night stacked on the year's hairline, more than eight written as a number; the busiest month's dots are orange. What has a name is on ruled lines: Most visited, Busiest month (its label hung with the same orange dot), Circuits, Independents, Front row, the label in grey at 13 and the fact in words at 15.
+
+**Why.** A figure, a label and a name each had a size of their own, so the sheet read as a stack of stats rather than one thing set by one hand. The row borrows the ticket's own way of setting fields, so the sheet belongs to the same printed world; the calendar shows when the nights fell, which "busiest month" could only assert; and the ledger gives the named facts one size and one line each. The orange is the sheet's one mark, and it points the same way twice.
+
+**Consequences.** One size each for figures, words and labels on the sheet. At the accessibility sizes the row and the ledger stack; the calendar's type stops growing at extra large, because it is a picture of twelve columns, and VoiceOver reads it month by month. Busiest weekday is still counted and still not shown.

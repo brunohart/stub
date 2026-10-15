@@ -24,6 +24,8 @@ struct SeasonSummary: Equatable, Sendable {
     var independents: Int = 0
     /// Nights in the front row: a seat in row A.
     var frontRow: Int = 0
+    /// Nights by year, twelve counts each, January first: the season month by month, for the sheet's calendar.
+    var nights: [Int: [Int]] = [:]
 
     var mostVisited: Tally? { cinemas.first }
     var busiestMonth: Tally? { months.first }
@@ -50,6 +52,7 @@ struct SeasonSummary: Equatable, Sendable {
                 if let y = c.year, let m = c.month {
                     let name = "\(calendar.monthSymbols[m - 1]) \(y)"
                     byMonth[name, default: (0, y * 12 + m)].count += 1
+                    nights[y, default: Array(repeating: 0, count: 12)][m - 1] += 1
                 }
                 if let w = c.weekday {
                     byWeekday[calendar.weekdaySymbols[w - 1], default: (0, w)].count += 1

@@ -29,6 +29,16 @@ struct SeasonTests {
         #expect(s.paid.first { $0.currency == "NZD" }?.amount == Decimal(string: "66.5"))
     }
 
+    /// The sheet's calendar: a count for every month of every year a night fell in, January first.
+    @Test func countsTheNightsByMonth() {
+        let s = SeasonSummary(stubs: drawer + [Stub(title: "Aftersun", cinema: "Rialto", screenedAt: date(2026, 6, 2))])
+        #expect(s.nights.keys.sorted() == [2024, 2026])
+        #expect(s.nights[2024] == [0, 0, 3, 1, 0, 0, 0, 0, 0, 0, 0, 0])
+        #expect(s.nights[2026]?[5] == 1)
+        #expect(s.nights.values.flatMap { $0 }.reduce(0, +) == 5)
+        #expect(SeasonSummary(stubs: [Stub(title: "Undated")]).nights.isEmpty, "a stub with no date has no month")
+    }
+
     @Test func handSentenceIsTheFloor() {
         #expect(SeasonSummary(stubs: []).handSentence.hasPrefix("Nothing in the drawer yet"))
         #expect(SeasonSummary(stubs: [drawer[0]]).handSentence == "One stub. The drawer has started.")

@@ -8,6 +8,8 @@ Not a playbook day. Bruno's note on the season sheet: not a fan of the cursive.
 
 **Shipped.** The season's sentence is Newsreader upright at 26 in navy, in place of the italic, and `Type.italic` is gone, so the app's own chrome has no italic left; what an edition prints keeps its own (ADR-033, DESIGN.md rule 1). Screenshot: `2026-10-16-season-upright.png`.
 
+**The season sheet, set again** (ADR-034, DESIGN.md rule 17). Bruno: the figures one under another, at three sizes and in two faces, felt cheap. Now the figures stand in a row (films, cinemas, paid) in the detail's `Figure` at 26; under them the nights month by month, a dot a night on each year's line and the busiest month in orange (`SeasonSummary.nights`, a new test, `countsTheNightsByMonth`); then a ruled ledger of what has a name. Checked at accessibility extra large: the row and the ledger stack, the calendar's type stops at extra large and VoiceOver reads it month by month. Screenshot: `2026-10-16-season-sheet.png`.
+
 ## 2026-10-15 — The cabinet, the camera first, the widget as the edition, Your card and ten icons
 
 Not a playbook day. Bruno's notes through the morning, built in order: ten studies for the icon; Keep a stub opening the camera; tickets or editions as the drawer's face; order that scales; holding a stub to move it; drawers of your own; the widget drawn from the edition; the icons behind a small one-time payment; an account that is not an account; years that close like folders; the card button in the corner; and a sweep against the HIG.

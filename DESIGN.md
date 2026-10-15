@@ -24,6 +24,7 @@ One intent, then rules. The intent decides how the constraints are used; the con
 14. **Every share is signed by the paper.** "shared in Stub" and a small ticket, blind-embossed under the card on every clip and still, lit by the share's own light. Never on the card, never optional.
 15. **The act comes first.** Keep a stub opens the camera; the form is the second layer. Holding a stub moves it; the menu and the list do the same for anyone who would rather tap (ADR-025, ADR-026).
 16. **Nothing is lost in one tap.** Throwing a stub away and taking a drawer out are asked once; a stub taken out of a drawer is still in the drawer of every stub.
+17. **The season is set like a record, not a dashboard.** The figures stand in a row at one size, as a ticket sets its fields; the nights are drawn month by month, a dot a night on each year's line, the busiest month in the orange; what has a name is on ruled lines, the label in grey and the fact in words. No column of outsized numbers, no size of its own for each kind of figure (ADR-034).
 
 ## Editions
 

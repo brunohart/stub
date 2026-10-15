@@ -374,11 +374,15 @@ struct Figure: View {
     let label: String
     let value: String
     var spoken: String?
-    init(_ label: String, _ value: String, spoken: String? = nil) { self.label = label; self.value = value; self.spoken = spoken }
+    /// The ticket's fields are 15; the season sets its figures larger, in the same pattern (ADR-034).
+    var size: CGFloat = 15
+    init(_ label: String, _ value: String, spoken: String? = nil, size: CGFloat = 15) {
+        self.label = label; self.value = value; self.spoken = spoken; self.size = size
+    }
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(value).numberText(15)
-            Text(label).font(Type.words(11)).foregroundStyle(Ink.grey)
+        VStack(alignment: .leading, spacing: size > 20 ? 5 : 3) {
+            Text(value).numberText(size)
+            Text(label).font(Type.words(size > 20 ? 12 : 11)).foregroundStyle(Ink.grey)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(label), \(spoken ?? value)")
