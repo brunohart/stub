@@ -372,3 +372,13 @@ Every button is a `StubButtonStyle` (`Stub/Design/Buttons.swift`): a capsule in 
 **Why.** Patina is the app's argument that a kept thing gains rather than decays; marks that look like glitches argue the opposite. Toning at the edges, small clustered foxing and a burnished corner are how paper actually ages, they are materials that answer the light rather than noise (DESIGN.md, no fake grain), and they are slow enough that a new card is pristine and a card from years ago is quietly lovely. Saying what they mean turns a mystery into a story the card tells about you.
 
 **Consequences.** Handling is per phone and not synced: hands are local, and the same card can be more worn on the phone it is held on most. The patina's tests now hold "nothing in the first two years", "a few small clusters at most", and that hands wear but never fox.
+
+## ADR-033 — The season's sentence stands upright; the app's chrome has no italic
+
+**Date:** 2026-10-16 · **Status:** decided; built and seen in the simulator (`--seed --season`). Refines ADR-022.
+
+**What changed.** The season sheet's sentence was the last italic in the app's own chrome, Newsreader italic at 26 in navy. Bruno: "not a fan of cursive being used here". It is now Newsreader upright at the same size, colour and leading, and `Type.italic` is gone, so the chrome cannot reach for it again. The editions keep theirs: Noir's title, Letterpress's cinema, the viewing line and the card's back are things a press prints, and their type belongs to the movement.
+
+**Why.** ADR-022 had already taken the italic away from every instruction, status and way somewhere and left it as the drawer's voice. Seen on the sheet, the voice read as cursive, ornament over the numbers rather than a sentence to read. Upright Newsreader keeps the voice distinct from Host Grotesk and the mono without the flourish.
+
+**Consequences.** Newsreader italic appears only inside an edition (`Face.serifItalic`). A new sentence in the chrome is Newsreader upright for reading or Host Grotesk for words. The screenshots before this date show the italic sentence; they are a record, not a spec.

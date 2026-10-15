@@ -8,7 +8,7 @@ One intent, then rules. The intent decides how the constraints are used; the con
 
 ## Rules that follow
 
-1. **Type is constant and quiet.** Host Grotesk for the words, Fragment Mono for numbers. Newsreader italic is the drawer's voice and nothing else: the season's sentence, on its sheet, and what an edition prints. It is never an instruction, a status or a way somewhere, and it is not on the home screen (ADR-022). Nothing tracked-out and boxed. No eyebrows.
+1. **Type is constant and quiet.** Host Grotesk for the words, Fragment Mono for numbers. Newsreader, upright, for reading: the season's sentence on its sheet is Newsreader at 26 in navy. Newsreader italic is only what an edition prints; the app's own chrome has none, not as an instruction, a status, a way somewhere or the season's voice (ADR-022, ADR-033). Nothing tracked-out and boxed. No eyebrows.
 2. **All grit lives in the image layer, and none of it is noise.** The stub photograph is the thing that gets silkscreened and misregistered. The parchment is a flat warm colour; nothing is grained, because noise laid over an app reads as fake (ADR-017). The type is clean.
 3. **Nothing sits level.** Each stub has a tilt fixed at creation (between −1.5° and 1.5°, never 0). It sits up straight when touched and lies back down when released.
 4. **Filed by year, then by hand.** Two columns of mounts behind year folders, newest year first; within a year, the order the person put the stubs in. Each row's mount is as tall as its tallest ticket and every ticket stands on the same line, so a drawer of a hundred reads as calmly as one of ten. A folder closes on its year with a tap on its tab (ADR-026). (Until 2026-10-15: two uneven columns, a pinboard.)
@@ -58,7 +58,7 @@ The person who kept a stub can pull their own proof of its edition (ADR-016, `do
 | cream | `#F5F0E1` | a blank stub |
 | ink | `#1A1A1A` | words |
 | orange | `#D4622B` | the misregistered plate, the accent, never a fill |
-| navy | `#1B2D4F` | the italic sentence, offset shadows |
+| navy | `#1B2D4F` | the season's sentence, offset shadows |
 | rust | `#C4391D` | destructive, only |
 | grey | `#8A8578` | secondary words |
 

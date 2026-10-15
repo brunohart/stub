@@ -670,7 +670,7 @@ struct EmptyDrawer: View {
                         withAnimation(Motion.settle) { breath = 1 }
                     }
                 }
-            // The empty drawer's one sentence: what the drawer is for. Reading type, not the season's italic voice.
+            // The empty drawer's one sentence: what the drawer is for. Reading type, smaller and quieter than the season's.
             Text(SeasonSummary().handSentence)
                 .font(Type.reading(19))
                 .foregroundStyle(Ink.ink.opacity(0.8))

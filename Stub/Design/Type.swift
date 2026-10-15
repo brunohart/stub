@@ -2,14 +2,14 @@ import SwiftUI
 
 /// Two faces and a mono, never a fourth. Shared with the widget, so nothing here may need Metal or UIKit;
 /// the misregistered plate lives next door in `DisplayTitle.swift`.
-/// Host Grotesk for words. Newsreader for the one italic moment and for reading. Fragment Mono for numbers only.
+/// Host Grotesk for words. Newsreader for reading, upright: the app's own chrome has no italic, only what an edition
+/// prints does (ADR-033). Fragment Mono for numbers only.
 /// Hierarchy comes from size and space, never from weight.
 enum Type {
     static func display(_ size: CGFloat) -> Font { .custom("HostGrotesk-Medium", size: size) }
     static func words(_ size: CGFloat) -> Font { .custom("HostGrotesk-Regular", size: size) }
     static func stamp(_ size: CGFloat) -> Font { .custom("HostGrotesk-SemiBold", size: size) }
     static func reading(_ size: CGFloat) -> Font { .custom("Newsreader16pt-Regular", size: size) }
-    static func italic(_ size: CGFloat) -> Font { .custom("Newsreader16pt-Italic", size: size) }
     static func numbers(_ size: CGFloat) -> Font { .custom("FragmentMono-Regular", size: size) }
 
     /// Display tracking: -0.03em.

@@ -2,7 +2,7 @@ import Foundation
 import FoundationModels
 import OSLog
 
-/// The drawer, counted. Everything the one italic sentence and the season sheet say comes from here, by hand,
+/// The drawer, counted. Everything the season's sentence and its sheet say comes from here, by hand,
 /// in a millisecond; the model is only asked to phrase it (ADR-011).
 struct SeasonSummary: Equatable, Sendable {
     struct Tally: Equatable, Sendable {

@@ -2,7 +2,7 @@ import Foundation
 import Observation
 import OSLog
 
-/// The one italic sentence, and the numbers under it. Counted by hand the instant the drawer changes;
+/// The season's one sentence, and the numbers under it. Counted by hand the instant the drawer changes;
 /// phrased by the on-device model a moment later, once the reader is idle, and cached against the drawer's
 /// hash so the model is asked once per drawer, not once per launch.
 @MainActor @Observable

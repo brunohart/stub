@@ -2,6 +2,12 @@
 
 Newest at the top. One entry per slot. What shipped, what broke, what the reader did.
 
+## 2026-10-16 — The season's sentence, upright
+
+Not a playbook day. Bruno's note on the season sheet: not a fan of the cursive.
+
+**Shipped.** The season's sentence is Newsreader upright at 26 in navy, in place of the italic, and `Type.italic` is gone, so the app's own chrome has no italic left; what an edition prints keeps its own (ADR-033, DESIGN.md rule 1). Screenshot: `2026-10-16-season-upright.png`.
+
 ## 2026-10-15 — The cabinet, the camera first, the widget as the edition, Your card and ten icons
 
 Not a playbook day. Bruno's notes through the morning, built in order: ten studies for the icon; Keep a stub opening the camera; tickets or editions as the drawer's face; order that scales; holding a stub to move it; drawers of your own; the widget drawn from the edition; the icons behind a small one-time payment; an account that is not an account; years that close like folders; the card button in the corner; and a sweep against the HIG.

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The season, on one sheet. The sentence in Newsreader italic, the numbers in Fragment Mono, nothing else.
+/// The season, on one sheet. The sentence in Newsreader, upright; the numbers in Fragment Mono; nothing else (ADR-033).
 struct SeasonView: View {
     let summary: SeasonSummary
     let sentence: String
@@ -22,7 +22,7 @@ struct SeasonView: View {
                             .padding(.bottom, -18)
                     }
                     Text(sentence)
-                        .font(Type.italic(26))
+                        .font(Type.reading(26))
                         .foregroundStyle(Ink.navy)
                         .lineSpacing(4)
                         .fixedSize(horizontal: false, vertical: true)
