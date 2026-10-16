@@ -13,6 +13,9 @@ struct StubDraft: Equatable, Sendable {
     var readBy: String = "heuristic"
     /// Who issued the ticket, when it says: a Wallet pass's `organizationName`. The circuit, more often than not (ADR-024).
     var organization: String = ""
+    /// The cinema's poster for the film, handed over with the ticket in its link (ADR-050). Fetched once, from the cinema,
+    /// when the stub is kept; never by a reader.
+    var poster: URL? = nil
 
     var isUsable: Bool { !title.trimmingCharacters(in: .whitespaces).isEmpty }
 

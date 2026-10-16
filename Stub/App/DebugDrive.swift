@@ -41,6 +41,9 @@ final class DebugDrive {
     /// `-overprint stub|discs|dots|bands|letter`: in the press room, pull a pass through that screen across the card (ADR-046).
     /// `-poster poster-orchard.jpg`: a stand-in poster from the bundle as every film's key art (ADR-049).
     static let posterFile: String? = value(after: "-poster")
+    /// `-link "https://designedbybruno.net/stub/add#…"`: an Add to Stub link handed over two seconds after launch, as a tap
+    /// in a cinema's email would hand it (ADR-021, ADR-050).
+    static let link: URL? = value(after: "-link").flatMap { URL(string: $0) }
     static let overprint: Act.Screen? = value(after: "-overprint").flatMap(Act.Screen.init(rawValue:))
     /// `-stamp date|admit|seat|viewing|postmark`: in the press room, press that stamp on the card.
     static let stamp: Act.Stamp? = value(after: "-stamp").flatMap(Act.Stamp.init(rawValue:))

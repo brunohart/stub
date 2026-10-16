@@ -4,13 +4,14 @@ import PencilKit
 import OSLog
 
 /// What the press keeps, kept in the drawer's store so it syncs with the stubs (ADR-024): every release's printed edition,
-/// its pulled proof, the proof left on the press, and the owner's signature, as `PressRecord`s. `Editions` and `Signatures`
+/// its pulled proof, the proof left on the press, the owner's signature, and the poster a cinema handed over (ADR-050), as
+/// `PressRecord`s. `Editions` and `Signatures`
 /// keep their own fast copies (`UserDefaults`, Application Support) and write through to the ledger; when another phone's
 /// records arrive, `reconcile` makes the copies match the ledger. Deleting a proof (going back) deletes its record, so going
 /// back on one phone goes back on all of them.
 @MainActor
 final class PressLedger {
-    enum Kind: String { case edition, proof, press, signature, ledger }
+    enum Kind: String { case edition, proof, press, signature, ledger, poster }
 
     static let log = Logger(subsystem: "com.designedbybruno.stub", category: "ledger")
 
@@ -32,6 +33,7 @@ final class PressLedger {
     func attach(_ editions: Editions, _ signatures: Signatures) {
         editions.ledger = self
         signatures.ledger = self
+        Posters.shared.ledger = self
         if !isFilled {
             let encoder = JSONEncoder()
             for (key, edition) in editions.printed where record(.edition, key) == nil {
@@ -51,7 +53,10 @@ final class PressLedger {
 
     /// Makes the press's copies match the ledger: the newest record for each kind and key, extra copies of a record removed.
     func reconcile(_ editions: Editions, _ signatures: Signatures) {
-        let all = (try? context.fetch(FetchDescriptor<PressRecord>(sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]))) ?? []
+        // Names and dates only: a record's bytes (a poster's are a few hundred kilobytes) are read when they are wanted.
+        var everything = FetchDescriptor<PressRecord>(sortBy: [SortDescriptor(\.updatedAt, order: .reverse)])
+        everything.propertiesToFetch = [\.kind, \.key, \.updatedAt]
+        let all = (try? context.fetch(everything)) ?? []
         var newest: [String: PressRecord] = [:]
         var extra = 0
         for record in all {
@@ -68,6 +73,8 @@ final class PressLedger {
         let press = records(.press).compactMapValues { try? Proof.decoder.decode(Proof.self, from: $0) }
         editions.adopt(printed: printed, proofs: proofs, onPress: press)
         signatures.adopt(records(.signature)["owner"].flatMap { try? PKDrawing(data: $0) })
+        let posters = Set(newest.values.filter { $0.kind == Kind.poster.rawValue }.map(\.key))
+        Posters.shared.adopt(posters) { newest["\(Kind.poster.rawValue)/\($0)"]?.data }
     }
 
     /// Keeps `data` as the record for a kind and key, replacing any older one.

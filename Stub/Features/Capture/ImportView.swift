@@ -105,7 +105,7 @@ struct ImportView: View {
                                 picker
                             }
                             if let arrival {
-                                Label(arrival.sentence, systemImage: arrival.symbol)
+                                Label(arrival.sentence(postersOn: Posters.shared.on), systemImage: arrival.symbol)
                                     .font(Type.words(15)).foregroundStyle(Ink.soft(0.75))
                                     .fixedSize(horizontal: false, vertical: true)
                             }
@@ -401,6 +401,8 @@ struct ImportView: View {
         if let drawer { Cabinet.file(stub, in: drawer, among: everyStub + [stub]) }
         // Saved now, not at the next autosave: the phone goes back in a pocket the moment this is tapped (decision 001).
         try? context.save()
+        // The cinema's poster, if its link handed one over: fetched now, once, and printed as it arrives (ADR-050).
+        if let poster = draft.poster { Posters.shared.supplied(poster, title: stub.title) }
         Signposts.capture.endInterval(Signposts.kept, saving)
         // Not dismissed: the stub is in the drawer, and now its edition is printed.
         withAnimation(reduceMotion ? Motion.plain : Motion.place) { kept = stub }

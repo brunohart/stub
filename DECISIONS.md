@@ -670,3 +670,39 @@ editions each printing its poster under the editions' own ceilings: 0.403 s of C
 **Debug.** `-poster poster-orchard.jpg` stands a fictional poster (`scripts/make-posters.py`) in for every film, so the key
 art is built and screenshotted without TMDB or anyone's artwork in the repo. `-proof "movement=…"` shows it in each
 movement.
+
+## ADR-050 — The poster comes from the cinema
+
+**Date:** 2026-10-17 · **Status:** decided by Bruno (decision 009, choice 4); built; tested (`AddLinkTests`,
+`PosterSupplyTests`); driven end to end on the simulator. Supersedes ADR-049's source; its printing stands.
+
+**What changed.** The Add to Stub link (ADR-021) takes a `poster` field: the address of the cinema's own poster for the
+film. The cinema already holds the distributor-licensed artwork, so the poster is licensed where it comes from. No
+title goes to anyone, and the App Store label stays **Data Not Collected**. TMDB stays in the code, off: it asks only in
+a build with its token, and none has one.
+
+**The address** (`AddLink.posterURL`): https on the standard port to a public name. No address in numbers, no
+`localhost` or local-network name, no user or password, a path to a file, at most 2,048 characters. Its query and
+fragment are dropped, so the address is the same for everyone handed it and can't carry anything about the person. A bad
+address is left out (`unread: poster`) and the ticket still opens.
+
+**The fetch** (`Posters.supplied`): never to open the ticket. The import sheet says "keeping it fetches the poster
+once, from <host>", and the fetch happens on Keep. It runs over an ephemeral session with no cookies and no cache.
+Redirects are followed only to an address that meets the same rule. The response must be an image of 8 MB or less, by
+its declared length and again as it arrives. A release keeps the first poster it is handed. Nothing is fetched when
+posters are off in Your card.
+
+**What is kept** (`Posters.sanitised`): only an image that decodes, is no more than 60 megapixels, is poster-shaped
+(width over height between 0.45 and 1.1) and is at least 400 pixels on its long side. So a tracking pixel, a banner or a
+page is refused. It is written again as a JPEG of 900 pixels, with no metadata, under 400 KB. It is kept in the press's
+ledger (`PressLedger.Kind.poster`), so it reaches the person's other phones through their own iCloud and outlives the
+cinema's copy. The ledger now fetches its records' names and dates only, so a reconcile doesn't read every poster's
+bytes.
+
+**Your card.** "Print each film's poster" is shown always, and says where posters come from. "Forget the posters" is
+gone: a cinema's poster is part of the keepsake and may not be fetchable again. TMDB's notice and the privacy line's
+mention of TMDB appear only in a build with TMDB's token.
+
+**Debug.** `-link "<Add to Stub link>"` hands a link over two seconds after launch. Driven on the simulator with the
+stand-in poster served from this repository on GitHub: the sheet named the host, Keep fetched it once, and the
+blueprint edition printed it as it arrived.

@@ -2,6 +2,28 @@
 
 Newest at the top. One entry per slot. What shipped, what broke, what the reader did.
 
+## 2026-10-17 — The poster comes from the cinema
+
+Bruno chose decision 009's fourth option: the cinema supplies the poster. Shipped (ADR-050):
+- the Add to Stub link's `poster` field, held to https on a public name, its query dropped;
+- the import sheet says where the poster will come from, and the fetch happens on Keep, once;
+- the download is image only, 8 MB at most, redirects held to the same rule, no cookies;
+- what is kept is a plain 900-pixel JPEG with no metadata, poster-shaped, in the press's ledger, so it syncs through the
+  person's iCloud;
+- Your card's switch is always shown; "Forget the posters" is gone; TMDB's notice only with a token, which no build has;
+- the spec (`docs/add-to-stub.md`) says all of it to a cinema; `-link` hands a link over in a debug build.
+
+**Driven.** On the simulator, a link for a fictional film with the stand-in poster served from this repository on
+GitHub: the sheet named raw.githubusercontent.com, Keep fetched it once ("kept from the cinema"), and the blueprint
+edition printed the profile into its panel as it arrived.
+
+**Measured.** 210 unit tests pass (`PosterSupplyTests` new: what is downloaded, what is kept; `AddLinkTests` grew five).
+The audit is clean (0 issues). Budgets all pass; launch is unchanged with the ledger reading names before bytes (4.09 s to
+first frame, ≤ 4.6 s).
+
+**Broke and fixed.** A 200 × 300 image passed as a poster at a 300-pixel floor; the floor is 400. The first screenshot
+caught the drawer before the sheet: a link arrives two seconds after launch and the sheet takes a moment more.
+
 ## 2026-10-17 — The film's own poster
 
 Bruno: the stub should use elements from the film's poster so each one holds up as an artefact, without cheap design

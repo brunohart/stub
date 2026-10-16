@@ -160,4 +160,54 @@ struct AddLinkTests {
         #expect(draft.currency == "NZD" && draft.readBy == "shortcut" && plate == nil)
         #expect(raw.contains("ref: AC-55120"))
     }
+
+    // MARK: The poster (ADR-050)
+
+    /// The cinema's poster rides with the ticket: kept on the draft, said in what the link said, its query dropped so the
+    /// address is the same for everyone.
+    @Test func thePosterRidesWithTheTicket() throws {
+        let poster = "https%3A%2F%2Fcdn.kestrelpictures.co.nz%2Fposters%2Fglass-harbour.jpg%3Fw%3D800%26u%3D55120"
+        let handed = try read("https://designedbybruno.net/stub/add#title=Glass%20Harbour&poster=\(poster)")
+        #expect(handed.draft.poster?.absoluteString == "https://cdn.kestrelpictures.co.nz/posters/glass-harbour.jpg")
+        #expect(handed.raw.contains("poster: https://cdn.kestrelpictures.co.nz/posters/glass-harbour.jpg"))
+        #expect(handed.unread.isEmpty)
+    }
+
+    /// Only https to a public name, a path to a file, nothing of a user's: anything else is left out, and the ticket still
+    /// opens without it.
+    @Test(arguments: [
+        "http://cdn.kestrelpictures.co.nz/p.jpg",
+        "https://192.168.1.20/p.jpg",
+        "https://10.0.0.1/p.jpg",
+        "https://[::1]/p.jpg",
+        "https://localhost/p.jpg",
+        "https://printer.local/p.jpg",
+        "https://kestrel.internal/p.jpg",
+        "https://user:secret@cdn.kestrelpictures.co.nz/p.jpg",
+        "https://cdn.kestrelpictures.co.nz:8443/p.jpg",
+        "https://cdn.kestrelpictures.co.nz/",
+        "https://kestrel/p.jpg",
+        "ftp://cdn.kestrelpictures.co.nz/p.jpg",
+        "not a link",
+    ])
+    func aPosterAddressThatIsNotPublicIsLeftOut(_ address: String) throws {
+        let encoded = address.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? ""
+        let handed = try read("https://designedbybruno.net/stub/add#title=Glass%20Harbour&poster=\(encoded)")
+        #expect(handed.draft.poster == nil, "\(address)")
+        #expect(handed.unread == ["poster"], "\(address)")
+        #expect(handed.draft.title == "Glass Harbour")
+    }
+
+    @Test func aLongPosterAddressIsLeftOut() {
+        #expect(AddLink.posterURL("https://cdn.kestrelpictures.co.nz/" + String(repeating: "a", count: 2100) + ".jpg") == nil)
+        #expect(AddLink.posterURL("https://cdn.kestrelpictures.co.nz/posters/a.jpg") != nil)
+    }
+
+    /// The import sheet says where the poster will come from, and only when keeping will fetch it.
+    @Test func theSheetSaysWhereThePosterComesFrom() throws {
+        let handed = try read("https://designedbybruno.net/stub/add#title=Glass%20Harbour&poster=https%3A%2F%2Fcdn.kestrelpictures.co.nz%2Fp.jpg")
+        let arrival = Arrival(content: .known(handed.draft, raw: handed.raw, plate: nil), source: .link)
+        #expect(arrival.sentence(postersOn: true).contains("from cdn.kestrelpictures.co.nz"))
+        #expect(arrival.sentence(postersOn: false) == "Handed over in a link. Nothing was fetched to open it.")
+    }
 }

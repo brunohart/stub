@@ -15,7 +15,7 @@ enum AddLink {
     static let longest = 200
 
     enum Key: String, CaseIterable, Sendable {
-        case title, cinema, at, screen, seat, price, currency, ref
+        case title, cinema, at, screen, seat, price, currency, ref, poster
     }
 
     /// What a link (or a shortcut) handed over, in the shapes the import sheet takes.
@@ -31,6 +31,8 @@ enum AddLink {
         var currency = ""
         /// The booking's own reference. Kept in what the reader saw, never printed.
         var ref = ""
+        /// The cinema's poster for the film: an https address on a public name, its query and fragment dropped (ADR-050).
+        var poster: URL?
     }
 
     struct Handed: Equatable, Sendable {
@@ -71,6 +73,9 @@ enum AddLink {
         if let price = fields[.price], !price.isEmpty {
             if let read = amount(price) { ticket.price = read } else { unread.append("price=\(price)") }
         }
+        if let poster = fields[.poster], !poster.isEmpty {
+            if let url = posterURL(poster) { ticket.poster = url } else { unread.append("poster") }
+        }
         if let currency = fields[.currency], !currency.isEmpty {
             let code = currency.trimmingCharacters(in: .whitespaces).uppercased()
             if code.range(of: #"^[A-Z]{3}$"#, options: .regularExpression) != nil { ticket.currency = code } else { unread.append("currency=\(currency)") }
@@ -92,6 +97,7 @@ enum AddLink {
         draft.currency = ticket.price == nil ? "" : ticket.currency
         draft.readBy = readBy
         draft.confidence = 1
+        draft.poster = ticket.poster
         var lines: [String] = []
         func line(_ key: Key, _ value: String) { if !value.isEmpty { lines.append("\(key.rawValue): \(value)") } }
         line(.title, draft.title)
@@ -102,7 +108,39 @@ enum AddLink {
         if let price = ticket.price { line(.price, "\(price)") }
         line(.currency, draft.currency)
         line(.ref, text(ticket.ref))
+        if let poster = ticket.poster { line(.poster, String(poster.absoluteString.prefix(longest))) }
         return Handed(draft: draft, raw: lines.joined(separator: "\n"), unread: [])
+    }
+
+    // MARK: The poster
+
+    /// A poster's address as Stub will fetch it, or `nil`: https on the standard port, a public domain name (no address
+    /// in numbers, no `localhost`, nothing on the local network), no user or password, a path to a file, and no more than
+    /// 2,048 characters. Its query and fragment are dropped, so the address is the same for everyone who is handed it and
+    /// cannot carry anything about the person.
+    static func posterURL(_ value: String) -> URL? {
+        let s = value.trimmingCharacters(in: .whitespaces)
+        guard s.count <= 2048, var components = URLComponents(string: s), isPublicHTTPS(components) else { return nil }
+        guard components.path.count > 1 else { return nil }
+        components.query = nil
+        components.fragment = nil
+        return components.url
+    }
+
+    /// Whether an address is https to a public name: the rule for the poster and for every redirect on the way to it.
+    static func isPublicHTTPS(_ url: URL) -> Bool {
+        URLComponents(url: url, resolvingAgainstBaseURL: false).map(isPublicHTTPS) ?? false
+    }
+
+    private static func isPublicHTTPS(_ c: URLComponents) -> Bool {
+        guard c.scheme?.lowercased() == "https", c.user == nil, c.password == nil, c.port == nil || c.port == 443,
+              let host = c.host?.lowercased(), !host.isEmpty else { return false }
+        // A name, not an address: no IPv4 in numbers, no IPv6 at all.
+        if host.contains(":") || host.range(of: #"^[0-9.]+$"#, options: .regularExpression) != nil { return false }
+        let local = ["localhost", ".localhost", ".local", ".internal", ".lan", ".home.arpa", ".test", ".invalid", ".example"]
+        if local.contains(where: { $0.hasPrefix(".") ? host.hasSuffix($0) : host == $0 }) { return false }
+        // A public name has a dot, and only the letters, digits and hyphens a name is made of.
+        return host.contains(".") && host.range(of: #"^[a-z0-9.-]+$"#, options: .regularExpression) != nil
     }
 
     // MARK: Reading the fields

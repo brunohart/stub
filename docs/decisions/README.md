@@ -16,4 +16,4 @@ An entry is never rewritten to look right later. If a decision is reversed, a ne
 | [006](006-network-without-data.md) | Network effects without collecting data | decided, pricing awaiting Bruno |
 | [007](007-proof.md) | Proof outside us | decided |
 | [008](008-corpus.md) | The corpus: real tickets, measured by kind | decided, corpus awaiting tickets |
-| [009](009-posters.md) | The film's own poster, and what it costs the label | built and dormant; the label and TMDB's terms await Bruno |
+| [009](009-posters.md) | The film's own poster, and what it costs the label | decided: the cinema supplies it; the label stays Data Not Collected |

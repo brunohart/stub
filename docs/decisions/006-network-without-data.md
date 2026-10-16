@@ -119,5 +119,7 @@ one-time purchases, because the network effects above all start from installs.
 - Selling audience insight to cinemas.
 - Contacts upload, a friend graph, or a feed inside Stub: the network lives in people's own Stories and inboxes.
 
-**Later.** [009](009-posters.md) asks for the first exception: the film's title to TMDB for its poster. It is built and
-dormant, and the label stays Data Not Collected until Bruno decides.
+**Later.** [009](009-posters.md) weighed the first exception, the film's title to TMDB for its poster, and chose the
+cinema instead: the poster comes in the cinema's own link and is fetched from the cinema, so the label stays Data Not
+Collected. It is a second thing a cinema gets back from Add to Stub: its own poster on every edition printed from its
+tickets.

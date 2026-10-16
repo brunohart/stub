@@ -1,6 +1,6 @@
 # 009 · The film's own poster, and what it costs the label
 
-**Date** 2026-10-17 · **Status** built and dormant; the privacy label and TMDB's commercial terms await Bruno
+**Date** 2026-10-17 · **Status** decided: the cinema supplies the poster (choice 4, ADR-050); the label stays Data Not Collected; TMDB stays off
 
 ## The decision
 
@@ -63,3 +63,21 @@ label is untouched.
 - Shipping the token in the repository, or a build that asks TMDB before the label is decided.
 - A proxy server to hide the requests: Stub has no server (decision 006), and a server would collect the same data.
 - Pasting the poster on the card: it would turn the edition into a frame for someone else's design.
+
+## Decided
+
+**2026-10-17. Bruno chose 4: the cinema supplies the poster.** Built as ADR-050. The `poster` field of the Add to Stub
+link carries the address of the cinema's own poster. Stub fetches it once, when the ticket is kept, from the cinema that
+sold it, and keeps a plain copy in the person's iCloud with the rest of their drawer.
+
+- **The label stays Data Not Collected.** Nothing of the person's goes with the request: no title, no identifier, no
+  cookie, and the address's query is dropped. The cinema's server sees one request for one public image, from someone
+  who has just booked with it.
+- **The rights sit where they belong.** The poster is the one the distributor licensed to the cinema, handed over by the
+  cinema for exactly this. Printing it into an edition that people share is still a use to agree with each partner
+  cinema: the spec says exactly what Stub does with the poster, so a cinema that fills the field knows what it is
+  handing over. Bruno should still take advice on whether a distributor's licence to the cinema reaches that far.
+- **The cost.** Only tickets that arrive by a cinema's link get a poster. The rest print as before, which is how Stub
+  looked until now.
+- **TMDB** stays in the code, off. No build has its token, and choice 1 is not taken. If it ever is, the label question
+  above comes back with it.

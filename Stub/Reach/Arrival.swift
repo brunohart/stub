@@ -39,10 +39,21 @@ struct Arrival: Identifiable, Equatable, Sendable {
         }
     }
 
-    /// The sheet's line about where the ticket came from.
-    var sentence: String {
+    /// The cinema's poster that came with it, if one did (ADR-050).
+    var poster: URL? {
+        if case .known(let draft, _, _) = content { return draft.poster }
+        return nil
+    }
+
+    /// The sheet's line about where the ticket came from. `postersOn`: whether keeping it will fetch the cinema's poster,
+    /// which the line then says, with where from.
+    func sentence(postersOn: Bool) -> String {
         switch source {
-        case .link: return "Handed over in a link. Nothing was fetched to open it."
+        case .link:
+            if postersOn, let host = poster?.host() {
+                return "Handed over in a link, with the cinema's poster. Nothing was fetched to open it; keeping it fetches the poster once, from \(host)."
+            }
+            return "Handed over in a link. Nothing was fetched to open it."
         case .shortcut: return "Handed over by a shortcut."
         case .pass: return "Read from the Wallet pass. No camera, no model."
         case .pdf: return "The first page of the PDF, read here on the phone."

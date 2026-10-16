@@ -226,12 +226,6 @@ final class KeyArtPrints {
     /// A print's weight: one byte a pixel.
     private static func cost(_ image: UIImage) -> Int { image.cgImage.map { $0.bytesPerRow * $0.height } ?? 0 }
 
-    /// Everything made, for when the posters are forgotten.
-    func forgetAll() {
-        made.removeAll()
-        seen.removeAll()
-        bytes = 0
-    }
 
     /// The window's part of the poster, at the window's size, through the screen. Dark where ink goes.
     nonisolated static func printed(_ source: CGImage, frame: CGRect, window: CGRect, screen: KeyArtScreen,

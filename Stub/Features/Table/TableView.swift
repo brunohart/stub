@@ -280,6 +280,11 @@ struct TableView: View {
             #if DEBUG || PERF
             // `-face`: every year that way up, whatever was turned before.
             .onAppear { if DebugDrive.face != nil { turnedYears = "" } }
+            .task {
+                guard let link = DebugDrive.link else { return }
+                try? await Task.sleep(for: .seconds(2))
+                reach.open(link)
+            }
             .modifier(TableDebug(stubs: stubs, drawers: drawers, selected: $selected, showSeason: $showSeason,
                                  importing: $importing, keeping: $keeping, showCard: $showCard, openID: $openID, page: $page, face: $face, carried: $carried, moving: $moving, working: $working,
                                  shown: shown))

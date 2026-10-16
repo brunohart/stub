@@ -3,13 +3,17 @@ import Vision
 import ImageIO
 import OSLog
 
-/// Each film's official poster, from The Movie Database (ADR-049). The edition prints its key art into the movement's own
-/// hero form, in the edition's inks (`KeyArt`), so every card carries the film's own image under the app's design.
+/// Each film's official poster (ADR-049, ADR-050). The edition prints its key art into the movement's own hero form, in the
+/// edition's inks (`KeyArt`), so every card carries the film's own image under the app's design.
 ///
-/// What leaves the phone: the film's title as the ticket printed it, and the year it was seen, to TMDB, once per release;
-/// then the poster image itself is fetched from TMDB's image server. Nothing about the person, no identifier, no cookie
-/// (an ephemeral session). Posters are kept on the phone, so a release is asked for once. With no token in the build, or
-/// with posters turned off in Your card, no request is ever made and the editions are drawn as before.
+/// Where it comes from: the cinema. A ticket handed over in an Add to Stub link can carry the address of the cinema's
+/// poster for the film (`AddLink.posterURL`); when the person keeps it, the poster is fetched once from that address,
+/// made a plain JPEG with nothing in it but the picture, and kept in the press's ledger, so it reaches the person's other
+/// phones through their own iCloud and outlives the cinema's copy. Nothing of the person's goes with the request: the
+/// address is the cinema's, without a query, and the session keeps no cookies. A release keeps the first poster it is
+/// handed.
+///
+/// TMDB (ADR-049) stays in the code, off: it asks only in a build with TMDB's token, which no build has (decision 009).
 @MainActor @Observable
 final class Posters {
     static let shared = Posters()
@@ -27,6 +31,9 @@ final class Posters {
     private(set) var ready: Set<String> = []
     @ObservationIgnored private var recent: [(key: String, poster: Poster)] = []
     @ObservationIgnored private var asked: Set<String> = []
+    @ObservationIgnored private var fetching: Set<String> = []
+    /// The press's ledger, where a cinema's poster is kept so it syncs with the stubs (ADR-024).
+    @ObservationIgnored var ledger: PressLedger?
     #if DEBUG || PERF
     @ObservationIgnored private var staged: Poster?
     #endif
@@ -42,13 +49,6 @@ final class Posters {
         }
     }
 
-    /// Whether this build can fetch posters at all: it has TMDB's token (or, in a debug build, a stand-in poster).
-    static var available: Bool {
-        #if DEBUG || PERF
-        if DebugDrive.posterFile != nil { return true }
-        #endif
-        return token != nil
-    }
 
     /// TMDB's read token, from the build (Config/Secrets.xcconfig). Empty in a build without one.
     nonisolated static var token: String? {
@@ -118,13 +118,104 @@ final class Posters {
         }
     }
 
-    /// Everything kept, for "Forget the posters" in Your card.
-    func forgetAll() {
-        ready.removeAll()
-        recent.removeAll()
-        asked.removeAll()
-        KeyArtPrints.shared.forgetAll()
-        try? FileManager.default.removeItem(at: Self.folder)
+    // MARK: The cinema's
+
+    /// The poster the cinema handed over with the ticket, fetched once, now that the stub is kept. Not when posters are
+    /// off, and not for a release that already has one.
+    func supplied(_ url: URL, title: String) {
+        let key = Release.key(for: title)
+        guard on, !key.isEmpty, !ready.contains(key), !fetching.contains(key),
+              !FileManager.default.fileExists(atPath: Self.file(key, "jpg").path) else { return }
+        fetching.insert(key)
+        Task {
+            defer { fetching.remove(key) }
+            do {
+                guard let data = try await Self.download(url) else {
+                    Self.log.notice("Poster '\(key, privacy: .public)': the cinema's address gave no image")
+                    return
+                }
+                let jpeg = await Task.detached(priority: .utility) { Self.sanitised(data) }.value
+                guard let jpeg, let poster = await Self.prepare(jpeg) else {
+                    Self.log.notice("Poster '\(key, privacy: .public)': not a poster (\(data.count) bytes)")
+                    return
+                }
+                Self.keep(jpeg, focus: poster.focus, for: key)
+                ledger?.put(.poster, key, jpeg)
+                hold(poster, for: key)
+                ready.insert(key)
+                Self.log.info("Poster '\(key, privacy: .public)': kept from the cinema")
+            } catch {
+                Self.log.error("Poster '\(key, privacy: .public)': \(String(describing: error), privacy: .public)")
+            }
+        }
+    }
+
+    /// The posters the ledger holds, from this phone or another: any not yet on this phone is written to it.
+    func adopt(_ keys: Set<String>, data: (String) -> Data?) {
+        for key in keys {
+            if !FileManager.default.fileExists(atPath: Self.file(key, "jpg").path) {
+                guard let jpeg = data(key) else { continue }
+                try? FileManager.default.createDirectory(at: Self.folder, withIntermediateDirectories: true)
+                try? jpeg.write(to: Self.file(key, "jpg"))
+            }
+            ready.insert(key)
+        }
+    }
+
+    /// No bigger than this, as downloaded.
+    nonisolated static let largest = 8 * 1024 * 1024
+
+    /// The image at a cinema's address: https to a public name, redirects held to the same rule, an image and nothing
+    /// else, no more than 8 MB. No cookies, no cache, nothing of the person's.
+    nonisolated static func download(_ url: URL, session: URLSession = URLSession(configuration: .ephemeral)) async throws -> Data? {
+        guard AddLink.isPublicHTTPS(url) else { return nil }
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 20)
+        request.httpShouldHandleCookies = false
+        request.setValue("image/*", forHTTPHeaderField: "Accept")
+        let (bytes, response) = try await session.bytes(for: request, delegate: SameRules())
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200,
+              http.mimeType?.lowercased().hasPrefix("image/") == true, http.expectedContentLength <= largest else { return nil }
+        var data = Data()
+        data.reserveCapacity(max(0, min(Int(http.expectedContentLength), largest)))
+        for try await byte in bytes {
+            data.append(byte)
+            if data.count > largest { return nil }
+        }
+        return data
+    }
+
+    /// Redirects go only where the poster itself could have pointed.
+    private final class SameRules: NSObject, URLSessionTaskDelegate, Sendable {
+        func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+                        newRequest request: URLRequest) async -> URLRequest? {
+            guard let url = request.url, AddLink.isPublicHTTPS(url) else { return nil }
+            return request
+        }
+    }
+
+    /// The download as Stub keeps it: decoded (so it is an image), no more than 60 megapixels, the shape of a poster
+    /// (portrait, or near square), at least 400 pixels on its long side, and written again as a JPEG of 900 pixels at most
+    /// with nothing in it but the picture. `nil` for anything else: a pixel, a banner, a page that is not an image.
+    nonisolated static func sanitised(_ data: Data) -> Data? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary),
+              CGImageSourceGetCount(source) >= 1,
+              let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+              let w = properties[kCGImagePropertyPixelWidth] as? Int, let h = properties[kCGImagePropertyPixelHeight] as? Int,
+              w > 0, h > 0, w * h <= 60_000_000,
+              let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                  kCGImageSourceCreateThumbnailFromImageAlways: true, kCGImageSourceThumbnailMaxPixelSize: 900,
+                  kCGImageSourceCreateThumbnailWithTransform: true] as CFDictionary) else { return nil }
+        let aspect = Double(image.width) / Double(image.height)
+        guard max(image.width, image.height) >= 400, (0.45...1.1).contains(aspect) else { return nil }
+        for quality in [0.82, 0.7, 0.55] {
+            let out = NSMutableData()
+            guard let destination = CGImageDestinationCreateWithData(out, "public.jpeg" as CFString, 1, nil) else { return nil }
+            CGImageDestinationAddImage(destination, image, [kCGImageDestinationLossyCompressionQuality: quality] as CFDictionary)
+            guard CGImageDestinationFinalize(destination) else { return nil }
+            // Small enough to ride in the ledger's record to iCloud.
+            if out.length <= 400_000 || quality == 0.55 { return out as Data }
+        }
+        return nil
     }
 
     #if DEBUG || PERF
@@ -230,7 +321,7 @@ final class Posters {
         folder.appending(path: key.replacingOccurrences(of: " ", with: "-") + "." + ext)
     }
 
-    nonisolated private static func keep(_ data: Data, focus: CGRect, for key: String) {
+    nonisolated static func keep(_ data: Data, focus: CGRect, for key: String) {
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         try? data.write(to: file(key, "jpg"))
         let numbers = [focus.minX, focus.minY, focus.width, focus.height].map { String(format: "%.4f", $0) }
