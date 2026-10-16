@@ -1,8 +1,9 @@
 import SwiftUI
 
 /// The drawer's label (ADR-022): a brass holder of the kind screwed to a card-catalogue drawer, with a typed card slid
-/// into it saying what the drawer holds: the years it spans, how many stubs, how many cinemas. It is the home screen's
-/// name for itself, where the app's own name and a sentence used to be. Brass is a material, so it answers the light:
+/// into it saying what the drawer holds. The drawer of every stub is not a drawer anyone labelled: it is the cabinet, so it
+/// wears the cabinet's own plate, the total engraved into the brass with no card to change (ADR-036). It is the home
+/// screen's name for itself, where the app's own name and a sentence used to be. Brass is a material, so it answers the light:
 /// its sheen moves with the phone as the edition's foil does (one light, the phone's), and stays where it is under Reduce
 /// Motion and in the simulator, which has no gyroscope. Pressed, the card goes a shade into its holder; it opens the season.
 struct DrawerLabel: View {
@@ -43,9 +44,15 @@ struct DrawerLabel: View {
         Button(action: action) {
             ZStack {
                 plate
-                card
-                    .padding(.horizontal, 30)
-                    .padding(.vertical, 11)
+                if case .every(let films, let cinemas, let years) = typed {
+                    engraving(films: films, cinemas: cinemas, years: years)
+                        .padding(.horizontal, 30)
+                } else {
+                    window
+                    card
+                        .padding(.horizontal, 30)
+                        .padding(.vertical, 11)
+                }
                 HStack {
                     Rivet()
                     Spacer()
@@ -97,14 +104,6 @@ struct DrawerLabel: View {
                 .animation(.linear(duration: 0.08), value: tilt)
             }
             .clipShape(shape)
-            // The window's lips: a darker step of brass round the card, where the plate is folded over to hold it.
-            .overlay {
-                RoundedRectangle(cornerRadius: 3, style: .continuous)
-                    .strokeBorder(LinearGradient(colors: [Color(hex: 0x7C5A27), Color(hex: 0xE9D29C)], startPoint: .top, endPoint: .bottom),
-                                  lineWidth: 1.5)
-                    .padding(.horizontal, 28)
-                    .padding(.vertical, 9)
-            }
             // The plate's own edge: lit along the top, shaded along the bottom.
             .overlay {
                 shape.strokeBorder(LinearGradient(colors: [.white.opacity(0.75), .black.opacity(0.35)], startPoint: .top, endPoint: .bottom),
@@ -112,6 +111,45 @@ struct DrawerLabel: View {
             }
             .shadow(color: .black.opacity(0.28), radius: 0.8, x: 0, y: 1)
             .shadow(color: Color(hex: 0x3B2A12).opacity(0.18), radius: 7, x: 2, y: 6)
+    }
+
+    /// A holder's window: a darker step of brass round the card, where the plate is folded over to hold it.
+    private var window: some View {
+        RoundedRectangle(cornerRadius: 3, style: .continuous)
+            .strokeBorder(LinearGradient(colors: [Color(hex: 0x7C5A27), Color(hex: 0xE9D29C)], startPoint: .top, endPoint: .bottom),
+                          lineWidth: 1.5)
+            .padding(.horizontal, 28)
+            .padding(.vertical, 9)
+    }
+
+    // MARK: The cabinet's plate
+
+    /// The drawer of every stub: the total cut into the brass, large, and beside it what it is and what it spans. Engraved,
+    /// so it reads as the cabinet's and not as a label someone slid in; the cuts are dark, their lower lips catch the light.
+    private func engraving(films: Int, cinemas: Int, years: String?) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            if films > 0 {
+                Engraved(Text("\(films)").font(Type.numbers(36)))
+                    .lineLimit(1)
+                    .fixedSize()
+            }
+            VStack(alignment: .leading, spacing: 3) {
+                Engraved(Text("Every stub").font(Type.display(16)).tracking(Type.displayTracking(16)))
+                Group {
+                    if films > 0 {
+                        let places = Text("\(cinemas)").font(Type.numbers(11)) + Text(cinemas == 1 ? " cinema" : " cinemas")
+                        let span = years.map { Text("  ·  ") + Text($0).font(Type.numbers(11)) } ?? Text("")
+                        Engraved(places + span, depth: 0.7)
+                    } else {
+                        Engraved(Text("Nothing kept yet"), depth: 0.7)
+                    }
+                }
+                .font(Type.words(11))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            }
+        }
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: The card
@@ -174,9 +212,9 @@ struct DrawerLabel: View {
     private var spoken: String {
         switch typed {
         case .every(let films, let cinemas, let years):
-            guard films > 0 else { return "The drawer, empty." }
-            let span = years?.replacingOccurrences(of: "–", with: " to ") ?? ""
-            return "The drawer of every stub: \(span), \(films) \(films == 1 ? "stub" : "stubs"), \(cinemas) \(cinemas == 1 ? "cinema" : "cinemas")."
+            guard films > 0 else { return "Every stub, empty." }
+            let span = years.map { ", " + $0.replacingOccurrences(of: "–", with: " to ") } ?? ""
+            return "Every stub: \(films) \(films == 1 ? "stub" : "stubs"), \(cinemas) \(cinemas == 1 ? "cinema" : "cinemas")\(span)."
         case .made(let name, let films, _):
             return "\(name), a drawer: \(films == 0 ? "nothing filed yet" : "\(films) \(films == 1 ? "stub" : "stubs")")."
         case .blank:
@@ -199,6 +237,20 @@ struct DrawerLabel: View {
         let all = stubs.map { calendar.component(.year, from: $0.screenedAt ?? $0.createdAt) }
         guard let first = all.min(), let last = all.max() else { return nil }
         return first == last ? "\(first)" : "\(first)–\(last)"
+    }
+}
+
+/// Letters cut into brass: the cut darker than the plate, its upper lip in shade and its lower lip catching the light from
+/// the upper left. `depth` lightens a smaller line, cut less deep.
+private struct Engraved: View {
+    let text: Text
+    var depth: Double = 1
+    init(_ text: Text, depth: Double = 1) { self.text = text; self.depth = depth }
+    var body: some View {
+        text
+            .foregroundStyle(Color(hex: 0x4A3416).opacity(0.62 + 0.26 * depth))
+            .shadow(color: Color(hex: 0xF6E3AE).opacity(0.85 * depth), radius: 0, x: 0, y: 0.9)
+            .shadow(color: Color.black.opacity(0.22 * depth), radius: 0, x: 0, y: -0.5)
     }
 }
 

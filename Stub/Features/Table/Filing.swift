@@ -36,10 +36,13 @@ struct ReorderDrop: DropDelegate {
     @Binding var working: [UUID]?
     let carried: UUID?
     let commit: () -> Void
+    /// Told when the carried stub is over a card: it is moving, not held for its menu (ADR-035).
+    var moved: () -> Void = {}
 
     func validateDrop(info: DropInfo) -> Bool { info.hasItemsConforming(to: [.stubCard]) && carried != nil }
 
     func dropEntered(info: DropInfo) {
+        moved()
         guard let carried, let order = working else { return }
         let next = Cabinet.move(carried, to: target, in: order, sameYear: sameYear)
         guard next != order else { return }
@@ -47,6 +50,7 @@ struct ReorderDrop: DropDelegate {
     }
 
     func dropUpdated(info: DropInfo) -> DropProposal? {
+        moved()
         guard let carried else { return DropProposal(operation: .cancel) }
         return DropProposal(operation: carried == target || sameYear(carried, target) ? .move : .forbidden)
     }
@@ -61,8 +65,10 @@ struct ReorderDrop: DropDelegate {
 struct SettleDrop: DropDelegate {
     let carried: UUID?
     let commit: () -> Void
+    var moved: () -> Void = {}
     func validateDrop(info: DropInfo) -> Bool { info.hasItemsConforming(to: [.stubCard]) && carried != nil }
-    func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .move) }
+    func dropEntered(info: DropInfo) { moved() }
+    func dropUpdated(info: DropInfo) -> DropProposal? { moved(); return DropProposal(operation: .move) }
     func performDrop(info: DropInfo) -> Bool { commit(); return true }
 }
 

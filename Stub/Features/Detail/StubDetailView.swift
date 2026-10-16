@@ -155,23 +155,10 @@ struct StubDetailView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
-        // Share, where a phone keeps it, and the card's other acts in one menu beside it (ADR-030). The press and turning
-        // over are the card's own gestures, said under it; they are here too, for anyone who would rather choose.
+        // Share, where a phone keeps it, and nothing beside it: the card's acts are its own gestures, said under it (ADR-035).
         .toolbar {
-            ToolbarItemGroup(placement: .topBarTrailing) {
+            ToolbarItem(placement: .topBarTrailing) {
                 share(editions.edition(for: stub.title))
-                Menu {
-                    Button("Take it to the press", systemImage: "dial.medium") { pressing = true }
-                        .disabled(editions.edition(for: stub.title) == nil)
-                    Button(turned ? "Turn it back" : "Turn it over", systemImage: "arrow.trianglehead.2.clockwise.rotate.90") { turned.toggle() }
-                    if RoomView.isSupported {
-                        Button("Put it on the table", systemImage: "arkit") { inRoom = true }
-                            .disabled(editions.edition(for: stub.title) == nil)
-                    }
-                } label: {
-                    Image(systemName: "ellipsis")
-                }
-                .accessibilityLabel("More")
             }
         }
         // The press room: full screen, grown from the card, closed with the system's back.

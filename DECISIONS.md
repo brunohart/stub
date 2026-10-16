@@ -392,3 +392,23 @@ Every button is a `StubButtonStyle` (`Stub/Design/Buttons.swift`): a capsule in 
 **Why.** A figure, a label and a name each had a size of their own, so the sheet read as a stack of stats rather than one thing set by one hand. The row borrows the ticket's own way of setting fields, so the sheet belongs to the same printed world; the calendar shows when the nights fell, which "busiest month" could only assert; and the ledger gives the named facts one size and one line each. The orange is the sheet's one mark, and it points the same way twice.
 
 **Consequences.** One size each for figures, words and labels on the sheet. At the accessibility sizes the row and the ledger stack; the calendar's type stops growing at extra large, because it is a picture of twelve columns, and VoiceOver reads it month by month. Busiest weekday is still counted and still not shown.
+
+## ADR-035 — Hold a stub for its menu; the detail keeps only Share
+
+**Date:** 2026-10-16 · **Status:** decided; built, tested and seen in the simulator (a second simulator, iPhone 18 Pro Max, so Bruno's stayed his). Refines ADR-026 and ADR-030.
+
+**What changed.** Bruno asked to press and hold a stub to throw it away or file it, and did not like the "…" in the detail's top right (Take it to the press, Turn it over). Held in the drawer, a stub now opens the system's menu: File in a drawer, a submenu of every drawer ticked where the stub is filed (a tick taken off takes it out) and New drawer…, the same words as the detail's own filing line; and Throw away, asked once in the detail's words. Held and moved, it is carried as before, within its year or onto a drawer's label; the rail of labels comes down and the shelf gives way only once it moves, so a hold that ends in the menu leaves the drawer as it was. The detail's "…" is gone: the card's acts are its gestures, said under it, and Share stands alone. The season's ledger also gains Busiest day.
+
+**Why.** A menu on a held object is the platform's own way to act on one thing, and it finds the two acts that were furthest away: throwing a stub out was only in the detail, and filing needed a drag to a label. The detail's "…" repeated what the card already says it does, in a second place.
+
+**Consequences.** The system asks for a held stub's drag item more than once in one hold (at the lift for the menu, again as the drag begins), so an item going away no longer puts the stub down by itself: it waits 400 ms and only puts it down if nothing has been seen moving over the table for 350 ms (`CarryClock`); a drop on the table or a label puts it down at once. iOS 27's `onDragSessionUpdated` was tried and reports nothing for these drags. "Put it on the table" (the room, ARKit) was only in the "…", so a phone that can show it has no way to it now; the code stays until Bruno decides where it goes. A synthetic drag in the simulator moves the item and reaches the drop delegates, which is how the carry, the reorder and the filing were checked; the feel of the hold is a device test.
+
+## ADR-036 — Every stub wears the cabinet's engraved plate; the drawers keep their cards
+
+**Date:** 2026-10-16 · **Status:** decided; built and seen in the simulator. Refines ADR-022 and ADR-026.
+
+**What changed.** The shelf's first label, the drawer of every stub, was the same brass holder and typed card as every drawer the person makes, titled with its years. Bruno asked for the total to be told apart from the drawers, with a smarter sense of being the total and a better fit. It is now the cabinet's own plate: the same brass, with no window and no card, the number of stubs engraved large in the mono, "Every stub" beside it in Host Grotesk, and the cinemas and years under that. The drawers keep their holders and typed cards; the blank holder still makes a new one.
+
+**Why.** On a card-catalogue cabinet the maker's plate is engraved and permanent while the drawer labels are cards you slide in and change. That difference is the real one here: every stub is not a drawer anyone made or can rename, and its number is the total everything else is a part of. Leading with the count says "total" at a glance; leading with years said "a period", which a made drawer can also be.
+
+**Consequences.** Engraving is a material that answers the light, so it sits within the no-fake-grain rule: dark cuts, a lit lower lip, a shaded upper one, no texture. VoiceOver reads "Every stub: 11 stubs, 9 cinemas, 2024 to 2026." The plate keeps the holders' size, so the shelf pages the same.

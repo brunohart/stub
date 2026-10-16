@@ -3,8 +3,9 @@ import SwiftData
 
 /// The cabinet (ADR-026). One drawer open at a time, its brass label at the top among the others' (swipe along them to open
 /// another; a blank one at the end makes a new drawer), and the drawer's stubs filed by year behind tabbed dividers, two to a
-/// row. Tickets or editions, as the person chooses. Hold a stub and carry it: within its year it goes where it is let go;
-/// let go on another drawer's label, which comes down from the top while a stub is held, it is filed there.
+/// row. Tickets or editions, as the person chooses. Hold a stub and its menu opens: file it in a drawer or throw it away
+/// (ADR-035). Hold it and move, and it is carried: within its year it goes where it is let go; let go on another drawer's
+/// label, which comes down from the top while a stub is held, it is filed there.
 struct TableView: View {
     /// Animated, so a stub kept from the import sheet is dropped onto the table rather than appearing on it (ADR-022).
     @Query(sort: \Stub.createdAt, order: .reverse, animation: Motion.drop) private var stubs: [Stub]
@@ -31,9 +32,19 @@ struct TableView: View {
     @State private var naming: Naming?
     @State private var choosing: StubDrawer?
     @State private var removing: StubDrawer?
+    /// A stub its menu is throwing away, asked once (DESIGN.md rule 16).
+    @State private var throwing: Stub?
     /// The stub a finger is carrying, and the drawer's order as it makes room for it.
     @State private var carried: UUID?
     @State private var working: [UUID]?
+    /// The held stub has moved. A hold lifts the card for its menu and for carrying at once; the rail comes down and the
+    /// shelf gives way only once the finger takes it somewhere, so a hold that ends in the menu leaves the drawer as it was.
+    @State private var moving = false
+    /// When the carried stub was last seen over the table. The system asks for the carried item more than once in a single
+    /// hold (at the lift for the menu, again as the drag begins), so an item going away only puts the stub down once nothing
+    /// has been seen moving for a moment. A box, so the drag's updates do not redraw the drawer.
+    @State private var seen = CarryClock()
+    private var inHand: Bool { carried != nil && moving }
     /// Which label the shelf is showing: "every", a made drawer's id, or "new".
     @State private var page: String?
     /// A line over the dock for a moment after something is filed.
@@ -87,8 +98,8 @@ struct TableView: View {
                     .padding(.bottom, 32)
                 }
                 // A stub let go between cards stays where the drawer made room for it.
-                .onDrop(of: [.stubCard], delegate: SettleDrop(carried: carried, commit: commitOrder))
-                if carried != nil {
+                .onDrop(of: [.stubCard], delegate: SettleDrop(carried: carried, commit: commitOrder, moved: startMoving))
+                if inHand {
                     rail.transition(.move(edge: .top).combined(with: .opacity))
                 }
             }
@@ -99,7 +110,7 @@ struct TableView: View {
                 }
                 .allowsHitTesting(false)
             }
-            .animation(reduceMotion ? Motion.plain : Motion.place, value: carried != nil)
+            .animation(reduceMotion ? Motion.plain : Motion.place, value: inHand)
             .sensoryFeedback(.selection, trigger: working)
             .sensoryFeedback(folderThud, trigger: folderTaps)
             // The drawer's two doors, at the bottom where a thumb is, named (ADR-022). The empty drawer has its own one
@@ -155,6 +166,12 @@ struct TableView: View {
                 Button("Take the drawer out", role: .destructive) { if let removing { remove(removing) } }
             } message: {
                 Text("Its stubs stay in the drawer of every stub.")
+            }
+            .confirmationDialog(throwing.map { "Throw away \($0.title)?" } ?? "", isPresented: Binding(get: { throwing != nil }, set: { if !$0 { throwing = nil } }),
+                                titleVisibility: .visible) {
+                Button("Throw it away", role: .destructive) { if let throwing { throwAway(throwing) } }
+            } message: {
+                Text("The stub and its photograph go from every drawer, here and in your iCloud. Its edition stays with the film.")
             }
             // Re-count when the drawer changes; the previous sentence in progress is cancelled with the task.
             // The widget is told at the same moment: it prints the last card and has no clock of its own.
@@ -225,7 +242,7 @@ struct TableView: View {
             }
             #if DEBUG
             .modifier(TableDebug(stubs: stubs, drawers: drawers, selected: $selected, showSeason: $showSeason,
-                                 importing: $importing, keeping: $keeping, showCard: $showCard, openID: $openID, page: $page, face: $face, carried: $carried, working: $working,
+                                 importing: $importing, keeping: $keeping, showCard: $showCard, openID: $openID, page: $page, face: $face, carried: $carried, moving: $moving, working: $working,
                                  shown: shown))
             #endif
         }
@@ -245,9 +262,9 @@ struct TableView: View {
             .padding(.bottom, -6)
             // While a stub is held the cabinet's other drawers come down over the shelf, so the shelf gives way to them.
             shelf
-                .opacity(carried == nil ? 1 : 0)
-                .scaleEffect(carried == nil || reduceMotion ? 1 : 0.96)
-                .animation(reduceMotion ? Motion.plain : Motion.place, value: carried == nil)
+                .opacity(inHand ? 0 : 1)
+                .scaleEffect(!inHand || reduceMotion ? 1 : 0.96)
+                .animation(reduceMotion ? Motion.plain : Motion.place, value: inHand)
             if !stubs.isEmpty, page != "new" {
                 HStack(spacing: 12) {
                     FacePicker(face: $face)
@@ -326,7 +343,7 @@ struct TableView: View {
                        button: "Name a new drawer", symbol: "plus") { naming = .new(filing: nil) }
         } else if shown.isEmpty, let open {
             Invitation(title: "Nothing is filed in \(open.name) yet.",
-                       words: "Hold a stub in another drawer and let it go on this drawer's label, or choose them from a list.",
+                       words: "Hold a stub in another drawer and file it here, or choose them from a list.",
                        button: "Choose stubs to file", symbol: "checklist") { choosing = open }
         } else {
             let years = Cabinet.sections(shown)
@@ -413,17 +430,20 @@ struct TableView: View {
 
     private func cell(_ stub: Stub, order: Int, mount: CGFloat?) -> some View {
         Button { selected = stub } label: {
-            StubCard(stub: stub, face: face, copy: Copy(stub: stub, among: stubs), order: order, carried: carried == stub.id, mount: mount)
+            StubCard(stub: stub, face: face, copy: Copy(stub: stub, among: stubs), order: order, carried: inHand && carried == stub.id, mount: mount)
         }
         .buttonStyle(CardPress())
         .matchedTransitionSource(id: stub.id, in: table)
-        // Held, it comes up off the table to be carried; the drawer makes room for it as it goes.
+        // Held and let be, its menu: file it, or throw it away (ADR-035).
+        .contextMenu { menu(for: stub) }
+        // Held and moved, it comes up off the table to be carried; the drawer makes room for it as it goes.
         .onDrag {
             carry(stub)
         } preview: {
             CarriedPicture(stub: stub, face: face, copy: Copy(stub: stub, among: stubs))
         }
-        .onDrop(of: [.stubCard], delegate: ReorderDrop(target: stub.id, sameYear: sameYear, working: $working, carried: carried, commit: commitOrder))
+        .onDrop(of: [.stubCard], delegate: ReorderDrop(target: stub.id, sameYear: sameYear, working: $working, carried: carried, commit: commitOrder,
+                                                           moved: startMoving))
         // Dealt onto the table the first time the drawer opens, newest first, one after another.
         .modifier(Dropped(airborne: !dealt, order: order))
         .animation(reduceMotion ? nil : Motion.drop.delay(min(Double(order), 9) * 0.055), value: dealt)
@@ -436,6 +456,27 @@ struct TableView: View {
         // A carried stub, without a finger: moved one place at a time.
         .accessibilityAction(named: "Move earlier in \(Cabinet.year(of: stub))") { nudge(stub, by: -1) }
         .accessibilityAction(named: "Move later in \(Cabinet.year(of: stub))") { nudge(stub, by: 1) }
+        .accessibilityAction(named: "Throw away") { throwing = stub }
+    }
+
+    /// A held stub's menu, the detail's "File in a drawer" in the same words: every drawer, ticked where the stub is filed,
+    /// a tick taken off taking it out of that drawer (it stays in the drawer of every stub); a new drawer; and throwing it
+    /// away, which is asked once.
+    @ViewBuilder
+    private func menu(for stub: Stub) -> some View {
+        Menu {
+            ForEach(drawers) { drawer in
+                let isIn = drawer.stubIDs.contains(stub.id)
+                Button(drawer.name, systemImage: isIn ? "checkmark" : "tray") {
+                    if isIn { takeOut(stub.id, of: drawer) } else { file(stub, into: drawer) }
+                }
+            }
+            Button("New drawer…", systemImage: "plus") { naming = .new(filing: stub.id) }
+        } label: {
+            Label("File in a drawer", systemImage: "tray.and.arrow.down")
+        }
+        Divider()
+        Button("Throw away", systemImage: "trash", role: .destructive) { throwing = stub }
     }
 
     // MARK: Carrying and filing
@@ -460,11 +501,15 @@ struct TableView: View {
     private func carry(_ stub: Stub) -> NSItemProvider {
         let provider = CarriedStub(stub.id)
         carried = stub.id
-        working = shown.map(\.id)
-        // Let go where nothing takes it: it goes back where it stood.
+        // Asked again mid-carry, the drawer keeps the room it has already made.
+        if working == nil { working = shown.map(\.id) }
+        // Let go where nothing takes it: it goes back where it stood. A drop on the table has put it down already.
         provider.ended = {
-            guard carried == stub.id else { return }
-            withAnimation(Motion.place) { settle() }
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(400))
+                guard carried == stub.id, seen.quiet(for: 0.35) else { return }
+                withAnimation(Motion.place) { settle() }
+            }
         }
         return provider
     }
@@ -484,11 +529,24 @@ struct TableView: View {
     private func settle() {
         working = nil
         carried = nil
+        moving = false
+    }
+
+    /// The first time the carried stub is seen over the table: it is being taken somewhere, not held for its menu.
+    private func startMoving() {
+        seen.mark()
+        guard carried != nil, !moving else { return }
+        withAnimation(reduceMotion ? Motion.plain : Motion.place) { moving = true }
     }
 
     private func file(into drawer: StubDrawer) {
         guard let id = carried, let stub = stubs.first(where: { $0.id == id }) else { return settle() }
-        let already = drawer.stubIDs.contains(id)
+        file(stub, into: drawer)
+    }
+
+    /// Carried there or chosen from its menu.
+    private func file(_ stub: Stub, into drawer: StubDrawer) {
+        let already = drawer.stubIDs.contains(stub.id)
         Cabinet.file(stub, in: drawer, among: stubs)
         try? context.save()
         withAnimation(Motion.place) { settle() }
@@ -497,6 +555,10 @@ struct TableView: View {
 
     private func takeOut(of drawer: StubDrawer) {
         guard let id = carried else { return settle() }
+        takeOut(id, of: drawer)
+    }
+
+    private func takeOut(_ id: UUID, of drawer: StubDrawer) {
         withAnimation(Motion.place) {
             Cabinet.takeOut(id, of: drawer)
             settle()
@@ -513,6 +575,18 @@ struct TableView: View {
         guard let i = same.firstIndex(of: stub.id), same.indices.contains(i + step) else { return }
         let next = Cabinet.move(stub.id, to: same[i + step], in: order, sameYear: sameYear)
         if Cabinet.commit(next, stubs: stubs, in: open) > 0 { try? context.save() }
+    }
+
+    /// As the detail throws a stub away: out of every drawer, then gone.
+    private func throwAway(_ stub: Stub) {
+        let title = stub.title
+        withAnimation(Motion.place) {
+            for drawer in drawers { Cabinet.takeOut(stub.id, of: drawer) }
+            context.delete(stub)
+        }
+        try? context.save()
+        throwing = nil
+        notice = "\(title) is thrown away."
     }
 
     private func make(_ name: String, filing: UUID?) {
@@ -553,6 +627,13 @@ struct TableView: View {
         guard importing == nil, keeping == nil, reach.arrival != nil, let arrival = reach.take() else { return }
         importing = ImportRequest(arrival: arrival)
     }
+}
+
+/// When a carried stub was last seen moving. A reference, so marking it on every drag update redraws nothing.
+final class CarryClock {
+    private var last = Date.distantPast
+    func mark() { last = .now }
+    func quiet(for seconds: TimeInterval) -> Bool { Date.now.timeIntervalSince(last) > seconds }
 }
 
 /// A stub pressed in the drawer: it sits up straight and the print lifts, through the card's own `pressed`.
@@ -746,6 +827,7 @@ private struct TableDebug: ViewModifier {
     @Binding var page: String?
     @Binding var face: DrawerFace
     @Binding var carried: UUID?
+    @Binding var moving: Bool
     @Binding var working: [UUID]?
     let shown: [Stub]
     @Environment(\.modelContext) private var context
@@ -826,6 +908,7 @@ private struct TableDebug: ViewModifier {
                 do { try await Task.sleep(for: .seconds(3)) } catch { return }
                 working = shown.map(\.id)
                 carried = shown[1].id
+                moving = true
             }
     }
 }

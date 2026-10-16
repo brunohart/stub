@@ -104,6 +104,9 @@ struct SeasonView: View {
         if let month = summary.busiestMonth, month.count >= 2 {
             lines.append(("Busiest month", "\(month.name), \(SeasonSummary.spelled(month.count)) films", true))
         }
+        if let day = summary.busiestWeekday, day.count >= 2, summary.weekdays.count >= 2 {
+            lines.append(("Busiest day", "\(day.name)s, \(SeasonSummary.spelled(day.count)) films", false))
+        }
         // The circuits, quietly: which chains and how often, and the nights at independents (ADR-024).
         if !summary.circuits.isEmpty {
             lines.append(("Circuits", summary.circuits.map { $0.count > 1 ? "\($0.name) ×\($0.count)" : $0.name }
