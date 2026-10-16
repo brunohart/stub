@@ -38,6 +38,13 @@ label is untouched.
 2. **Off by default.** Each person turns posters on in Your card. The label still changes, because the lookup is not
    chosen each time, but fewer titles leave.
 3. **Don't ship posters.** The code stays dormant and the editions print as before.
+4. **The cinema supplies the poster** (worth weighing before 1). A cinema already holds the distributor-licensed artwork
+   for every film it shows, and its ticketing system carries it. The Add to Stub link (ADR-021) could carry the poster's
+   address beside the ticket's fields. Stub would fetch it from the cinema that sold the ticket, which already knows the
+   person saw the film, so no new data would leave the phone. The licence would already be in place, and the poster would
+   be the one the cinema itself showed. It covers only tickets that arrive by link; the rest would print without a
+   poster, or fall back to TMDB under choice 1. It needs a field in the link's spec (`docs/add-to-stub.md`) and a cinema
+   willing to fill it.
 
 ## What it costs: rights
 
