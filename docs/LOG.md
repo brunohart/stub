@@ -85,6 +85,8 @@ work.
   overprints too, and the press cannot be swiped away mid-stroke. `StudioUITests` stays as the guard.
 - The year tab's two sides are marks now, a notched ticket and a standing card, as Bruno asked.
 
+Screenshot: `2026-10-16-finishes.png` (pearl, gloss, soft-touch, the same card, the same light).
+
 The staged drawer's photographs are now kept as capture keeps them: cut from the table and straightened, the fixtures
 by `StubCrop` itself.
 

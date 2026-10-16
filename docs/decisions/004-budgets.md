@@ -61,8 +61,8 @@ All numbers are from the SE 2 simulator on the same Mac, before and after, from 
 | 6 | The same tap | The photograph was JPEG-encoded on the tap | Encoded while the person reads the draft | Kept 0.34 s | **0.03 s** |
 | 7 | A slow first frame | Laying out the drawer's rows decoded all sixty photographs on the main thread to learn their shapes | Shapes read from the image header, remembered in Caches | Launch to responsive 5.29 s; app main-thread samples at launch 1,008 | **4.68 s; 594** |
 | 8 | A drawer that stutters as it fills | Each card recounted the whole drawer to learn which viewing it was, and made two `DateFormatter`s | Viewings counted once per drawer change; formatters made once | Main-thread time in `Copy.init` 9.9% of the staged scroll | **0.4%** (Time Profiler) |
-| 10 | A card that tilts | The hand and each copy's pull (ADR-045, ADR-043) added drawing: the pull's offsets were rolled again on every frame of a tilt, and every word measured made its font afresh | The pull rolled once per copy; fonts made once and kept (`Measure.font`) | Tilt-light CPU 0.641 s (CI 1.05 s, over its 0.97) | **0.584 s** |
 | 9 | Battery | One `CMMotionManager` per brass label, keepsake and press: up to five at once | One `MotionSource` for the app, stopped when nothing listens | 5 managers | **1** (energy: the phone) |
+| 10 | A card that tilts | The hand and each copy's pull (ADR-045, ADR-043) added drawing: the pull's offsets were rolled again on every frame of a tilt, and every word measured made its font afresh | The pull rolled once per copy; fonts made once and kept (`Measure.font`) | Tilt-light CPU 0.641 s (CI 1.05 s, over its 0.97) | **0.584 s** |
 
 ## Where it stands against the device lane
 
