@@ -57,6 +57,7 @@ extension Edition {
         var applied = self
         applied.movement = proof.movement ?? movement
         applied.palette = proof.palette ?? palette
+        applied.inksChosen = proof.palette != nil
         applied.stock = proof.stock ?? stock
         let turnable = Set(applied.movement.parts.filter(\.turns).map(\.id))
         applied.takes = proof.takes

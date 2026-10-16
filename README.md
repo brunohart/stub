@@ -2,7 +2,7 @@
 
 **A private archive of every film you saw in a room with strangers.**
 
-Built for one moment: the ninety seconds after the lights come up, the ticket in your pocket or your inbox. Press **Keep a stub** on the Lock Screen, hold the phone over the ticket, and it is read on the phone and kept, in under ten seconds, one-handed, with no signal. Or share in the Wallet pass, the PDF, the booking email or the screenshot the cinema sent. Later you get two things back: the stub as it was, and an **edition**, a ticket designed for that film's release, printed with your own seat and night, lit by the phone and felt under your finger. Take it to the **press** and pull your own proof of it, and send it turning in the light. Nothing reaches anyone but you: the drawer lives on the phone and, unless you say otherwise, in your own private iCloud. The App Store label is **Data Not Collected**.
+Built for one moment: the ninety seconds after the lights come up, the ticket in your pocket or your inbox. Press **Keep a stub** on the Lock Screen, hold the phone over the ticket, and it is read on the phone and kept, in under ten seconds, one-handed, with no signal. Or share in the Wallet pass, the PDF, the booking email or the screenshot the cinema sent. Later you get two things back: the stub as it was, and an **edition**, a ticket designed for that film's release, printed with your own seat and night, lit by the phone and felt under your finger. No two are alike: see a film again and that viewing pulls a **variant**, the same drawing in its own inks. Take it to the **press** and pull your own proof of it, and send it turning in the light. Nothing reaches anyone but you: the drawer lives on the phone and, unless you say otherwise, in your own private iCloud. The App Store label is **Data Not Collected**.
 
 Native Swift and SwiftUI, Metal, Vision, Foundation Models, Core Haptics, App Intents, WidgetKit, CloudKit. iOS 26, built and proved in the iOS 27 simulator, measured against budgets set from Apple's own guidance.
 
@@ -219,7 +219,7 @@ One day at a time, each day proved by a screenshot of the real app running in th
 | 30 | The moving share, and the write-up, [`docs/post-press.md`](docs/post-press.md) | <img src="docs/screenshots/day-30-clip-frames.png" width="96"> |
 | 13 Oct | Add to Stub; Wallet passes, PDFs and screenshots shared in; the drawer in iCloud, venues and circuits; the 9:16 share and its watermark; the home's label, the press's marks, the icon; the App Store preview | <img src="docs/screenshots/2026-10-13-preview-frames.png" width="96"> |
 | 15 Oct | The cabinet and year folders, the camera first, the widget as the edition, Your card, ten icons, the dial's named moves, patina from hands | <img src="docs/screenshots/2026-10-15-dial.png" width="96"> |
-| 16 Oct | The moment, measured: the record, budgets in CI, accessibility audited, a Lock Screen control, Spotlight, booking emails, the season set as a record | <img src="docs/screenshots/2026-10-16-season-sheet.png" width="96"> |
+| 16 Oct | The moment, measured: the record, budgets in CI, accessibility audited, a Lock Screen control, Spotlight, booking emails, the season set as a record; a rewatch pulls a variant, so no two stubs are alike | <img src="docs/screenshots/2026-10-16-variant.png" width="96"> |
 
 ## Run it
 

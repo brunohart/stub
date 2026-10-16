@@ -466,3 +466,35 @@ The audit found real faults, all fixed. The import form stayed reachable behind 
 **Why.** Apple's contrast check failed text at 14:1 inside a sheet and passed a grey at 3.2:1 on its own: it misjudges text grouped with a background under any rotation, even 0°. The `-a11y-lab` sample sheet (`ContrastLab.swift`, Debug and Performance only) showed it. The type itself was never the fault.
 
 **Consequences.** Words are set level (DESIGN.md rule 3): a stub's picture keeps its tilt, its caption does not, and Your card lies level. No interface words under 12 points (DESIGN.md rule 8). The season's figures are placed in turn with a render effect (`visualEffect`), not a layout one.
+
+## ADR-043 — No two stubs alike: a later viewing pulls a variant, every copy is its own pull, the stage repeats nothing
+
+**Date:** 2026-10-16 · **Status:** decided; built; tested (`VariantTests`). DESIGN.md, Editions rule 1.
+
+**What changed.** Bruno: the collection should never feel repetitive; it should be a given that every stub is unique.
+Three places repeated:
+
+- **A film seen twice printed the same card twice.** Now `Edition.pulled(viewing:)` gives every viewing after the first
+  a variant: the release's own drawing (movement, stock, seed and takes untouched) in its own inks. The ground is
+  inverted first, so the variant reads as a variant at a glance, as a print studio's does. The rest follow in an order
+  the release's seed decides (`Genome.variants`), and no two viewings share inks until all twelve palettes are used.
+  It is applied where an edition is composed for a copy (`Composition`), so the drawer, the detail, the press, the
+  share and the widget agree. The card's back, its spoken label and the detail's line say "A variant of …". Inks chosen
+  at the press are a choice the variant never overrides (`Edition.inksChosen`, set by `applying`). On a later viewing,
+  choosing the release's own inks is kept as a choice too.
+- **Every copy of an edition was the same pull.** Now each plate lands where this copy's pull put it
+  (`Composition.registration`): up to three quarters of a point for a colour plate, a quarter for the type, a third for
+  the foil. The stock's fibre and sheen are the copy's (`Composition.paper`). Seeded by the release and the viewing, so a
+  card never moves between looks.
+- **The staged drawer cycled ten fixture photographs a year apart.** The same Brutalist ticket, seat H12, sat in 2026
+  and in 2025, in every screenshot and every test. Now `Stage.fill` files each fixture once, then draws a ticket for an
+  invented film at an invented cinema, each with its own night, seat, screen, price, paper and tilt. Past the list's
+  end, a film comes back as its sequel. Invented, so a screenshot never carries a real name beyond the fixtures.
+
+**Why.** Collecting is the point of a drawer, and a drawer of repeats is not a collection. A rewatch is the strongest
+signal a person can give a film, and it now earns a card of its own, the way a print studio's variant is collected
+beside the regular.
+
+**Consequences.** The edition is still the film's and the same on every phone for a first viewing. A later viewing's
+card is the same on every phone for that viewing number. `VariantTests` render two viewings and require that more than
+half the card differs.

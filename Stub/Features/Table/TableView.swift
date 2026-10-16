@@ -431,7 +431,8 @@ struct TableView: View {
         let papers: [UInt32] = [0xF7F3EA, 0xF1E8D2, 0xE6DCC6, 0xFAF8F2, 0xD9D3C3]
         return stubs.map { stub in
             if face == .edition, let edition = Editions.shared.edition(for: stub.title) {
-                return edition.palette.inks.color(.ground)
+                // The copy's own inks: a later viewing's variant shows its own ground above the folder (ADR-043).
+                return edition.pulled(viewing: viewings.of[stub.id]?.viewing ?? 1).palette.inks.color(.ground)
             }
             return Color(hex: papers[Int(Release.seed(for: stub.id.uuidString) % UInt64(papers.count))])
         }

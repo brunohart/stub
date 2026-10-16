@@ -310,8 +310,9 @@ struct Keepsake: View {
             let pencil = Pencil(edition: edition).map { " " + $0.spoken(signed: Signatures.shared.isSigned) } ?? ""
             return "The stub for \(stub.title) as it was scanned, on the back of its edition.\(pencil)"
         }
-        let punched = Remarque.spoken(memo.composition(edition, copy).punches).map { ", \($0)" } ?? ""
-        return "The edition of \(stub.title): \(edition.colophon) \(copy.viewingWords)\(punched)."
+        let composition = memo.composition(edition, copy)
+        let punched = Remarque.spoken(composition.punches).map { ", \($0)" } ?? ""
+        return "The \(composition.edition.kind) of \(stub.title): \(composition.edition.colophon) \(copy.viewingWords)\(punched)."
     }
 }
 

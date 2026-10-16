@@ -81,6 +81,10 @@ struct Edition: Hashable, Codable, Sendable {
     /// Which take of each part is drawn: part id to take, absent meaning take 0, the drawing the title rolls. Only a
     /// proof sets these (ADR-016); an edition as the hash or the model printed it has none.
     var takes: [Part.ID: Int] = [:]
+    /// The inks were chosen at the press, so no viewing's variant overrides them. Set by `applying`; never stored.
+    var inksChosen = false
+    /// The viewing these inks are the variant for (`pulled(viewing:)`); 0 for the release's own inks. Never stored.
+    var variant = 0
 
     init(release: String, movement: Movement, palette: Palette, stock: Stock, seed: UInt64, directedBy: Director,
          version: Int = Genome.version, takes: [Part.ID: Int] = [:]) {
@@ -135,6 +139,23 @@ struct Edition: Hashable, Codable, Sendable {
     /// pulled by you."
     var colophon: String { described + ". " + directedBy.sentence }
 
+    /// "edition", or "variant" for a later viewing's own inks.
+    var kind: String { variant > 0 ? "variant" : "edition" }
+
+    /// Every viewing after the first pulls a variant (ADR-043): the same drawing in its own inks, so a film seen twice is
+    /// two cards, never one card twice. The variant inverts the ground first, as a print studio's does (a light edition's
+    /// variant is printed on a dark ground, a dark one's on a light), then the rest, in an order the release's seed
+    /// decides. A viewing's inks never change, and no two viewings of a release share them until all twelve are used.
+    /// Inks chosen at the press are the person's, and win.
+    func pulled(viewing: Int) -> Edition {
+        guard viewing > 1, !inksChosen else { return self }
+        let order = Genome.variants(of: palette, seed: seed)
+        var pulled = self
+        pulled.palette = order[(viewing - 2) % order.count]
+        pulled.variant = viewing
+        return pulled
+    }
+
     /// "Constructivist, on holographic stock": the colophon's words for what this is.
     var described: String {
         let stockWords: String = switch stock {
@@ -162,6 +183,19 @@ enum Genome {
     static let movements: [Movement] = [.swiss, .constructivist, .deco, .cutout, .riso, .letterpress, .blueprint, .noir]
     static let palettes: [Palette] = [.sand, .night, .ember, .tide, .moss, .chalk, .bruise, .oxide, .cobalt, .citrus, .blush, .smoke]
     static let stocks: [Stock] = [.cotton, .coated, .foil, .holographic]
+
+    /// The palettes a release's later viewings are pulled in, in order: the other ground first, then the rest.
+    static func variants(of palette: Palette, seed: UInt64) -> [Palette] {
+        var dice = Dice(seed: seed).fork("variants")
+        func shuffled(_ items: [Palette]) -> [Palette] {
+            var items = items
+            for i in stride(from: items.count - 1, to: 0, by: -1) { items.swapAt(i, dice.index(i + 1)) }
+            return items
+        }
+        let light = palette.inks.groundIsLight
+        let others = palettes.filter { $0 != palette }
+        return shuffled(others.filter { $0.inks.groundIsLight != light }) + shuffled(others.filter { $0.inks.groundIsLight == light })
+    }
 
     static func floor(for title: String) -> Edition {
         let key = Release.key(for: title)

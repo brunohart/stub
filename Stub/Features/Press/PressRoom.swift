@@ -402,7 +402,7 @@ struct PressRoom: View {
     /// New inks spreading across the card from `origin`, about half a second to its far corner (a fifth of a second's
     /// cross-fade under Reduce Motion); when they have covered it, they are the card's.
     private func flood(_ palette: Palette, from origin: CGPoint) {
-        guard palette != session.edition.palette, session.flood == nil else { return }
+        guard palette != session.inks, session.flood == nil else { return }
         if session.separation > 0 { separate(false) }
         session.flood = PressSession.Flood(palette: palette, origin: origin)
         withAnimation(reduceMotion ? .linear(duration: 0.2) : .easeOut(duration: 0.55)) {
@@ -606,7 +606,7 @@ extension PressRoom {
     /// broken or shrunk (decision 005).
     fileprivate var choices: some View {
         let movement = session.edition.movement.rawValue.capitalized
-        let inks = session.edition.palette.rawValue.capitalized
+        let inks = session.inks.rawValue.capitalized
         let stock = session.edition.stock.words
         return ViewThatFits(in: .horizontal) {
             HStack(alignment: .top, spacing: 10) {
@@ -735,7 +735,9 @@ private struct PartChips: View {
                             .frame(minHeight: 36)
                             .background(Capsule(style: .continuous).fill(Ink.cream))
                             .overlay(Capsule(style: .continuous).strokeBorder(Ink.ink.opacity(0.12), lineWidth: 0.75))
-                            .contentShape(Capsule())
+                            // Drawn 36 points tall, touched 44: Apple's smallest target (decision 005).
+                            .padding(.vertical, 4)
+                            .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel(session.spoken(part))

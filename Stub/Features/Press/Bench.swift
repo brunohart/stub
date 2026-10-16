@@ -204,7 +204,7 @@ struct DrawDowns: View {
                                 }
                             Text(palette.rawValue.capitalized)
                                 .font(Type.words(12))
-                                .foregroundStyle(palette == session.edition.palette ? Ink.ink : Ink.grey)
+                                .foregroundStyle(palette == session.inks ? Ink.ink : Ink.grey)
                         }
                         .scrollTransition(.interactive, axis: .horizontal) { content, phase in
                             content.scaleEffect(phase.isIdentity ? 1.06 : 0.9)
@@ -212,7 +212,7 @@ struct DrawDowns: View {
                         .onTapGesture { tapped(palette) }
                         .accessibilityElement(children: .ignore)
                         .accessibilityLabel("\(palette.rawValue.capitalized) inks")
-                        .accessibilityAddTraits(palette == session.edition.palette ? [.isButton, .isSelected] : .isButton)
+                        .accessibilityAddTraits(palette == session.inks ? [.isButton, .isSelected] : .isButton)
                         .accessibilityAction { tapped(palette) }
                         .id(palette)
                     }
@@ -223,7 +223,7 @@ struct DrawDowns: View {
             .contentMargins(.horizontal, max((proxy.size.width - Self.size.width) / 2, 0), for: .scrollContent)
             .scrollPosition(id: $centred, anchor: .center)
         }
-        .onAppear { centred = session.edition.palette }
+        .onAppear { centred = session.inks }
     }
 }
 
@@ -277,7 +277,7 @@ struct SwatchBook: View {
     var body: some View {
         HStack(spacing: 16) {
             ForEach(Genome.stocks, id: \.self) { stock in
-                Swatch(stock: stock, inks: session.edition.palette.inks, light: light, chosen: stock == session.edition.stock) {
+                Swatch(stock: stock, inks: session.inks.inks, light: light, chosen: stock == session.edition.stock) {
                     chose(stock)
                 }
             }

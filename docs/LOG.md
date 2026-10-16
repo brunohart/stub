@@ -45,6 +45,22 @@ Words are now set level (DESIGN.md rule 3), and nothing in the interface is unde
 both sizes, with Increase Contrast off and on: 0 issues, 234 settled by evidence. The simulator budgets all pass again
 afterwards, and the 170 unit tests pass. Screenshots: `2026-10-16-ax5-drawer.png`, `2026-10-16-press-choices.png`.
 
+**No two stubs alike** (ADR-043, DESIGN.md Editions rule 1). Bruno: the collection should never feel repetitive; it
+should be a given that every stub is unique.
+- A film seen again now pulls a **variant**: the release's own drawing in its own inks, on the other ground first, so a
+  rewatch is a card of its own, never the first card twice.
+- Every copy is its own **pull**: each plate a fraction of a point off the others, the stock's fibre its own.
+- The staged drawer no longer cycles ten photographs a year apart. Past the fixtures it draws a ticket for an invented
+  film at an invented cinema, each with its own night, seat and paper.
+
+`VariantTests` render Dune Part Two's two viewings and require that more than half the card differs. Screenshot:
+`2026-10-16-variant.png`.
+
+**CI** runs green on GitHub's `xcode-27` image. The first runs failed for two reasons, both fixed: the image lacks the
+Metal compiler, which CI now downloads, and a date test assumed New Zealand's order on a US-locale runner. The ci lane's
+ceilings come from that machine's first full run: it is about twice this Mac's times, and its model path is the rules
+path. A lane with no ceilings now fails instead of passing having judged nothing.
+
 **Still open.** Nothing has run on a phone (BEDIP-217): the device lane, hitches, energy, the model path on the Neural
 Engine and every *(device)* number wait for it. The corpus is empty. The shapes' address and the App Store campaign
 redirect wait on Bruno. Three kill-list cuts wait for his word.

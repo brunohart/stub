@@ -81,6 +81,8 @@ final class PressSession {
     var edition: Edition { underneath.applying(proof) }
     var movement: Movement { edition.movement }
     var composition: Composition { composition(edition) }
+    /// The inks on this copy's card: the edition's own, or this viewing's variant of them (ADR-043).
+    var inks: Palette { composition.edition.palette }
 
     /// The parts the press can turn, in the order they are drawn.
     var turnable: [Part] { movement.parts.filter(\.turns) }
@@ -262,9 +264,11 @@ final class PressSession {
     }
 
     func choose(_ palette: Palette) {
-        guard palette != edition.palette else { return }
+        guard palette != inks else { return }
         remember("Change the Inks")
-        proof.palette = palette == underneath.palette ? nil : palette
+        // Back to the release's own inks is no choice at all on a first viewing; on a later one, whose card is a variant,
+        // choosing them is a choice, kept as one so the variant does not come back over it.
+        proof.palette = palette == underneath.palette && copy.viewing <= 1 ? nil : palette
         keep("inks \(palette.rawValue)")
     }
 

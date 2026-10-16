@@ -22,6 +22,8 @@ import Vision
 ///   sheet (`sheet`), where it is dimmed and nothing can be touched. One word that is none of these fails the run.
 /// - **Text clipped**, read: Vision reads the flagged element where it is drawn, and every letter of its words must be
 ///   there. A word cut short or run off the screen fails; type whose ascenders rise past their line box does not.
+/// - **Contrast with no element**: on a slower machine (GitHub's) the audit can lose the element it means. Then every
+///   word on the screen is measured instead, a superset of whatever it meant, and every one must reach 4.5:1.
 /// - **Under the doors**: the drawer scrolls under its two doors (`bar`), fading as it goes; a caption caught there when
 ///   the audit looks is low in contrast by design, and is read at full ink a scroll later. The doors' own words are measured.
 @MainActor
@@ -46,6 +48,8 @@ final class AccessibilityTests: XCTestCase {
         let legible: String?
         /// For text found in the pixels: the words on screen that are no element's, a picture's or behind the sheet.
         let unread: [String]?
+        /// For contrast with no element: every word on the screen under 4.5:1, measured. Empty when all pass.
+        let dim: [String]?
     }
 
     private func audit(_ screen: String, _ arguments: [String], open: (XCUIApplication) -> Void = { _ in }) throws {
@@ -71,11 +75,13 @@ final class AccessibilityTests: XCTestCase {
             var pictures: [CGRect] = []
             var sheet: CGRect?
             var doors: CGRect?
+            var words: [(frame: CGRect, label: String, picture: Bool)] = []
             func walk(_ node: any XCUIElementSnapshot, inBar: Bool) {
                 let bar = inBar || node.elementType == .navigationBar
                 if bar, node.elementType == .button { bars.append(node.frame) }
                 if node.elementType == .staticText, !node.label.isEmpty {
                     tall[node.label] = max(tall[node.label] ?? 0, node.frame.height)
+                    words.append((node.frame, node.label, node.identifier == "artwork"))
                 }
                 // An element's words are its label and its value: a text field's words are what is typed in it.
                 for words in [node.label, node.value as? String ?? "", node.placeholderValue ?? ""] where !words.isEmpty {
@@ -107,6 +113,24 @@ final class AccessibilityTests: XCTestCase {
                     }
                 }.map(\.words)
                 : nil
+            // Every word on the screen that is interface, measured: the evidence when the audit raises contrast without
+            // saying where, and a note of the lowest on every screen either way.
+            let screenRect = CGRect(origin: .zero, size: shot.size)
+            let measuredWords: [(label: String, ratio: Double)] = words.compactMap { word in
+                guard !word.picture, word.frame.width >= 4, word.frame.height >= 4, screenRect.contains(word.frame),
+                      !system.intersects(word.frame), !(doors?.intersects(word.frame) ?? false),
+                      sheet.map({ $0.contains(word.frame) }) ?? true,
+                      let ratio = Self.measured(word.frame, in: shot) else { return nil }
+                return (word.label, ratio)
+            }
+            if let lowest = measuredWords.min(by: { $0.ratio < $1.ratio }) {
+                let at = size.isEmpty ? screen : "\(screen) at AX5"
+                print(String(format: "A11Y-WORDS: %@ · %d words measured on screen, the lowest '%@' at %.1f:1", at,
+                             measuredWords.count, lowest.label, lowest.ratio))
+            }
+            let dim: [String]? = issues.contains { $0.auditType == .contrast && $0.element == nil }
+                ? measuredWords.filter { $0.ratio < 4.5 }.map { String(format: "'%@' %.1f:1", $0.label, $0.ratio) }
+                : nil
             for issue in issues {
                 let element = issue.element
                 let frame = element?.frame
@@ -117,7 +141,8 @@ final class AccessibilityTests: XCTestCase {
                     underDoors: element?.identifier != "bar" && frame.map { f in doors?.intersects(f) ?? false } ?? false,
                     contrast: issue.auditType == .contrast ? frame.flatMap { Self.measured($0, in: shot) } : nil,
                     legible: issue.auditType == .textClipped ? frame.map { Self.read($0.insetBy(dx: -6, dy: -6), in: shot) } : nil,
-                    unread: issue.auditType == .elementDetection && element == nil ? unread : nil))
+                    unread: issue.auditType == .elementDetection && element == nil ? unread : nil,
+                    dim: issue.auditType == .contrast && element == nil ? dim : nil))
             }
             app.terminate()
         }
@@ -129,7 +154,8 @@ final class AccessibilityTests: XCTestCase {
                 print("A11Y-OK: \(at) · \(issue.summary) · \(what) · \(reason)")
             } else {
                 let evidence = issue.contrast.map { String(format: " · measured %.1f:1", $0) }
-                    ?? issue.unread.map { " · unaccounted: \($0.joined(separator: " | "))" } ?? ""
+                    ?? issue.unread.map { " · unaccounted: \($0.joined(separator: " | "))" }
+                    ?? issue.dim.map { " · under 4.5:1 on screen: \($0.joined(separator: ", "))" } ?? ""
                 print("A11Y: \(at) · \(issue.summary) · \(what)\(evidence)")
                 XCTFail("\(at): \(issue.summary) · \(what)\(evidence)")
             }
@@ -145,6 +171,9 @@ final class AccessibilityTests: XCTestCase {
         if issue.type == .textClipped, let label = issue.label, let seen = issue.legible,
            !Self.plain(label).isEmpty, Self.plain(seen).contains(Self.plain(label)) {
             return "every word of it is on screen: Vision reads \"\(seen.replacingOccurrences(of: "\n", with: " "))\""
+        }
+        if issue.type == .contrast, let dim = issue.dim, dim.isEmpty {
+            return "no element named: every word on the screen measures 4.5:1 or more"
         }
         if issue.type == .contrast, issue.underDoors { return "scrolling under the doors' fade, where it is meant to fade" }
         if issue.type == .elementDetection, let unread = issue.unread, unread.isEmpty {

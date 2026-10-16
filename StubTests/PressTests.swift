@@ -80,7 +80,12 @@ struct PressTests {
         let same = Proof(release: brutalist.release, movement: brutalist.movement, palette: brutalist.palette, stock: brutalist.stock,
                          takes: ["constructivist/disc": 0, "riso/disc": 7, "constructivist/title": 3])
         let applied = brutalist.applying(same)
-        #expect(applied == brutalist, "take 0, another movement's takes and a set part's take change nothing")
+        // Naming the edition's own inks is a choice of inks (ADR-043): the first viewing's card is the same, and a later
+        // viewing keeps these inks rather than pulling its variant.
+        var named = brutalist
+        named.inksChosen = true
+        #expect(applied == named, "take 0, another movement's takes and a set part's take change nothing")
+        #expect(applied.pulled(viewing: 2).palette == brutalist.palette)
         #expect(applied.directedBy == .hash)
         #expect(Composition(edition: applied, copy: copy).poster == Composition(edition: brutalist, copy: copy).poster)
         #expect(brutalist.dice("constructivist/disc", take: 0).seed == Dice(seed: brutalist.seed).fork("constructivist/disc").seed)

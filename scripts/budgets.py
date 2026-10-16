@@ -54,7 +54,11 @@ for b in budgets["budgets"]:
     failed |= verdict == "OVER"
     rows.append((b["name"], f"{value:.3f}", ceiling, b.get("unit", unit), verdict))
 
-width = max(len(r[0]) for r in rows) if rows else 10
+if not rows:
+    # A lane with no ceilings judges nothing, and must not pass as if it had.
+    print(f"Budgets, {lane} lane: no ceilings in perf/budgets.json, so nothing was judged")
+    sys.exit(1)
+width = max(len(r[0]) for r in rows)
 print(f"Budgets, {lane} lane ({budgets['lanes'][lane]})")
 for name, value, ceiling, unit, verdict in rows:
     print(f"  {name.ljust(width)}  {str(value).rjust(12)}  ≤ {ceiling} {unit}  {verdict}")

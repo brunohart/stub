@@ -25,9 +25,9 @@ for contrast in disabled enabled; do
        -only-testing:StubUITests/AccessibilityTests test 2>&1 | tee "build/last-a11y-$contrast.log" \
        | grep --line-buffered -E "^A11Y:|Test Case.*(passed|failed)|TEST (SUCCEEDED|FAILED)" || true
   grep "^A11Y:" "build/last-a11y-$contrast.log" | sed "s/^/[increase contrast $contrast] /" >> build/a11y.txt || true
-  grep "^A11Y-OK:" "build/last-a11y-$contrast.log" | sed "s/^/[increase contrast $contrast] /" >> build/a11y-settled.txt || true
+  grep -E "^A11Y-(OK|WORDS):" "build/last-a11y-$contrast.log" | sed "s/^/[increase contrast $contrast] /" >> build/a11y-settled.txt || true
 done
 xcrun simctl ui "$UDID" increase_contrast disabled
 COUNT=$(grep -c "A11Y:" build/a11y.txt || true)
-echo "accessibility issues: $COUNT (build/a11y.txt); settled by evidence: $(grep -c "" build/a11y-settled.txt) (build/a11y-settled.txt)"
+echo "accessibility issues: $COUNT (build/a11y.txt); settled by evidence: $(grep -c "A11Y-OK:" build/a11y-settled.txt) (build/a11y-settled.txt)"
 [ "$COUNT" -eq 0 ]

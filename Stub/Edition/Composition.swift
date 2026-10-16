@@ -27,6 +27,8 @@ struct Composition: Sendable, Equatable {
     }
 
     init(edition: Edition, copy: Copy) {
+        // A later viewing prints its own variant of the release's inks (ADR-043).
+        let edition = edition.pulled(viewing: copy.viewing)
         self.edition = edition
         self.inks = edition.palette.inks
         self.copy = copy
@@ -51,6 +53,23 @@ struct Composition: Sendable, Equatable {
     }
 
     var isMetallic: Bool { edition.stock == .foil || edition.stock == .holographic }
+
+    /// This copy's pull (ADR-043): where each plate landed when it went through the press, a little off the others, as no
+    /// two pulls of a screen print land alike. Up to three quarters of a point for a colour plate, a quarter for the type
+    /// so the title stays crisp, a third for the foil (`plate` nil). Seeded by the release and the viewing, so a card never
+    /// moves between one look and the next.
+    func registration(_ plate: Plate?) -> CGSize {
+        var dice = Dice(seed: edition.seed).fork("pull/\(copy.viewing)/\(plate.map { String($0.rawValue) } ?? "foil")")
+        let reach: Double = switch plate {
+        case .first?, .second?: 0.75
+        case .type?: 0.25
+        case nil: 0.33
+        }
+        return CGSize(width: dice.between(-reach, reach), height: dice.between(-reach, reach))
+    }
+
+    /// This copy's sheet of stock: where its fibres lie and how its sheen falls (ADR-043).
+    var paper: UInt64 { Dice(seed: edition.seed).fork("pull/\(copy.viewing)/paper").seed }
 
     /// The marks are a function of the edition, the copy and, mid-turn, where between two takes the wheel is, so two
     /// compositions of the same are the same.

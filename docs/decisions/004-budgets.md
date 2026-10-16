@@ -38,8 +38,10 @@ tightened in any commit. Raising one takes a new entry here saying why. It is ne
   if a metric is over, **or if a budgeted metric was not measured**. Xcode's own baselines are not used: they live in a
   project file this repo generates, and a reported bug ignores them for `measure(metrics:)` in Xcode 15 to 26.
 - **Three lanes.** *device*: the budgets above. *simulator*: regression guards on the Stub Perf SE2 simulator on Bruno's
-  Mac. *ci*: guards for GitHub's `xcode-27` image, calibrated from its own first runs. One machine's numbers are never
-  another's ceilings.
+  Mac. *ci*: guards for GitHub's `xcode-27` image, calibrated from its first full run (2026-10-16), each the larger of
+  the mean × 1.3 and the slowest run × 1.15, rounded up to two figures. That machine runs about twice this Mac's times
+  (first frame 8.1 s against 4.0 s) and has no Apple Intelligence, so its model path is the rules path. One machine's
+  numbers are never another's ceilings. A lane with no ceilings fails rather than passing having judged nothing.
 - **The simulator records no hitches.** Neither the scroll metric nor `XCTHitchMetric` reported any on the iOS 27
   simulator (2026-10-16). So hitch budgets are device-only. The simulator lane guards per-frame work with CPU time.
 - **Instruments**: Time Profiler on the simulator (`xctrace`, with `-stage-scroll` and `-stage-keep` so a recording

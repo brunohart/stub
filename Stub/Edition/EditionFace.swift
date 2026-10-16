@@ -125,18 +125,21 @@ struct EditionFace: View {
                 context.fill(Path(Card.posterRect), with: .color(c.inks.color(c.posterField)))
                 context.fill(Path(Card.stripRect), with: .color(c.inks.color(c.stripField)))
             }
-            .modifier(StockEffect(light: light, stock: stock, seed: Double(c.edition.seed % 997), patina: c.patina))
+            .modifier(StockEffect(light: light, stock: stock, seed: Double(c.paper % 997), patina: c.patina))
         case .first, .second, .type:
             // One canvas a plate, so each has its own impression and the print run can lay each down on its own. The
             // type lies over the foil, never under it: stamped last in time, but a title the foil covered would be a
             // title nobody could read.
             let plate = layer.plate ?? .type
             PlateArt(composition: c, plate: plate, focus: focus).equatable()
+                // Each plate lands where this copy's pull put it (ADR-043).
+                .offset(c.registration(plate))
                 .modifier(ReliefEffect(light: light, depth: depth * impression, reach: stock.reach, wet: wet))
                 .modifier(AgedEffect(patina: c.patina, foxes: true))
                 .opacity(printed >= plate.rawValue ? 1 : 0)
         case .foil:
             PlateArt(composition: c, plate: nil, focus: focus).equatable()
+                .offset(c.registration(nil))
                 .modifier(FoilEffect(light: light, metal: c.inks.foilBase, holographic: stock == .holographic,
                                      lightGround: c.inks.groundIsLight))
                 .modifier(AgedEffect(patina: c.patina, foxes: false))

@@ -68,7 +68,8 @@ jobs:
 
   a11y:
     runs-on: xcode-27
-    timeout-minutes: 60
+    # Two passes of ten screens at two sizes, on a machine about twice this Mac's times.
+    timeout-minutes: 90
     needs: build
     steps:
       - uses: actions/checkout@v4

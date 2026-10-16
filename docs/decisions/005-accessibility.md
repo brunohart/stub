@@ -23,6 +23,7 @@ The first full audit (2026-10-16) reported issues on all ten screens. In order o
 | "Constructivist" broke mid-word on a small phone at the default size | Everyone | The press's three choices change shape where their words do not fit: one row, the movement over the other two, or three rows |
 | The press, the plates, the drawer's picker and Your card cut words at the largest sizes | Larger Text | The press scrolls at the accessibility sizes, the card at a height of its own; plates are as tall as their words; the picker stacks; Your card's labels stand over their values |
 | The season's year rows were each a separate element, too small to touch | VoiceOver, Voice Control | The calendar is one element, read year by year |
+| The press's part chips were 36 points tall to touch (found by the audit on CI) | Motor | Drawn 36 points tall, touched 44 |
 | Secondary words in the taste doc's warm grey, #8A8578: 3.2:1 on parchment, 2.9:1 on the plates' card | Low vision; everyone in a dark foyer | **A change to the palette**: words in the same hue at #5A574E (6.2:1), and #48463F (8.5:1) under Increase Contrast. #8A8578 stays for marks that are not words (`Ink.greyMark`). Thin type at 11–13 pt measured below its computed ratio once smoothed, so the grey has margin rather than a bare pass |
 | Words in ink at 55–85% opacity did not change under Increase Contrast | Increase Contrast | `Ink.soft(_:)`: the same strength by default, full ink under Increase Contrast; the faintest (55%) raised to 62% |
 | The brass plates were a fixed 264 × 80 and shrank their words to fit | Larger Text | The plates grow with the text size (`DrawerLabel.size(for:)`), words wrap instead of shrinking, the engraving is cut darker |
@@ -58,6 +59,7 @@ evidence, and each verdict is printed, so the record says why (`build/a11y-settl
 |---|---|---|
 | Any, on `artwork` | It is printed artwork: hidden from VoiceOver, spoken by its card | — |
 | Contrast | The element measures 4.5:1 or more on the screen, WCAG's way (the commonest light against the darkest few percent) | Fails |
+| Contrast with no element named | Every word on the screen measures 4.5:1 or more. On GitHub's slower machine the audit lost the element it meant on two screens, so every word is measured instead, a superset | Fails, naming each word under 4.5:1 |
 | Contrast, under the drawer's doors | The caption has scrolled under the doors' fade, which is meant to fade it | — |
 | Dynamic Type | The label is at least 1.4 times as tall at the largest size as at the default; or it is a navigation bar's own button, which shows the Large Content Viewer | Fails |
 | Text clipped | Vision reads every letter of the element's words where it is drawn | Fails |
@@ -66,10 +68,18 @@ evidence, and each verdict is printed, so the record says why (`build/a11y-settl
 Anything else fails the run. A11Y lines in `build/a11y.txt` are the failures; the job in CI fails on one.
 
 **The result, 2026-10-16.** Ten screens, each at the default size and the largest accessibility size, with Increase
-Contrast off and on: **0 issues**. Apple's audit raised 234, and each was settled by its evidence: 80 printed artwork, 68
-measured at 4.5:1 or more on screen (the lowest 5.1:1), 44 measured growing at the largest size, 23 times every word on
-screen was accounted for, 8 navigation bar buttons, 4 captions under the doors' fade, and 6 clipped texts Vision read
-whole. The sample sheet that showed the check's blind spot opens with the launch argument `-a11y-lab`, and Your card's
+Contrast off and on: **0 issues** on this Mac. In the last run Apple's audit raised 218, and each was settled by
+its evidence:
+- 62 printed artwork;
+- 45 contrast flags with no element named, where every word on the screen measured 4.5:1 or more;
+- 37 contrast flags measured at 4.5:1 or more on screen (the lowest 5.2:1);
+- 32 labels measured growing at the largest size;
+- 24 times every word on the screen was accounted for;
+- 8 navigation bar buttons;
+- 8 clipped texts Vision read whole;
+- 2 captions under the doors' fade.
+
+The sample sheet that showed the check's blind spot opens with the launch argument `-a11y-lab`, and Your card's
 variants with `-a11y-lab -a11y-lab-card` (Debug and Performance only).
 
 ## Reduce Motion: a still for every movement

@@ -259,6 +259,9 @@ struct BlankStub: View {
         .rotationEffect(.degrees(tilt))
         .accessibilityElement(children: .combine)
         .accessibilityLabel(title.map { "A blank stub for \($0)." } ?? "A blank stub. The drawer is empty.")
+        // A drawing of a ticket, said in words (decision 005).
+        .accessibilityAddTraits(.isImage)
+        .accessibilityIdentifier("artwork")
     }
 
     private var perforation: some View {

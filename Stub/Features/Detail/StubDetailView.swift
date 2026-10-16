@@ -72,8 +72,8 @@ struct StubDetailView: View {
                             .accessibilityLabel("Read by \(ReadBy.words(stub.readBy)), \(Int(stub.confidence * 100)) percent confident.")
 
                         // Honest machinery for the edition too: what it is, and who chose it (DESIGN.md rule 7).
-                        if let edition = editions.edition(for: stub.title) {
-                            Text("Edition: \(edition.described.lowercased()) · \(edition.directedBy.words)")
+                        if let edition = editions.edition(for: stub.title)?.pulled(viewing: copy.viewing) {
+                            Text("\(edition.kind.capitalized): \(edition.described.lowercased()) · \(edition.directedBy.words)")
                                 .font(Type.numbers(12)).foregroundStyle(Ink.grey)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
@@ -272,22 +272,23 @@ struct StubDetailView: View {
         if let shareable, let edition {
             let composition = Composition(edition: edition, copy: copy)
             let invitation = { (via: ShareLinkText.Via) in Text(ShareLinkText.link(via: via).absoluteString) }
+            let named = "\(composition.edition.variant > 0 ? "A variant" : "An edition") of \(stub.title)"
             Menu {
                 ShareLink(item: EditionClip(composition: composition, format: .vertical), message: invitation(.clip),
-                          preview: SharePreview("An edition of \(stub.title), turning in the light", image: shareable)) {
+                          preview: SharePreview("\(named), turning in the light", image: shareable)) {
                     Label("Share it turning in the light", systemImage: "film")
                 }
                 ShareLink(item: EditionClip(composition: composition, format: .card), message: invitation(.card),
-                          preview: SharePreview("An edition of \(stub.title), turning in the light", image: shareable)) {
+                          preview: SharePreview("\(named), turning in the light", image: shareable)) {
                     Label("Share it turning, close up", systemImage: "rectangle.portrait")
                 }
-                ShareLink(item: shareable, message: invitation(.still), preview: SharePreview("An edition of \(stub.title)", image: shareable)) {
+                ShareLink(item: shareable, message: invitation(.still), preview: SharePreview(named, image: shareable)) {
                     Label("Share the still", systemImage: "photo")
                 }
             } label: {
                 Image(systemName: "square.and.arrow.up")
             }
-            .accessibilityLabel("Share the edition")
+            .accessibilityLabel("Share the \(composition.edition.kind)")
         } else {
             Button {} label: { Image(systemName: "square.and.arrow.up") }.disabled(true)
                 .accessibilityLabel("Share the edition")

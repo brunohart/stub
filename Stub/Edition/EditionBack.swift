@@ -28,7 +28,7 @@ struct EditionBack: View {
         ZStack(alignment: .topLeading) {
             // The back of the card is bare stock: the palette's lighter paper, whichever way round the front was.
             Rectangle().fill(Color(hex: ground))
-                .modifier(StockEffect(light: light, stock: c.edition.stock == .cotton ? .cotton : .coated, seed: Double(c.edition.seed % 991),
+                .modifier(StockEffect(light: light, stock: c.edition.stock == .cotton ? .cotton : .coated, seed: Double(c.paper % 991),
                                       patina: c.patina.mirrored))
 
             VStack(alignment: .leading, spacing: 0) {
@@ -79,7 +79,7 @@ struct EditionBack: View {
 
     private func colophon(words: Color) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("An edition of \(composition.copy.title)")
+            Text("\(composition.edition.variant > 0 ? "A variant" : "An edition") of \(composition.copy.title)")
                 .font(Face.serif.font(19))
                 .foregroundStyle(words)
                 .lineLimit(2)
