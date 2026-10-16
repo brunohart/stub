@@ -506,8 +506,8 @@ half the card differs.
 **What changed.** Bruno: the tickets and editions switch, floating over the drawer as one control for every year, felt
 off; each year should flick between editions and stubs, integrated into the design, and the control should be larger
 and more obvious while staying elegant. The drawer-wide picker is gone. Every year folder has a second tab at its right
-end, always in the same place, under the thumb: Tickets and Editions in words, the side showing under the ink thumb the
-drawer's other choices use (ADR-029), each side a 44-point target that turns the year over when chosen. The year's tab
+end, always in the same place, under the thumb: its two sides as marks, a ticket lying on its side and a card standing up, each notched at its perforation (words
+at first; Bruno asked for the marks), the side showing under the ink thumb the drawer's other choices use (ADR-029), each side a 44-point target that turns the year over when chosen. The year's tab
 staggers between two positions so the two tabs never meet. At the accessibility sizes they stack. A flick across a
 year's stubs turns it too. The flick reads the finger's predicted end, so a quick one counts. Its stubs turn one after
 another from the first in the year, not from the top of the drawer. Each year remembers its side, per drawer
@@ -572,3 +572,29 @@ the person's. Every form is the edition's own grammar and every ink its own, so 
 
 **Consequences.** `Proof.takes` and the part moves (`Treatment`) stay in the model: proofs pulled with them still print
 and their pencil still reads. Nothing in the app sets them now.
+
+## ADR-047 — Coated finishes at the press, and the studio made sure under a finger
+
+**Date:** 2026-10-16 · **Status:** decided; built; tested (`EditionTests`, `StudioUITests`). DESIGN.md › Editions rule 3.
+
+**What changed.** Bruno asked for more coated card options. The press's swatch book now carries four coated finishes
+beside cotton, coated, foil and holographic. Each is a material that answers the light, never grain (DESIGN.md, Apps):
+- **Gloss card**: a narrow bright highlight; the ink held proud and crisp.
+- **Matte card**: no sheen; the ink sits flat and deep.
+- **Soft-touch**: a broad breath of sheen, the impression deep, the finger dragging.
+- **Pearl card**: mica in the coat, a long quiet wave of hue under the light; a hologram's rainbow bands were tried
+  first and were too loud.
+
+The stock shader gains two material parameters (`sheen`, how tight the coat's highlight is; `pearl`). The finishes are
+the press's alone: `Genome.stocks` and the model's vocabulary stay the first four, frozen, so no edition already printed
+changes its stock. The swatch book is a rail; a tap prints on a swatch; holding one lets it be felt.
+
+Bruno also said the overprint did not work. A touch test (`StudioUITests`) drove it as a person would and found the
+weak point: a quick stroke ending before the stroke was recorded was dropped, and the stroke shared the card with the
+screen's other gestures. Now:
+- the pass is committed from where the finger came down to where it lifted;
+- the stroke has priority while the screens are out;
+- a tap overprints too, a pass straight across where the finger came down;
+- the press cannot be swiped away while a tool is out.
+
+The test runs every act by touch: Overprint opens, a tap and a drag each pull a pass, Stamp stamps, a finish is chosen.

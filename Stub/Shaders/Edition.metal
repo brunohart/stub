@@ -81,13 +81,15 @@ static float3 edition_patina(float3 rgb, float2 p, float2 size, float warmth, fl
 
 // The stock. Cotton has a long soft fibre; coated card has a satin gloss that follows the light. No per-pixel grain:
 // speckle over a whole card reads as noise on a screen, not as paper (ADR-017). `age` in years; at 0 there is no patina.
-[[ stitchable ]] half4 stock(float2 position, half4 color, float4 bounds, float2 light, float fibre, float gloss, float seed,
-                             float age, float warmth, float wear, float burnish, device const float *spots, int count) {
+[[ stitchable ]] half4 stock(float2 position, half4 color, float4 bounds, float2 light, float fibre, float gloss, float sheen,
+                             float pearl, float seed, float age, float warmth, float wear, float burnish,
+                             device const float *spots, int count) {
     float2 uv = (position - bounds.xy) / max(bounds.zw, float2(1.0));
     // Cotton rag: short fibres, a little longer across than down, two octaves so it reads as paper, not grain.
     float f = edition_noise(position * float2(0.11, 0.32) + seed * 13.0) * 0.65
         + edition_noise(position * float2(0.31, 0.9) + seed * 7.0) * 0.35 - 0.5;
-    float s = edition_sheen(uv, light, 2.2) * gloss;
+    // The coat's sheen: `sheen` is how tight it is (2.2 a satin, 7 a gloss's narrow highlight, 1.1 a soft-touch's breath).
+    float s = edition_sheen(uv, light, sheen) * gloss;
     // Burnish: where a thumb holds the card, its fibres are pressed smooth and catch the light, a narrow sheen that moves
     // with it and is gone where the light is not (ADR-032).
     if (burnish > 0.0) {
@@ -100,6 +102,16 @@ static float3 edition_patina(float3 rgb, float2 p, float2 size, float warmth, fl
         rgb = edition_patina(rgb, position - bounds.xy, bounds.zw, warmth, wear, spots, count);
     }
     rgb += s;
+    // Pearl: a coat with mica in it, its sheen running through the hues as the light crosses it. Material, not grain:
+    // nothing here moves unless the light does (DESIGN.md › Editions rule 3).
+    if (pearl > 0.0) {
+        // A mica's shift is quiet: a long wave of hue across the whole card, two tones at most at once, over a soft
+        // lift of the white; never the rainbow bands of a hologram.
+        float band = edition_sheen(uv, light, 1.5);
+        float phase = dot(uv - 0.5, float2(0.55, 0.85)) * 0.9 + (light.x - light.y) * 0.8;
+        float3 hue = 0.5 + 0.5 * cos(6.28318 * (phase + float3(0.0, 0.25, 0.5)));
+        rgb = mix(rgb, rgb + (hue - 0.5) * 0.09 + 0.045, band * pearl);
+    }
     return half4(half3(clamp(rgb, 0.0, 1.0)) * color.a, color.a);
 }
 

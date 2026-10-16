@@ -219,7 +219,7 @@ One day at a time, each day proved by a screenshot of the real app running in th
 | 30 | The moving share, and the write-up, [`docs/post-press.md`](docs/post-press.md) | <img src="docs/screenshots/day-30-clip-frames.png" width="96"> |
 | 13 Oct | Add to Stub; Wallet passes, PDFs and screenshots shared in; the drawer in iCloud, venues and circuits; the 9:16 share and its watermark; the home's label, the press's marks, the icon; the App Store preview | <img src="docs/screenshots/2026-10-13-preview-frames.png" width="96"> |
 | 15 Oct | The cabinet and year folders, the camera first, the widget as the edition, Your card, ten icons, the dial's named moves, patina from hands | <img src="docs/screenshots/2026-10-15-dial.png" width="96"> |
-| 16 Oct | The moment, measured: the record, budgets in CI, accessibility audited, a Lock Screen control, Spotlight, booking emails, the season set as a record; a rewatch pulls a variant, so no two stubs are alike | <img src="docs/screenshots/2026-10-16-variant.png" width="96"> |
+| 16 Oct | The moment, measured: the record, budgets in CI, accessibility audited, a Lock Screen control, Spotlight, booking emails, the season set as a record; a rewatch pulls a variant, so no two stubs are alike; every edition has a hand; the press's studio: overprint and stamp the card | <img src="docs/screenshots/2026-10-16-studio-stub.png" width="96"> |
 
 ## Run it
 
@@ -243,7 +243,7 @@ The simulator has no camera, no gyroscope and no hands, so `run.sh` stands in fo
 | `--seed --reset` | Runs the eleven synthetic tickets in `fixtures/` (nine photographed stubs, an e-ticket PDF, a screenshot) through the real reader |
 | `--edition [--open "Title"]` | Opens a stub so its edition is chosen and printed; `--turned` shows its back |
 | `--tilt x,y` | Holds the light where a screenshot wants it |
-| `--press --part disc --take 14` | Carries the card into the press and turns a part; `--scrub 13.5` holds an in-between |
+| `--press --overprint stub --stamp date` | Carries the card into the press, pulls a pass through the stub's own photograph and stamps the date; `--ink secondary` chooses the ink |
 | `--separated 0.8` | Pulls the card's layers apart |
 | `--proof "disc=14,bars=3"` | Pulls a proof; `--keeps` shows what the press keeps |
 | `--bench movement` · `--flood 0.4` | Opens the fan, the draw-downs or the swatch book; holds a flood part-way |

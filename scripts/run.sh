@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Install and launch the last build on the simulator, then screenshot it.
 # Usage: scripts/run.sh [--seed] [--reset] [--drive] [--season] [--import] [--edition] [--turned] [--tilt x,y]
-#                       [--proof spec] [--keeps] [--open title] [--press] [--part id] [--take n] [--scrub x]
+#                       [--proof spec] [--keeps] [--open title] [--press] [--overprint screen] [--stamp name] [--ink name] [--scrub x]
 #                       [--separated s] [--bench name] [--flood p] [--pulled] [--wet w] [--signed] [--record path.mov]
 #                       [--viewings n] [--age years] [--clip out.mp4] [--clip-card] [--inbox file] [--preview]
 #                       [--face ticket|edition] [--cabinet] [--drawer name] [--carry] [--type size] [--look metal|swiftui] [--wait-for regex] [--shot path.png]
@@ -14,12 +14,13 @@
 # --proof "disc=14,bars=3": pull a proof over each edition the press shows that has none (Day 23, ADR-016). Parts by
 #   their last word or whole id; movement=, inks= and stock= choose from the genome. --keeps: with --edition, open
 #   "What the press keeps" in the detail. --open "Title": with --edition, open that stub instead of the newest.
-# --press: with --edition, carry the card on into the press room (Day 24). --part id: pick up that part (its last
-#   word is enough). --take n: turn it to take n. --scrub x: hold the wheel at x, between two takes. --drive with
-#   --press turns the wheel on a clock. --record path.mov: film STUB_RECORD seconds (default 20) from launch.
+# --press: with --edition, carry the card on into the press room (Day 24). --overprint stub|discs|dots|bands|letter: pull
+#   a pass through that screen across the card; --stamp date|admit|seat|viewing|postmark: press that stamp; --ink
+#   primary|secondary|ink: in which ink (ADR-046). --drive with --press overprints the stub and stamps the date on a
+#   clock. --record path.mov: film STUB_RECORD seconds (default 20) from launch.
 # --separated 0.8: in the press room, lift the card's layers that far apart (Day 25); with --drive, pinch them apart,
 #   turn them in the light, and press them together.
-# --bench movement|inks|stock: open that choice's object on the bench (Day 26); with the fan, --scrub x rests a finger
+# --bench movement|inks|stock|pull|stamp: open that object on the bench (Day 26, ADR-046); with the fan, --scrub x rests a finger
 #   x points along it. --flood 0.4: hold the next palette's flood that far across the card.
 # --pulled: in the press room, pull the proof on the press (Day 27); --wet 0.6 holds the ink that wet. --turned with
 #   --press turns the card over on the bed. --signed: sign with the fixture signature at launch.
@@ -49,7 +50,8 @@ while [ $# -gt 0 ]; do case "$1" in
   --import) ARGS+=(-import);; --type) TYPE="$2"; shift;;
   --edition) ARGS+=(-edition);; --turned) ARGS+=(-turned);; --tilt) ARGS+=(-tilt "$2"); shift;;
   --proof) ARGS+=(-proof "$2"); shift;; --keeps) ARGS+=(-keeps);; --open) ARGS+=(-open "$2"); shift;;
-  --press) ARGS+=(-press);; --part) ARGS+=(-part "$2"); shift;; --take) ARGS+=(-take "$2"); shift;;
+  --press) ARGS+=(-press);; --overprint) ARGS+=(-overprint "$2"); shift;; --stamp) ARGS+=(-stamp "$2"); shift;;
+  --ink) ARGS+=(-ink "$2"); shift;;
   --scrub) ARGS+=(-scrub "$2"); shift;; --record) RECORD="$2"; shift;; --separated) ARGS+=(-separated "$2"); shift;;
   --bench) ARGS+=(-bench "$2"); shift;; --flood) ARGS+=(-flood "$2"); shift;;
   --pulled) ARGS+=(-pulled);; --wet) ARGS+=(-wet "$2"); shift;; --signed) ARGS+=(-signed);;

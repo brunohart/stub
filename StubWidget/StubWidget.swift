@@ -366,6 +366,8 @@ private struct Words: View {
             .offset(x: x, y: w.at.y - ascent)
             .frame(width: Card.width, height: Card.height, alignment: .topLeading)
             .opacity(mark.opacity)
+            // Multiplied into the card or screened onto it, as the canvas lays it (the hand's letter, ADR-045).
+            .blendMode(mark.blend == .multiply ? .multiply : mark.blend == .screen ? .screen : .normal)
             .rotationEffect(.degrees(turn.degrees), anchor: UnitPoint(x: turn.around.x / Card.width, y: turn.around.y / Card.height))
             .clipShape(Path(inPoster ? Card.posterRect : CGRect(origin: .zero, size: Card.size)))
     }

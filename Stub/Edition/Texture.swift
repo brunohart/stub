@@ -83,6 +83,10 @@ extension Stock {
         case .coated: 0.4
         case .foil: 0.75
         case .holographic: 0.85
+        case .gloss: 0.6
+        case .matte: 0.25
+        case .velvet: 0.1
+        case .pearl: 0.5
         }
     }
 
@@ -93,6 +97,10 @@ extension Stock {
         case .coated: 0.55
         case .foil: 0.45
         case .holographic: 0.35
+        case .gloss: 0.3
+        case .matte: 0.65
+        case .velvet: 0.85
+        case .pearl: 0.45
         }
     }
 }

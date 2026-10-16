@@ -21,11 +21,33 @@ extension Stock {
         case .coated: 0.10
         case .foil: 0.08
         case .holographic: 0.10
+        case .gloss: 0.30
+        case .matte: 0
+        case .velvet: 0.075
+        case .pearl: 0.08
         }
     }
-    /// How hard the plates were pressed into it, and how wide the walls of the impression are, in points.
-    var depth: Double { self == .cotton ? 2.2 : 1.0 }
-    var reach: Double { self == .cotton ? 1.2 : 0.8 }
+    /// How tight the coat's sheen is: a satin's soft band, a gloss's narrow highlight, a soft-touch's breath.
+    var sheen: Double {
+        switch self {
+        case .gloss: 7.0
+        case .velvet: 1.1
+        default: 2.2
+        }
+    }
+    /// How much mica is in the coat: the hues the sheen runs through as the light crosses it.
+    var pearl: Double { self == .pearl ? 1 : 0 }
+    /// How hard the plates were pressed into it, and how wide the walls of the impression are, in points. A soft-touch
+    /// coat takes the impression deep; a gloss holds the ink proud and crisp.
+    var depth: Double {
+        switch self {
+        case .cotton: 2.2
+        case .velvet: 1.6
+        case .gloss: 0.7
+        default: 1.0
+        }
+    }
+    var reach: Double { self == .cotton ? 1.2 : self == .velvet ? 1.0 : 0.8 }
 }
 
 /// An edition, printed. The stock, the inks pressed into it, the foil stamped on it, all lit from one light.
@@ -197,7 +219,8 @@ struct StockEffect: ViewModifier {
     func body(content: Content) -> some View {
         if LookEngine.current.isMetal {
             content.colorEffect(ShaderLibrary.stock(
-                .boundingRect, .float2(light.vector), .float(stock.fibre), .float(lit ? stock.gloss : 0), .float(seed),
+                .boundingRect, .float2(light.vector), .float(stock.fibre), .float(lit ? stock.gloss : 0), .float(stock.sheen),
+                .float(lit ? stock.pearl : 0), .float(seed),
                 .float(patina.age), .float(patina.warmth), .float(patina.wear), .float(lit ? patina.burnish : 0),
                 // Never an empty buffer: a spot of strength zero stands in for none.
                 .floatArray(patina.spots.isEmpty ? [0, 0, 1, 0] : patina.spots)
@@ -215,8 +238,8 @@ enum EditionShaders {
     static func prepare() async throws {
         let spots: [Float] = [0, 0, 1, 0]
         let colour: [(Shader, Shader.UsageType)] = [
-            (ShaderLibrary.stock(.boundingRect, .float2(CGPoint.zero), .float(0), .float(0), .float(0), .float(0), .float(0),
-                                 .float(0), .float(0), .floatArray(spots)), .colorEffect),
+            (ShaderLibrary.stock(.boundingRect, .float2(CGPoint.zero), .float(0), .float(0), .float(2.2), .float(0), .float(0),
+                                 .float(0), .float(0), .float(0), .float(0), .floatArray(spots)), .colorEffect),
             (ShaderLibrary.aged(.boundingRect, .float2(CGPoint.zero), .float2(CGPoint.zero), .float(0), .float(0), .floatArray(spots)), .colorEffect),
             (ShaderLibrary.flood(.float2(CGPoint.zero), .float(0), .float(0), .float(0), .float(0)), .colorEffect),
             (ShaderLibrary.relief(.boundingRect, .float2(CGPoint.zero), .float(0), .float(0), .float(0)), .layerEffect),
@@ -325,6 +348,10 @@ extension Stock {
         case .coated: (3, 8)
         case .foil: (4, 9)
         case .holographic: (4, 9)
+        case .gloss: (2, 6)
+        case .matte: (5, 9)
+        case .velvet: (7, 10)
+        case .pearl: (3, 8)
         }
     }
 }

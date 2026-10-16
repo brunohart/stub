@@ -38,11 +38,13 @@ final class DebugDrive {
     static let openTitle: String? = value(after: "-open")
     /// `-press`: with `-edition`, carry the card on into the press room once it is printed (ADR-016).
     static var wantsPress: Bool { ProcessInfo.processInfo.arguments.contains("-press") }
-    /// `-part constructivist/disc`: in the press room, pick up this part (its last word is enough).
-    static let part: String? = value(after: "-part")
-    /// `-take 14`: turn the part in hand to this take and let it settle.
-    static let take: Int? = value(after: "-take").flatMap { Int($0) }
-    /// `-bench movement|inks|stock`: in the press room, open that choice's object on the bench (brief §5.5–5.6).
+    /// `-overprint stub|discs|dots|bands|letter`: in the press room, pull a pass through that screen across the card (ADR-046).
+    static let overprint: Act.Screen? = value(after: "-overprint").flatMap(Act.Screen.init(rawValue:))
+    /// `-stamp date|admit|seat|viewing|postmark`: in the press room, press that stamp on the card.
+    static let stamp: Act.Stamp? = value(after: "-stamp").flatMap(Act.Stamp.init(rawValue:))
+    /// `-ink primary|secondary|ink`: which of the card's inks an act prints in.
+    static let ink: Act.Inking? = value(after: "-ink").flatMap(Act.Inking.init(rawValue:))
+    /// `-bench movement|inks|stock|pull|stamp`: in the press room, open that object on the bench (brief §5.5–5.6, ADR-046).
     static let bench: String? = value(after: "-bench")
     /// `-flood 0.4`: in the press room, start the next palette flooding the card and hold it this far across.
     static let flood: CGFloat? = value(after: "-flood").flatMap { Double($0) }.map { CGFloat($0) }
@@ -54,7 +56,7 @@ final class DebugDrive {
     static var wantsSigned: Bool { ProcessInfo.processInfo.arguments.contains("-signed") }
     /// `-separated 0.8`: in the press room, lift the card's layers this far apart (brief §5.4).
     static let separated: CGFloat? = value(after: "-separated").flatMap { Double($0) }.map { CGFloat($0) }
-    /// `-scrub 13.5`: hold the wheel here, between two takes, for a screenshot of an in-between.
+    /// `-scrub 120`: with the fan open, where along it the finger rests.
     static let scrub: Double? = value(after: "-scrub").flatMap { Double($0) }
     /// `-viewings 3`: the detail's stub is this viewing of its release, punched n − 1 times (brief §6.1).
     static let viewings: Int? = value(after: "-viewings").flatMap { Int($0) }.map { max($0, 1) }
@@ -179,9 +181,8 @@ final class DebugDrive {
         Self.log.info("drive: done")
     }
 
-    /// In the press room: pick up `-part`, and set the wheel at `-take` or `-scrub`. With `-drive`, turn the wheel on a
-    /// clock instead, so `recordVideo` can watch the in-betweens: a flick up to take fourteen, a settle, a slower turn
-    /// back to three, a settle, and the part put down.
+    /// In the press room: open `-bench`, flood `-flood`, part the plates `-separated`, then `-overprint` and `-stamp`. With
+    /// `-drive`, on a clock, so `recordVideo` can watch.
     func press(_ session: PressSession, reduceMotion: Bool) async {
         do {
             try await beat(0.8)
@@ -230,30 +231,29 @@ final class DebugDrive {
                 withAnimation(Motion.settle) { session.separation = apart }
                 try await beat(0.8)
             }
-            let named = Self.part.flatMap { name in session.turnable.first { $0.id == name || $0.id.hasSuffix("/" + name) } }
-            guard let part = named ?? (Self.requested ? session.turnable.first : nil) else {
-                try await pullAndTurn(session)
-                return
+            // The studio's acts (ADR-046): with `-drive`, a pass through the stub and a stamp of the date, on a clock.
+            let screen = Self.overprint ?? (Self.requested ? .stub : nil)
+            let stamp = Self.stamp ?? (Self.requested ? .date : nil)
+            if let ink = Self.ink { session.inking = ink }
+            if let screen {
+                withAnimation(Motion.settle) { session.bench = .pull }
+                session.screen = screen
+                try await beat(0.8)
+                Self.log.info("drive: overprint \(screen.rawValue)")
+                withAnimation(Motion.place) { session.pull(from: CGPoint(x: 26, y: 300), to: CGPoint(x: Card.width - 26, y: 214)) }
+                try await beat(1.2)
             }
-            Self.log.info("drive: pick up \(part.id)")
-            withAnimation(Motion.settle) { session.pickUp(part) }
-            try await beat(0.8)
-            if Self.requested {
-                try await turn(session, to: 14, over: 1.6)
-                try await beat(1.4)
-                try await turn(session, to: 3, over: 2.4)
-                try await beat(1.4)
-                Self.log.info("drive: put down")
-                withAnimation(Motion.settle) { session.putDown() }
-                try await beat(1.0)
+            if let stamp {
+                withAnimation(Motion.settle) { session.bench = .stamp }
+                session.stamp = stamp
+                try await beat(0.8)
+                Self.log.info("drive: stamp \(stamp.rawValue)")
+                withAnimation(Motion.place) { session.stamp(at: CGPoint(x: Card.width - 96, y: 104)) }
+                try await beat(1.2)
+            }
+            if Self.requested, screen != nil || stamp != nil {
+                withAnimation(Motion.settle) { session.bench = .rest }
                 Self.log.info("drive: done")
-            } else if let scrub = Self.scrub {
-                Self.log.info("drive: hold the wheel at \(scrub)")
-                session.position = scrub
-            } else if let take = Self.take {
-                Self.log.info("drive: take \(take)")
-                withAnimation(Motion.settle) { session.position = Double(take) }
-                session.settle(on: take)
             }
             try await pullAndTurn(session)
         } catch {
@@ -297,34 +297,10 @@ final class DebugDrive {
             try await beat(1.0 / 30)
         }
         tilt = Self.heldTilt
-        if let part = Self.part.flatMap({ name in session.turnable.first { $0.id == name || $0.id.hasSuffix("/" + name) } }) {
-            Self.log.info("drive: pick up \(part.id) on its sheet")
-            withAnimation(Motion.settle) { session.pickUp(part) }
-            try await beat(1.6)
-            withAnimation(Motion.settle) { session.putDown() }
-            try await beat(0.8)
-        }
         Self.log.info("drive: press together")
         withAnimation(Motion.settle) { session.separation = 0 }
         try await beat(1.4)
         Self.log.info("drive: done")
-    }
-
-    /// The wheel turned by hand to `take`: fast at first and slowing, as a flick coasts, then the settle spring.
-    private func turn(_ session: PressSession, to take: Int, over seconds: Double) async throws {
-        Self.log.info("drive: turn to \(take)")
-        let start = session.position
-        let frames = Int(seconds * 60)
-        for frame in 1...frames {
-            let t = Double(frame) / Double(frames)
-            let eased = 1 - pow(1 - t, 3)
-            var still = Transaction()
-            still.disablesAnimations = true
-            withTransaction(still) { session.position = start + (Double(take) - 0.18 - start) * eased }
-            try await beat(1.0 / 60)
-        }
-        withAnimation(Motion.settle) { session.position = Double(take) }
-        session.settle(on: take)
     }
 }
 #endif

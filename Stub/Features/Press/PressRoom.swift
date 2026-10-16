@@ -66,6 +66,8 @@ struct PressRoom: View {
             }
         }
         .navigationBarTitleDisplayMode(.inline)
+        // With a tool out, a stroke across the card is the tool's, never a swipe that closes the room.
+        .interactiveDismissDisabled(session.bench == .pull || session.bench == .stamp)
         .toolbarBackground(.hidden, for: .navigationBar)
         // Back asks once when the proof on the press is not kept: it would stay on the press, not on the card.
         .modifier(LeaveCheck(asking: $leaving, back: leave, keep: {
@@ -142,7 +144,8 @@ struct PressRoom: View {
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, minHeight: 48)
-                .padding(.horizontal, 28)
+                // Clear of the lever's words, which hang below the bed on the right; centred all the same.
+                .padding(.horizontal, scrolls ? 28 : 62)
 
             bench
                 .frame(height: scrolls && session.focus == nil ? nil : benchHeight)
@@ -232,21 +235,33 @@ struct PressRoom: View {
                     .contentShape(Rectangle())
                     // The studio (ADR-046): with the stamps out, a tap stamps; with the screens out, a stroke overprints.
                     .gesture(SpatialTapGesture().onEnded { value in
-                        guard session.bench == .stamp else { return }
                         let point = CGPoint(x: value.location.x / scale, y: value.location.y / scale)
-                        withAnimation(reduceMotion ? Motion.plain : Motion.place) { session.stamp(at: point) }
+                        switch session.bench {
+                        case .stamp:
+                            withAnimation(reduceMotion ? Motion.plain : Motion.place) { session.stamp(at: point) }
+                        case .pull:
+                            // A tap is a pass straight across the card where the finger came down, a little rising, as a
+                            // squeegee is drawn: the overprint for anyone who taps rather than drags.
+                            withAnimation(reduceMotion ? Motion.plain : Motion.place) {
+                                session.pull(from: CGPoint(x: 22, y: point.y + 18), to: CGPoint(x: Card.width - 22, y: point.y - 18))
+                            }
+                        default: return
+                        }
                         wetSince = .now
                     })
-                    .simultaneousGesture(DragGesture(minimumDistance: 8).onChanged { value in
-                        guard session.bench == .pull else { return }
+                    // With the screens out the stroke is the tool's, ahead of every other gesture on the screen; otherwise
+                    // the card's own gestures (the pinch to part the plates) have it.
+                    .highPriorityGesture(DragGesture(minimumDistance: 6).onChanged { value in
                         stroke = (CGPoint(x: value.startLocation.x / scale, y: value.startLocation.y / scale),
                                   CGPoint(x: value.location.x / scale, y: value.location.y / scale))
                     }.onEnded { value in
-                        guard session.bench == .pull, let drawn = stroke else { return }
                         stroke = nil
-                        withAnimation(reduceMotion ? Motion.plain : Motion.place) { session.pull(from: drawn.from, to: drawn.to) }
+                        // From where the finger came down to where it lifted, however quickly it went.
+                        let from = CGPoint(x: value.startLocation.x / scale, y: value.startLocation.y / scale)
+                        let to = CGPoint(x: value.location.x / scale, y: value.location.y / scale)
+                        withAnimation(reduceMotion ? Motion.plain : Motion.place) { session.pull(from: from, to: to) }
                         wetSince = .now
-                    })
+                    }, including: session.bench == .pull ? .all : .subviews)
                     .overlay(alignment: .topLeading) {
                         if let stroke {
                             StrokePreview(composition: session.composition,
@@ -703,6 +718,10 @@ extension Stock {
         case .coated: "Coated card"
         case .foil: "Foil"
         case .holographic: "Holographic"
+        case .gloss: "Gloss card"
+        case .matte: "Matte card"
+        case .velvet: "Soft-touch"
+        case .pearl: "Pearl card"
         }
     }
 }

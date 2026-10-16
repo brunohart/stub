@@ -270,14 +270,15 @@ brings the system's own notice that the icon has changed. "Restore" is beside th
 
 ### 11 · The press, if time is left
 
-> "Take A Quiet Harbour to the press, change one part with the dial, and pull the proof."
+> "Take A Quiet Harbour to the press, stamp it with the date, and keep it."
 
-**Done when** the proof is pulled.
+**Done when** the stamped card is kept.
 
 **Should happen.** On the edition, the actions include "Take it to the press" and "Lift the print". In the press, the
-rotor lists "Parts"; each part is a button, hint "Picks it up, so the wheel turns it." The dial is one adjustable
-element, "The dial", whose value is the move's name; swipe up or down to turn it. The lever: "The lever", action "Pull the
-proof", hint "Pulls the proof and keeps it as the card. Nothing else keeps it."
+bench reads "Overprint" and "Stamp" as buttons, each with a hint. With the stamps out, the tray reads each stamp by name
+and the three inks as "First ink", "Second ink", "The type's ink"; on the card, the actions include "Stamp the card" (and
+with the screens out, "Overprint across the card"). "Take it off" lifts the last act. The lever: "The lever", action
+"Pull the proof", hint "Pulls the proof and keeps it as the card. Nothing else keeps it."
 
 Whether the press is a common task is decided in decision 005. If it is, it needs a participant's unaided run before the
 label is claimed; if not, Bruno's own Screen Curtain run covers it.

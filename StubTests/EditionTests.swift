@@ -65,7 +65,10 @@ struct EditionTests {
     @Test func vocabularyIsWhole() {
         #expect(Set(Genome.movements) == Set(Movement.allCases))
         #expect(Set(Genome.palettes) == Set(Palette.allCases))
-        #expect(Set(Genome.stocks) == Set(Stock.allCases))
+        // The hash and the model draw on the first four stocks, frozen; the coated finishes are the press's (ADR-047).
+        #expect(Genome.stocks == [.cotton, .coated, .foil, .holographic])
+        #expect(Set(Genome.stocks).isSubset(of: Set(Stock.allCases)))
+        #expect(Vocabulary.stocks == Genome.stocks.map(\.rawValue), "the model is offered exactly the hash's stocks")
         #expect(Genome.movements.count == Movement.allCases.count, "no movement twice: the hash would favour it")
     }
 
@@ -123,6 +126,9 @@ struct TextureTests {
         #expect(Stock.cotton.sharpness < Stock.coated.sharpness)
         #expect(Stock.coated.sharpness < Stock.foil.sharpness)
         #expect(Stock.cotton.grip > Stock.holographic.grip)
+        #expect(Stock.velvet.grip > Stock.gloss.grip, "soft-touch drags; gloss slips")
+        #expect(Stock.gloss.sheen > Stock.coated.sheen && Stock.coated.sheen > Stock.velvet.sheen, "gloss's highlight is the tightest")
+        #expect(Stock.matte.gloss == 0 && Stock.pearl.pearl > 0)
         for stock in Stock.allCases {
             #expect((0...1).contains(stock.sharpness) && (0...1).contains(stock.grip))
         }

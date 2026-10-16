@@ -267,20 +267,31 @@ struct DrawDown: View {
 
 // MARK: The swatch book
 
-/// Four swatches of card, lit by the same light as the bed. Hold one and rub it to feel it before you choose: the
-/// texture under the finger is that stock's. Tap to choose, and the card is printed again on it.
+/// The swatch book: every card the press prints on, lit by the same light as the bed, on a rail. Hold one and rub it to
+/// feel it before you choose: the texture under the finger is that stock's. Tap to choose, and the card is printed again
+/// on it (ADR-047).
 struct SwatchBook: View {
     let session: PressSession
     let light: Light
     var chose: (Stock) -> Void
 
     var body: some View {
-        HStack(spacing: 16) {
-            ForEach(Genome.stocks, id: \.self) { stock in
-                Swatch(stock: stock, inks: session.inks.inks, light: light, chosen: stock == session.edition.stock) {
-                    chose(stock)
+        ScrollViewReader { rail in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 16) {
+                    // Every stock the press has: the four an edition is drawn on, and the coated finishes (ADR-047).
+                    ForEach(Stock.allCases, id: \.self) { stock in
+                        Swatch(stock: stock, inks: session.inks.inks, light: light, chosen: stock == session.edition.stock) {
+                            chose(stock)
+                        }
+                        .id(stock)
+                    }
                 }
+                .padding(.horizontal, 4)
+                .padding(.vertical, 4)
             }
+            .scrollClipDisabled()
+            .onAppear { rail.scrollTo(session.edition.stock, anchor: .center) }
         }
     }
 }
@@ -294,14 +305,13 @@ private struct Swatch: View {
 
     @State private var texture = Texture()
     @State private var touchedAt: Date?
-    @State private var moved: CGFloat = 0
 
     var body: some View {
         VStack(spacing: 6) {
             ZStack {
                 Rectangle()
                     .fill(Color(hex: inks.groundIsLight ? inks.ground : inks.hex(.light)))
-                    .modifier(StockEffect(light: light, stock: stock, seed: Double((Genome.stocks.firstIndex(of: stock) ?? 0) * 37)))
+                    .modifier(StockEffect(light: light, stock: stock, seed: Double((Stock.allCases.firstIndex(of: stock) ?? 0) * 37)))
                 if stock == .foil || stock == .holographic {
                     // The stamp the stock carries.
                     RoundedRectangle(cornerRadius: 2)
@@ -319,25 +329,21 @@ private struct Swatch: View {
                 .foregroundStyle(chosen ? Ink.ink : Ink.grey)
         }
         .contentShape(Rectangle())
-        .gesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { value in
-                    if touchedAt == nil {
-                        touchedAt = .now
-                        moved = 0
-                        texture.begin(on: stock)
-                    }
-                    let v = value.velocity
-                    texture.stroke(speed: (v.width * v.width + v.height * v.height).squareRoot())
-                    moved = max(moved, (value.translation.width * value.translation.width + value.translation.height * value.translation.height).squareRoot())
-                }
-                .onEnded { _ in
-                    texture.end()
-                    let quick = touchedAt.map { Date.now.timeIntervalSince($0) < 0.35 } ?? false
-                    touchedAt = nil
-                    if quick, moved < 8 { choose() }
-                }
-        )
+        // A tap prints on it. Held a moment and then rubbed, it is felt; the rail still scrolls under a quick swipe.
+        .onTapGesture { choose() }
+        // Held, it is felt: the texture runs while the finger rests and rubs on it (`onPressingChanged`), and the rail still
+        // scrolls under a swipe.
+        .onLongPressGesture(minimumDuration: 0.2, maximumDistance: 30) {
+        } onPressingChanged: { pressing in
+            if pressing {
+                touchedAt = .now
+                texture.begin(on: stock)
+                texture.stroke(speed: 140)
+            } else {
+                texture.end()
+                touchedAt = nil
+            }
+        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(stock.words). \(stock.feel)")
         .accessibilityHint("Double-tap to print on it. Double-tap and hold, then rub, to feel it.")
@@ -354,6 +360,10 @@ extension Stock {
         case .coated: "Smooth satin card."
         case .foil: "Coated card with a metal foil stamp."
         case .holographic: "Coated card with a holographic film stamp that changes colour as it turns."
+        case .gloss: "Gloss coated card, a bright narrow shine."
+        case .matte: "Matte coated card, no shine at all."
+        case .velvet: "Soft-touch card, like velvet under the finger."
+        case .pearl: "Pearl coated card, its shine running through the colours as it turns."
         }
     }
 }

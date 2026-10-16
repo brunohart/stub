@@ -311,13 +311,15 @@ struct YearFolder: View {
     }
 }
 
-/// Which way up a year is, and the way to turn it: its two sides in words under one ink thumb, as the drawer's other
-/// choices are (ADR-029). Choosing the side not showing turns the year over (ADR-044).
+/// Which way up a year is, and the way to turn it: its two sides as marks under one ink thumb, as the drawer's other
+/// choices are (ADR-029): a ticket lying on its side for the stubs as kept, a card standing up for the editions, each cut
+/// with its perforation's notches. Choosing the side not showing turns the year over (ADR-044). VoiceOver reads the words.
 private struct Sides: View {
     let face: DrawerFace
     let turn: () -> Void
     @Namespace private var thumb
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @ScaledMetric(relativeTo: .body) private var unit: CGFloat = 1
 
     var body: some View {
         HStack(spacing: 0) {
@@ -335,10 +337,11 @@ private struct Sides: View {
             guard !showing else { return }
             turn()
         } label: {
-            Text(side.name).font(Type.display(14))
-            .foregroundStyle(showing ? Ink.paper : Ink.soft(0.7))
-            .fixedSize()
-            .padding(.horizontal, 14)
+            Cut(standing: side == .edition)
+                .fill(showing ? Ink.paper : Ink.soft(0.62))
+                .frame(width: (side == .edition ? 12 : 20) * unit, height: (side == .edition ? 18 : 12) * unit)
+                .frame(width: 22 * unit, height: 20 * unit)
+            .padding(.horizontal, 15)
             .frame(minHeight: 34)
             .background {
                 if showing {
@@ -359,6 +362,26 @@ private struct Sides: View {
         .accessibilityLabel(side.name)
         .accessibilityAddTraits(showing ? [.isButton, .isSelected] : .isButton)
         .accessibilityHint(showing ? "" : side == .edition ? "Turns the year over to its editions." : "Turns the year over to its tickets.")
+    }
+
+    /// A card in miniature: rounded, with a notch cut into either edge where its perforation runs.
+    private struct Cut: Shape {
+        var standing: Bool
+        func path(in r: CGRect) -> Path {
+            let card = Path(roundedRect: r, cornerRadius: min(r.width, r.height) * 0.18, style: .continuous)
+            let n = min(r.width, r.height) * 0.2
+            var notches = Path()
+            if standing {
+                let y = r.minY + r.height * 0.74
+                notches.addEllipse(in: CGRect(x: r.minX - n, y: y - n, width: 2 * n, height: 2 * n))
+                notches.addEllipse(in: CGRect(x: r.maxX - n, y: y - n, width: 2 * n, height: 2 * n))
+            } else {
+                let x = r.minX + r.width * 0.7
+                notches.addEllipse(in: CGRect(x: x - n, y: r.minY - n, width: 2 * n, height: 2 * n))
+                notches.addEllipse(in: CGRect(x: x - n, y: r.maxY - n, width: 2 * n, height: 2 * n))
+            }
+            return card.subtracting(notches)
+        }
     }
 }
 

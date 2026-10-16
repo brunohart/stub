@@ -31,6 +31,16 @@ enum Stock: String, CaseIterable, Codable, Sendable {
     case foil
     /// Coated card with a holographic film stamp that changes colour as it turns.
     case holographic
+    // The press's coated finishes (ADR-047). Chosen by a person at the press, never rolled by the hash or offered to the
+    // model: `Genome.stocks` is frozen, so no edition already printed changes its stock.
+    /// Gloss coated: a narrow bright highlight, the ink held proud and crisp.
+    case gloss
+    /// Matte coated: no sheen at all; the ink sits flat and deep.
+    case matte
+    /// Soft-touch: a velvet laminate, a breath of sheen, the impression deep and the ink rich.
+    case velvet
+    /// Pearl coated: mica in the coat, a sheen that runs through the hues as the card turns.
+    case pearl
 }
 
 /// A closed set of inks, named for what they feel like rather than for a film. The colours live in
@@ -165,6 +175,10 @@ struct Edition: Hashable, Codable, Sendable {
         case .coated: "on coated card"
         case .foil: "foil on coated card"
         case .holographic: "holographic film on coated card"
+        case .gloss: "on gloss card"
+        case .matte: "on matte card"
+        case .velvet: "on soft-touch card"
+        case .pearl: "on pearl card"
         }
         return "\(movement.rawValue.capitalized), \(Hand.of(self).word), \(palette.rawValue) inks, \(stockWords)"
     }

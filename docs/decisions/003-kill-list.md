@@ -11,6 +11,7 @@ neither, or that costs the moment time, battery or attention, goes.
 |---|---|---|
 | **The room** ("Put it on the table", ARKit) | `RoomView` 179, `RoomCard` 277, `Room.metal` 34 lines | Its only way in went with the detail's "…" (ADR-035); it is a demo of RealityKit, never tried on a phone, and nobody stands in a foyer wanting AR. |
 | **The inline Lock Screen widget** | one family in `StubWidget` | A line of text nobody reads; the Control owns the Lock Screen now (decision 002). |
+| **The press's dial** (turning single parts through named moves) | `Wheel` 280 lines, registration marks, part chips | Bruno (2026-10-16): it sent single parts to options that ruined the design. Changing parts of a designed thing makes it worse in proportion to how designed it was. Replaced by the studio: overprint and stamp the card, in its own inks (ADR-046). |
 
 ## Proposed, waiting for Bruno
 
@@ -25,7 +26,7 @@ removed until he says so.
 
 ## Kept, though they were candidates
 
-- **The press.** It is the afterglow's reason to come back, and the dial now names every move (ADR-031).
+- **The press.** It is the afterglow's reason to come back. Its moves are now acts on the card (overprint, stamp, the stub's own photograph), never edits to the drawing (ADR-046).
 - **The 9:16 share and its watermark.** It is the growth loop (decision 006).
 - **The icon drawer.** It is the business model's first product (decision 006).
 - **Patina and the punch.** Cheap, and they make a kept thing gain rather than decay (ADR-032).

@@ -368,7 +368,7 @@ final class PressSession {
             case .movement: return "One film in eight movements. Let go on one to print it; try as many as you like."
             case .inks: return "Twelve inks. Drag one onto the card, or tap it."
             case .stock: return "Hold a swatch and rub it to feel it. Tap it to print on it."
-            case .pull: return "Drag across the card to overprint it."
+            case .pull: return "Drag across the card, or tap it, to overprint it."
             case .stamp: return "Tap the card where it goes."
             case .rest: break
             }
