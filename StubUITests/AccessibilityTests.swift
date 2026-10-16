@@ -24,12 +24,18 @@ import Vision
 ///   there. A word cut short or run off the screen fails; type whose ascenders rise past their line box does not.
 /// - **Contrast with no element**: on a slower machine (GitHub's) the audit can lose the element it means. Then every
 ///   word on the screen is measured instead, a superset of whatever it meant, and every one must reach 4.5:1.
+/// - **Hit area with no element**: every control on the screen is measured, and each must be 44 points or more.
 /// - **Under the doors**: the drawer scrolls under its two doors (`bar`), fading as it goes; a caption caught there when
 ///   the audit looks is low in contrast by design, and is read at full ink a scroll later. The doors' own words are measured.
 @MainActor
 final class AccessibilityTests: XCTestCase {
     /// The text sizes every screen is audited at: the person's default, and the largest accessibility size.
     private static let largest = "UICTContentSizeCategoryAccessibilityXXXL"
+
+    /// What a finger acts on: the elements a hit area is about.
+    private static let controlTypes: Set<XCUIElement.ElementType> = [
+        .button, .link, .switch, .toggle, .slider, .stepper, .textField, .secureTextField, .searchField, .menuButton,
+    ]
 
     private struct Found {
         let size: String
@@ -50,6 +56,8 @@ final class AccessibilityTests: XCTestCase {
         let unread: [String]?
         /// For contrast with no element: every word on the screen under 4.5:1, measured. Empty when all pass.
         let dim: [String]?
+        /// For a hit area with no element: every control on the screen smaller than 44 points. Empty when all are whole.
+        let small: [String]?
     }
 
     private func audit(_ screen: String, _ arguments: [String], open: (XCUIApplication) -> Void = { _ in }) throws {
@@ -76,6 +84,7 @@ final class AccessibilityTests: XCTestCase {
             var sheet: CGRect?
             var doors: CGRect?
             var words: [(frame: CGRect, label: String, picture: Bool)] = []
+            var controls: [(frame: CGRect, label: String)] = []
             func walk(_ node: any XCUIElementSnapshot, inBar: Bool) {
                 let bar = inBar || node.elementType == .navigationBar
                 if bar, node.elementType == .button { bars.append(node.frame) }
@@ -86,6 +95,9 @@ final class AccessibilityTests: XCTestCase {
                 // An element's words are its label and its value: a text field's words are what is typed in it.
                 for words in [node.label, node.value as? String ?? "", node.placeholderValue ?? ""] where !words.isEmpty {
                     named.append((node.frame, Self.plain(words)))
+                }
+                if Self.controlTypes.contains(node.elementType) {
+                    controls.append((node.frame, node.label))
                 }
                 if node.identifier == "artwork" { pictures.append(node.frame) }
                 if node.identifier == "sheet" { sheet = sheet.map { $0.union(node.frame) } ?? node.frame }
@@ -132,6 +144,15 @@ final class AccessibilityTests: XCTestCase {
             let dim: [String]? = issues.contains { $0.auditType == .contrast && $0.element == nil }
                 ? measuredWords.filter { $0.ratio < 4.5 }.map { String(format: "'%@' %.1f:1", $0.label, $0.ratio) }
                 : nil
+            // Every control on the screen smaller than Apple's 44 points: the evidence when the audit names none.
+            var small: [String]?
+            if issues.contains(where: { $0.auditType == .hitRegion && $0.element == nil }) {
+                small = []
+                for control in controls where screenRect.intersects(control.frame) && !system.intersects(control.frame) {
+                    let f = control.frame
+                    if f.width < 43.5 || f.height < 43.5 { small?.append("'\(control.label)' \(Int(f.width))×\(Int(f.height))") }
+                }
+            }
             for issue in issues {
                 let element = issue.element
                 let frame = element?.frame
@@ -143,7 +164,8 @@ final class AccessibilityTests: XCTestCase {
                     contrast: issue.auditType == .contrast ? frame.flatMap { Self.measured($0, in: shot) } : nil,
                     legible: issue.auditType == .textClipped ? frame.map { Self.read($0.insetBy(dx: -6, dy: -6), in: shot) } : nil,
                     unread: issue.auditType == .elementDetection && element == nil ? unread : nil,
-                    dim: issue.auditType == .contrast && element == nil ? dim : nil))
+                    dim: issue.auditType == .contrast && element == nil ? dim : nil,
+                    small: issue.auditType == .hitRegion && element == nil ? small : nil))
             }
             // After every issue's evidence is taken from the screen as the audit saw it.
             // At the largest size less of a drawer fits: scroll on and measure what comes into view, so a label seen at the
@@ -171,13 +193,20 @@ final class AccessibilityTests: XCTestCase {
             if let reason = settled(issue, heights: heights) {
                 print("A11Y-OK: \(at) · \(issue.summary) · \(what) · \(reason)")
             } else {
-                let evidence = issue.contrast.map { String(format: " · measured %.1f:1", $0) }
-                    ?? issue.unread.map { " · unaccounted: \($0.joined(separator: " | "))" }
-                    ?? issue.dim.map { " · under 4.5:1 on screen: \($0.joined(separator: ", "))" } ?? ""
+                let evidence = Self.evidence(issue)
                 print("A11Y: \(at) · \(issue.summary) · \(what)\(evidence)")
                 XCTFail("\(at): \(issue.summary) · \(what)\(evidence)")
             }
         }
+    }
+
+    /// What was measured for an issue that fails, to print beside it.
+    private static func evidence(_ issue: Found) -> String {
+        if let ratio = issue.contrast { return String(format: " · measured %.1f:1", ratio) }
+        if let unread = issue.unread { return " · unaccounted: " + unread.joined(separator: " | ") }
+        if let dim = issue.dim { return " · under 4.5:1 on screen: " + dim.joined(separator: ", ") }
+        if let small = issue.small { return " · under 44 points: " + small.joined(separator: ", ") }
+        return ""
     }
 
     /// Why an issue does not fail the run, or `nil` if it does.
@@ -189,6 +218,9 @@ final class AccessibilityTests: XCTestCase {
         if issue.type == .textClipped, let label = issue.label, let seen = issue.legible,
            !Self.plain(label).isEmpty, Self.plain(seen).contains(Self.plain(label)) {
             return "every word of it is on screen: Vision reads \"\(seen.replacingOccurrences(of: "\n", with: " "))\""
+        }
+        if issue.type == .hitRegion, let small = issue.small, small.isEmpty {
+            return "no element named: every control on the screen is 44 points or more"
         }
         if issue.type == .contrast, let dim = issue.dim, dim.isEmpty {
             return "no element named: every word on the screen measures 4.5:1 or more"

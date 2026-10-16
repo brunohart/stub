@@ -76,6 +76,17 @@ All numbers are from the SE 2 simulator on the same Mac, before and after, from 
   finger, which also lightens the scroll.
 - **Hitches, energy and the model path** are measured only on a phone.
 
+## Raised, with the reason
+
+- **ci lane, tilt-light CPU: 0.97 s to 1.3 s** (2026-10-16). Calibrated from one run before the hand (ADR-045). After it,
+  GitHub's runner measured 1.05 s and 1.10 s in two runs, while this Mac measured the same view falling from 0.607 s to
+  0.584 s once the pull was rolled once (fix 10). On the runner the other edition paths fell with that fix (the editions
+  fling 0.905 s to 0.648 s, the reveal 0.721 s to 0.638 s); only the tilt view did not. The runner is a virtual
+  machine whose drawing is not the phone's. The likely cause is that its graphics do the overprint's blending on the
+  processor; that is not proved. The ceiling is the slowest run there × 1.15, rounded up to two figures. The device
+  lane's 1.3 s and the simulator lane's 1.6 s are unchanged, and the phone is where this is settled: if the A13 is over,
+  the hand's blending moves into the plate it lies under.
+
 ## The device lane
 
 `scripts/perf.sh --device <udid>` runs the same suite on a plugged-in phone. In CI, the `device` job runs it on a
