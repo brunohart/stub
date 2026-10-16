@@ -3,7 +3,7 @@
   "lanes": {
     "device": "iPhone SE (2nd generation) or iPhone 11, A13, iOS 26: the oldest phone Stub supports; the model path on iPhone 15 Pro, the oldest with Apple Intelligence",
     "simulator": "Stub Perf SE2 simulator, iOS 27.0, on an Apple silicon Mac: regression guards, not the phone's numbers",
-    "ci": "GitHub Actions' xcode-27 image, an iOS 27 simulator with no Apple Intelligence (the model path falls back to the rules there): regression guards calibrated on that machine from its first full run, 2026-10-16, each the larger of the mean × 1.3 and the slowest run × 1.15, rounded up to two figures. A ceiling here is not this Mac's or the phone's."
+    "ci": "GitHub Actions' xcode-27 image, an iOS 27 simulator with no Apple Intelligence (the model path falls back to the rules there): regression guards calibrated on that machine from its first four full runs, 2026-10-16, each the larger of the slowest run's mean × 1.3 and the slowest single measurement × 1.15, rounded up to two figures. The runner's hardware varies between runs (first frame 3.5 s to 8.1 s), so a ceiling here is a guard against a large regression, not a measure of speed; the device lane is the budget."
   },
   "budgets": [
     {
@@ -71,7 +71,7 @@
       "unit": "s",
       "simulator": 0.9,
       "why": "Regression guard; first measured with this file.",
-      "ci": 0.96
+      "ci": 1.5
     },
     {
       "name": "Reveal: hitch time ratio",
@@ -124,7 +124,7 @@
       "device": 0.1,
       "simulator": 0.06,
       "why": "Apple: 100 ms for a discrete action ('Improving app responsiveness').",
-      "ci": 0.082
+      "ci": 0.13
     },
     {
       "name": "Capture, rules: Keep to the press on screen",
@@ -134,7 +134,7 @@
       "device": 0.1,
       "simulator": 0.15,
       "why": "Apple: 100 ms for a discrete action. Was 0.31 s on the simulator until the Aztec code moved off the main thread (decision 004).",
-      "ci": 0.32
+      "ci": 0.41
     },
     {
       "name": "Capture, model: shutter to keepable",
@@ -164,7 +164,7 @@
       "device": 0.1,
       "simulator": 0.06,
       "why": "Apple: 100 ms for a discrete action.",
-      "ci": 0.11
+      "ci": 0.13
     },
     {
       "name": "Keep to the printed card, by the clock",
@@ -199,7 +199,7 @@
       "device": 200,
       "simulator": 245,
       "why": "Apple publishes no number. 200 MB is under a seventh of what a 3 GB phone allows one app, so Stub is not the app iOS ends first when it is in the background (WWDC18 'iOS Memory Deep Dive').",
-      "ci": 240
+      "ci": 270
     },
     {
       "name": "Tilt-light: CPU time over a 4.3 s sweep",
@@ -209,7 +209,7 @@
       "device": 1.3,
       "simulator": 1.6,
       "why": "Apple: about 5 ms of main-thread work per update for continuous interaction ('Improving app responsiveness'); at 60 updates a second that is 30% of a core, 1.3 s over the sweep.",
-      "ci": 1.3
+      "ci": 1.5
     }
   ]
 }

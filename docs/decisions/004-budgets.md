@@ -87,6 +87,13 @@ All numbers are from the SE 2 simulator on the same Mac, before and after, from 
   lane's 1.3 s and the simulator lane's 1.6 s are unchanged, and the phone is where this is settled: if the A13 is over,
   the hand's blending moves into the plate it lies under.
 
+- **ci lane, recalibrated from four runs** (2026-10-16). One run under-sampled a runner whose hardware varies: across the
+  first four, the first frame took 8.1 s, 4.3 s, 3.5 s and 4.3 s, and Keep to saved 0.062 s, 0.043 s, 0.044 s and 0.090 s
+  with no change to that path (it is 0.03 s here throughout). Each ceiling is now the larger of the slowest run's mean ×
+  1.3 and the slowest single measurement × 1.15, never lower than it was. Raised: the editions fling 0.96 to 1.5 s, Keep
+  to saved 0.082 to 0.13 s (rules) and 0.11 to 0.13 s (model), Keep to the press 0.32 to 0.41 s, tilt memory 240 to
+  270 MB, tilt CPU 1.3 to 1.5 s. The ci lane catches a large regression; the device lane is the budget.
+
 ## The device lane
 
 `scripts/perf.sh --device <udid>` runs the same suite on a plugged-in phone. In CI, the `device` job runs it on a
