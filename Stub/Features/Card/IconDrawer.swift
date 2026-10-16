@@ -65,7 +65,7 @@ final class IconDrawer {
                 has = true
             }
         }
-        #if DEBUG
+        #if DEBUG || PERF
         // `-icons`: the drawer open without a purchase, for screenshots in a simulator that has no store.
         if ProcessInfo.processInfo.arguments.contains("-icons") { has = true }
         #endif

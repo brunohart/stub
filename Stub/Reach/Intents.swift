@@ -8,8 +8,8 @@ import OSLog
 /// "Log a stub" opens the drawer straight onto the import sheet; "How many films this year" answers out loud
 /// without opening anything.
 struct LogStubIntent: AppIntent {
-    static let title: LocalizedStringResource = "Log a stub"
-    static let description = IntentDescription("Opens Stub ready to read a ticket.")
+    static let title: LocalizedStringResource = "Keep a stub"
+    static let description = IntentDescription("Opens Stub's camera, ready to keep tonight's ticket.")
     static let openAppWhenRun = true
 
     @MainActor
@@ -49,8 +49,9 @@ struct StubShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
             intent: LogStubIntent(),
-            phrases: ["Log a stub in \(.applicationName)", "Add a stub to \(.applicationName)"],
-            shortTitle: "Log a stub",
+            phrases: ["Keep a stub in \(.applicationName)", "Keep tonight's ticket in \(.applicationName)",
+                      "Log a stub in \(.applicationName)", "Add a stub to \(.applicationName)"],
+            shortTitle: "Keep a stub",
             systemImageName: "ticket"
         )
         AppShortcut(
@@ -123,6 +124,10 @@ final class Reach {
                 arrive(Arrival(content: lines.isEmpty ? .page(jpeg, whole: true) : .document(page: jpeg, lines: lines), source: .pdf))
             case .image:
                 arrive(Arrival(content: .page(data, whole: false), source: .screenshot))
+            case .text:
+                let lines = Booking.lines(String(decoding: data, as: UTF8.self))
+                Self.log.info("Inbox: the words of a booking, \(lines.count) lines")
+                arrive(Arrival(content: .text(lines: lines), source: .booking))
             }
         }
     }

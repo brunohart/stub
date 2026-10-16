@@ -244,4 +244,12 @@ struct TicketMark: View {
 /// once the listing exists. It goes in the share's text, never into the frame.
 enum ShareLinkText {
     static let link = URL(string: "https://designedbybruno.net/stub")!
+
+    /// Which share brought a stranger to the page.
+    enum Via: String { case clip, card, still }
+
+    /// The page, with which share it came from. The site hands `via` to the App Store as a campaign token, so App Store
+    /// Connect counts the installs that came from shares, aggregated by Apple, while Stub sends nothing and knows nothing
+    /// about who shared (docs/decisions/006-network-without-data.md).
+    static func link(via: Via) -> URL { URL(string: "https://designedbybruno.net/stub?via=\(via.rawValue)")! }
 }

@@ -179,7 +179,7 @@ final class Editions {
         self.printed = printed
         proofs = ProofCache.all(.pulled, in: defaults)
         onPress = ProofCache.all(.press, in: defaults)
-        #if DEBUG
+        #if DEBUG || PERF
         for edition in printed.values { pullDebugProof(over: edition) }
         #endif
     }
@@ -278,7 +278,7 @@ final class Editions {
                 let edition = await task.value
                 deciding[key] = nil
                 store(edition)
-                #if DEBUG
+                #if DEBUG || PERF
                 pullDebugProof(over: edition)
                 #endif
             }
@@ -286,7 +286,7 @@ final class Editions {
         return edition(for: title) ?? Genome.floor(for: title)
     }
 
-    #if DEBUG
+    #if DEBUG || PERF
     /// `-proof "disc=14,bars=3"`: pull a proof over every release that has none yet, those already printed at launch
     /// and the rest as they are printed, so a take can be screenshotted without hands (ADR-009: `DebugDrive`, not a
     /// third mechanism).

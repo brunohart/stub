@@ -3,7 +3,7 @@ import SwiftData
 import UIKit
 import OSLog
 
-#if DEBUG
+#if DEBUG || PERF
 /// Launch with `-seed` to run the bundled fixture stubs through the real reader and file them.
 /// This is how the simulator gets a full drawer without a hand on the screen, and how the daily
 /// build proves Vision and the on-device model still work end to end.

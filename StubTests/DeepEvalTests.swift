@@ -101,8 +101,9 @@ struct DeepEvalTests {
                 runs["model"] = await EvalTests.ask(ModelParser(), reading, hint: nil, name: "model")
                 runs["model + hint"] = await EvalTests.ask(ModelParser(), reading, hint: heuristic, name: "model + hint")
 
-                // As the app reads: streamed with the hint, and filed as `StubReader.understand` files it, the heuristic's
-                // draft standing when the model's has no title.
+                // As the app reads: streamed with the hint, and filed as `StubReader.understand` files it, the model's answer laid
+                // over the heuristic's field by field, the heuristic's draft standing when the model's has no title. The app also
+                // lets the model go after `StubReader.patience`; the eval waits, because it measures the model, not the moment.
                 let t0 = clock.now
                 var last: StubDraft?, titleMs: Int?, seatMs: Int?, failure: String?
                 do {
@@ -114,7 +115,7 @@ struct DeepEvalTests {
                 } catch {
                     failure = ModelProbe.explain(error)
                 }
-                let filed = last.flatMap { $0.isUsable ? $0 : nil } ?? heuristic
+                let filed = last.flatMap { $0.isUsable ? $0.over(heuristic) : nil } ?? heuristic
                 runs["streamed, as filed"] = Run(name: "streamed", draft: filed, ms: EvalTests.ms(t0.duration(to: clock.now)), error: failure)
 
                 runs["model, no $ line"] = await askWithoutTheDollarLine(reading)

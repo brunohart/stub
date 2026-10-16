@@ -96,3 +96,47 @@ enum PlateImage {
         return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
     }
 }
+
+/// Each photograph's shape, width over height, the right way up: read from its header, never decoded, and remembered in
+/// Caches by stub, so the drawer's rows are laid out without touching a single photograph. Laying out a drawer of sixty
+/// once decoded all sixty on the main thread before the first frame (docs/decisions/004-budgets.md, the launch fix).
+@MainActor
+final class PlateAspects {
+    static let shared = PlateAspects()
+
+    private var known: [String: Double]
+    private var saving = false
+    private let file = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+        .appendingPathComponent("plate-aspects.json")
+
+    private init() {
+        known = (try? Data(contentsOf: file)).flatMap { try? JSONDecoder().decode([String: Double].self, from: $0) } ?? [:]
+    }
+
+    /// The shape of `id`'s photograph, or `nil` when it has none. `data` is read only the first time, for its header.
+    func aspect(for id: UUID, data: @autoclosure () -> Data?) -> Double? {
+        let key = id.uuidString
+        if let shape = known[key] { return shape }
+        guard let bytes = data(), let source = CGImageSourceCreateWithData(bytes as CFData, nil),
+              let size = PlateImage.uprightSize(of: source) else { return nil }
+        let shape = size.width / max(size.height, 1)
+        known[key] = shape
+        save()
+        return shape
+    }
+
+    /// Written once a moment has passed, off the main thread: a drawer measured for the first time is one write, not sixty.
+    private func save() {
+        guard !saving else { return }
+        saving = true
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(500))
+            saving = false
+            let snapshot = known
+            let file = file
+            await Task.detached(priority: .utility) {
+                if let data = try? JSONEncoder().encode(snapshot) { try? data.write(to: file, options: .atomic) }
+            }.value
+        }
+    }
+}

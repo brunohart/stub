@@ -89,6 +89,11 @@ enum ModelProbe {
 
     struct ProbeTimeout: Error {}
 
+    #if DEBUG || PERF
+    /// `-stage-rules`: the probe says no without asking, so the rules read and the hash chooses (decision 004's rule path).
+    static func stageRulesOnly() { _ = record(.unavailable("Staged: the rules alone")) }
+    #endif
+
     private static func record(_ outcome: Outcome) -> Outcome {
         state.withLock { $0 = outcome }
         log.info("Model probe: \(outcome.statusLine)")

@@ -17,10 +17,12 @@ struct Arrival: Identifiable, Equatable, Sendable {
         case page(Data, whole: Bool)
         /// A PDF's first page and its own text: the text goes to the parsers as written, the page is the plate.
         case document(page: Data, lines: [String])
+        /// A booking's words and nothing else: read by the parsers as written; the card prints a blank stub.
+        case text(lines: [String])
     }
 
     enum Source: String, Sendable {
-        case link, shortcut, pass, pdf, screenshot
+        case link, shortcut, pass, pdf, screenshot, booking
     }
 
     static func == (a: Arrival, b: Arrival) -> Bool { a.id == b.id }
@@ -33,6 +35,7 @@ struct Arrival: Identifiable, Equatable, Sendable {
         case .pass: "wallet.pass"
         case .pdf: "doc.richtext"
         case .screenshot: "rectangle.on.rectangle"
+        case .booking: "envelope.open"
         }
     }
 
@@ -44,6 +47,7 @@ struct Arrival: Identifiable, Equatable, Sendable {
         case .pass: return "Read from the Wallet pass. No camera, no model."
         case .pdf: return "The first page of the PDF, read here on the phone."
         case .screenshot: return "A picture of the ticket, read here on the phone."
+        case .booking: return "The words of a booking, read here on the phone."
         }
     }
 }

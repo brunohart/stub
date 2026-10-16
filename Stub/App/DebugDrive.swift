@@ -5,7 +5,7 @@ import Observation
 import OSLog
 import SwiftUI
 
-#if DEBUG
+#if DEBUG || PERF
 /// Launch with `-drive` (with `-seed`) and the table presses, opens, turns the edition in the light, turns it over,
 /// holds the photograph and closes, on a timer.
 /// The simulator cannot be tapped from a script (ADR-003), so the interactions that Day 2 is about are
@@ -72,8 +72,6 @@ final class DebugDrive {
     static let inboxFile: String? = value(after: "-inbox")
     /// `-clipformat card`: with `-clip`, the card-sized clip rather than the vertical one (BEDIP-221).
     static let clipFormat: EditionClip.Format = value(after: "-clipformat").flatMap(EditionClip.Format.init(rawValue:)) ?? .vertical
-    /// `-room`: with `-edition`, set the card on a table (ADR-018). The simulator has no camera, so the table is a stand-in.
-    static var wantsRoom: Bool { ProcessInfo.processInfo.arguments.contains("-room") }
     /// `-age 6`: the detail's stub has been in the drawer this many years, for its patina (brief §6.2).
     static let age: Double? = value(after: "-age").flatMap { Double($0) }
     /// `-handled 40`: the opened stub has been taken out this many times, for the wear of hands (ADR-032).

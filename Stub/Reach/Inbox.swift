@@ -9,7 +9,8 @@ enum Inbox {
     static let log = Logger(subsystem: "com.designedbybruno.stub", category: "inbox")
 
     enum Kind: String, Codable, Sendable {
-        case pass, pdf, image
+        /// `text`: a booking's words, selected in Mail or Messages and shared (docs/decisions/002-surfaces.md).
+        case pass, pdf, image, text
     }
 
     struct Item: Codable, Equatable, Sendable {

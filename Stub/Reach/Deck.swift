@@ -90,8 +90,11 @@ enum Deck {
 }
 
 /// `stub://stub/<id>`: the drawer opens that stub. The widget's card says where it goes this way.
+/// `stub://keep`: Keep a stub's viewfinder, from the Lock Screen's control (docs/decisions/002-surfaces.md).
 enum StubLink {
     static func url(for id: UUID) -> URL { URL(string: "stub://stub/\(id.uuidString)")! }
+    static let keep = URL(string: "stub://keep")!
+    static func isKeep(_ url: URL) -> Bool { url.scheme == "stub" && url.host() == "keep" }
 
     static func id(in url: URL) -> UUID? {
         guard url.scheme == "stub", url.host() == "stub" else { return nil }

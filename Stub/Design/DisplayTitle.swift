@@ -38,7 +38,7 @@ struct DisplayTitle: View {
     }
 }
 
-#if DEBUG
+#if DEBUG || PERF
 enum FontAudit {
     /// Prints which brand faces actually registered. Run once at launch in Debug so a missing font is a log line, not a guess.
     static func run() {

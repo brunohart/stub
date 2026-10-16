@@ -50,6 +50,19 @@ struct ShareView: View {
                     .font(Type.words(14)).foregroundStyle(Ink.ink.opacity(0.75))
                     .fixedSize(horizontal: false, vertical: true)
             }
+        case .text(let words, _):
+            VStack(alignment: .leading, spacing: 12) {
+                // The booking's first lines, as handed over: the film and the night are nearly always near the top.
+                Text(words.split(whereSeparator: \.isNewline).prefix(12).joined(separator: "\n"))
+                    .font(Type.numbers(12)).foregroundStyle(Ink.ink.opacity(0.8))
+                    .lineLimit(12)
+                    .padding(14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Ink.cream, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                Label("The words of a booking. Stub reads them on the phone when you open it.", systemImage: "envelope.open")
+                    .font(Type.words(14)).foregroundStyle(Ink.ink.opacity(0.75))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         case .failed(let why):
             Text(why).font(Type.words(16)).foregroundStyle(Ink.rust)
                 .fixedSize(horizontal: false, vertical: true)
@@ -70,7 +83,7 @@ struct ShareView: View {
     @ViewBuilder
     private var footer: some View {
         switch model.state {
-        case .pass, .page:
+        case .pass, .page, .text:
             Button { model.send() } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "arrow.down").font(.system(size: 14, weight: .medium))

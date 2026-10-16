@@ -43,18 +43,20 @@ struct StubCard: View {
     }
 
     /// A ticket's own shape, width over height, as the drawer shows it: no taller than wide by half, no flatter than 2.6:1.
+    @MainActor
     static func aspect(of stub: Stub) -> CGFloat {
-        guard let ui = PlateImage.image(for: stub.id, in: .card, data: stub.imageData) else { return 1.75 }
-        return min(max(ui.size.width / max(ui.size.height, 1), 0.5), 2.6)
+        guard let shape = PlateAspects.shared.aspect(for: stub.id, data: stub.imageData) else { return 1.75 }
+        return min(max(CGFloat(shape), 0.5), 2.6)
     }
 
     /// The mount for a row of tickets: the tallest ticket's shape, never taller than a little wider than square.
+    @MainActor
     static func mount(for row: [Stub]) -> CGFloat {
         max(row.map(aspect(of:)).min() ?? 1.75, 1.1)
     }
 
     private var isPressed: Bool {
-        #if DEBUG
+        #if DEBUG || PERF
         return pressed || touched || DebugDrive.shared.pressedID == stub.id
         #else
         return pressed || touched

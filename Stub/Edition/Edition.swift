@@ -241,26 +241,41 @@ struct Copy: Equatable, Sendable {
     }
 
     /// A poster prints one format whatever the phone's settings: the day, the month's short name, the year;
-    /// the time on a twenty-four hour clock, the way the ticket printed it. Made per call, like `wallClock`'s:
-    /// a shared formatter is mutable state that Swift 6 will not let two actors hold.
-    private static var day: DateFormatter {
+    /// the time on a twenty-four hour clock, the way the ticket printed it. Made once: a formatter is expensive to make, and
+    /// one made per card was a measurable share of the drawer's scroll (docs/decisions/004-budgets.md). Configured here and
+    /// never changed after, so sharing it is safe: `DateFormatter` is thread-safe for formatting, and `Sendable`.
+    private static let day: DateFormatter = {
         let f = DateFormatter()
         f.locale = .current
         f.dateFormat = "dd MMM yyyy"
         return f
-    }
+    }()
 
-    private static var clock: DateFormatter {
+    private static let clock: DateFormatter = {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = "HH:mm"
         return f
-    }
+    }()
 
     /// Which viewing of its release a stub was: the drawer's stubs of the same release, in the order they were
     /// seen (the screening, or when it was kept if the ticket printed no date).
     static func viewing(of stub: Stub, among stubs: [Stub]) -> Int {
         viewings(of: stub, among: stubs).viewing
+    }
+
+    /// Every stub's viewing, and of how many, in one pass over the drawer: each release's key made once, each release sorted
+    /// once. Asking `viewings(of:among:)` card by card recounted the whole drawer for every card (decision 004, the scroll fix).
+    static func viewings(in stubs: [Stub]) -> [UUID: (viewing: Int, of: Int)] {
+        var releases: [String: [Stub]] = [:]
+        for stub in stubs { releases[Release.key(for: stub.title), default: []].append(stub) }
+        var out: [UUID: (viewing: Int, of: Int)] = [:]
+        out.reserveCapacity(stubs.count)
+        for same in releases.values {
+            let ordered = same.sorted { ($0.screenedAt ?? $0.createdAt, $0.createdAt) < ($1.screenedAt ?? $1.createdAt, $1.createdAt) }
+            for (i, stub) in ordered.enumerated() { out[stub.id] = (i + 1, ordered.count) }
+        }
+        return out
     }
 
     /// Which viewing, and of how many.

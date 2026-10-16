@@ -12,6 +12,7 @@ import OSLog
 struct StubWidgetBundle: WidgetBundle {
     var body: some Widget {
         DeckWidget()
+        KeepControl()
     }
 }
 
@@ -63,7 +64,7 @@ struct DeckWidget: Widget {
         }
         .configurationDisplayName("The drawer")
         .description("A stub's edition. Turn it over for the ticket as you kept it, or deal another.")
-        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .accessoryRectangular, .accessoryInline])
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .accessoryRectangular])
         .contentMarginsDisabled()
     }
 }
@@ -100,7 +101,6 @@ struct DeckView: View {
     var body: some View {
         Group {
             switch family {
-            case .accessoryInline: inline
             case .accessoryRectangular: rectangular.containerBackground(.clear, for: .widget)
             case .systemSmall: small
             default: wide
@@ -220,16 +220,6 @@ struct DeckView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .padding(.horizontal, 4)
-    }
-
-    private var inline: some View {
-        Group {
-            if let card = entry.card {
-                Text([card.title, card.numbers].compactMap { $0 }.joined(separator: " · "))
-            } else {
-                Text("Stub: nothing yet")
-            }
-        }
     }
 }
 

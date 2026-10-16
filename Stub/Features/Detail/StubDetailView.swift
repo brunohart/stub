@@ -23,7 +23,6 @@ struct StubDetailView: View {
     /// The card has been taken to the press room.
     @State private var pressing = false
     /// The card is on a real table (ADR-018).
-    @State private var inRoom = false
     @Namespace private var press
     @State private var shareable: Image?
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -32,7 +31,7 @@ struct StubDetailView: View {
     init(stub: Stub) {
         self.stub = stub
         _tilt = State(initialValue: stub.tilt)
-        #if DEBUG
+        #if DEBUG || PERF
         _turned = State(initialValue: DebugDrive.wantsTurned)
         #else
         _turned = State(initialValue: false)
@@ -141,7 +140,7 @@ struct StubDetailView: View {
                     .padding(20)
                     .padding(.bottom, 80)
                 }
-                #if DEBUG
+                #if DEBUG || PERF
                 .task {
                     // `-keeps`: open what the press keeps and bring it on screen, so it can be screenshotted.
                     guard DebugDrive.wantsKeeps else { return }
@@ -166,27 +165,25 @@ struct StubDetailView: View {
             PressRoom(stub: stub, copy: copy)
                 .navigationTransition(.zoom(sourceID: "press", in: press))
         }
-        .fullScreenCover(isPresented: $inRoom) {
-            if let edition = editions.edition(for: stub.title) {
-                let composition = Composition(edition: edition, copy: copy)
-                RoomView(composition: composition, back: EditionBack(
-                    composition: composition, photo: PlateImage.image(for: stub.id, in: .detail, data: stub.imageData),
-                    tilt: stub.tilt, code: Aztec.mask(for: copy.message), pencil: Pencil(edition: edition),
-                    signature: Signatures.shared.image))
-            }
-        }
         .onAppear {
             // Taken out of the drawer and held once more: hands wear a card (ADR-032).
             Handling.touch(stub.id)
             // Sits up straight as it grows. The zoom is the system's; the straightening is ours, on the same clock.
             withAnimation(Motion.settle) { tilt = 0 }
+            // The reveal, as one animation interval for its hitches (decision 004): the zoom, the card sitting up and the
+            // first print, which together take about a second and a quarter.
+            let reveal = Signposts.motion.beginAnimationInterval(Signposts.reveal)
+            Task {
+                try? await Task.sleep(for: .milliseconds(1250))
+                Signposts.motion.endInterval(Signposts.reveal, reveal)
+            }
         }
         // The share is the front, whole, rendered once the edition is printed, at three times the card.
         .onChange(of: editions.edition(for: stub.title), initial: true) { _, edition in
             guard let edition else { return }
             shareable = Self.render(Composition(edition: edition, copy: copy))
         }
-        #if DEBUG
+        #if DEBUG || PERF
         .onChange(of: DebugDrive.shared.turned) { _, now in turned = now }
         .task {
             // `-clip`: draw the moving share once the card is printed, as a destination asking for it would, and log it.
@@ -202,7 +199,7 @@ struct StubDetailView: View {
             }
         }
         .task {
-            // `-preview`: turn the card in the light, slowly one way and back, then set it on the table.
+            // `-preview`: turn the card in the light, slowly one way and back, and hold it there.
             guard DebugDrive.wantsPreview else { return }
             do {
                 while editions.edition(for: stub.title) == nil { try await Task.sleep(for: .milliseconds(250)) }
@@ -214,19 +211,9 @@ struct StubDetailView: View {
                     try await Task.sleep(for: .milliseconds(38))
                 }
                 DebugDrive.shared.tilt = DebugDrive.heldTilt
-                try await Task.sleep(for: .seconds(0.6))
-                DebugDrive.log.info("preview: on the table")
-                inRoom = true
+                try await Task.sleep(for: .seconds(2.4))
+                DebugDrive.log.info("preview: done")
             } catch { return }
-        }
-        .task {
-            // `-room`: set the card on the table once it is printed, as "Put it on the table" would on a phone that can.
-            guard DebugDrive.wantsRoom else { return }
-            do {
-                while editions.edition(for: stub.title) == nil { try await Task.sleep(for: .milliseconds(250)) }
-                try await Task.sleep(for: .seconds(1.5))
-            } catch { return }
-            inRoom = true
         }
         .task {
             // `-press`: carry the card on into the press room once it is printed, as a hold would.
@@ -284,17 +271,17 @@ struct StubDetailView: View {
     private func share(_ edition: Edition?) -> some View {
         if let shareable, let edition {
             let composition = Composition(edition: edition, copy: copy)
-            let invitation = Text(ShareLinkText.link.absoluteString)
+            let invitation = { (via: ShareLinkText.Via) in Text(ShareLinkText.link(via: via).absoluteString) }
             Menu {
-                ShareLink(item: EditionClip(composition: composition, format: .vertical), message: invitation,
+                ShareLink(item: EditionClip(composition: composition, format: .vertical), message: invitation(.clip),
                           preview: SharePreview("An edition of \(stub.title), turning in the light", image: shareable)) {
                     Label("Share it turning in the light", systemImage: "film")
                 }
-                ShareLink(item: EditionClip(composition: composition, format: .card), message: invitation,
+                ShareLink(item: EditionClip(composition: composition, format: .card), message: invitation(.card),
                           preview: SharePreview("An edition of \(stub.title), turning in the light", image: shareable)) {
                     Label("Share it turning, close up", systemImage: "rectangle.portrait")
                 }
-                ShareLink(item: shareable, message: invitation, preview: SharePreview("An edition of \(stub.title)", image: shareable)) {
+                ShareLink(item: shareable, message: invitation(.still), preview: SharePreview("An edition of \(stub.title)", image: shareable)) {
                     Label("Share the still", systemImage: "photo")
                 }
             } label: {
@@ -325,7 +312,7 @@ struct StubDetailView: View {
     /// This stub's copy of its edition, counted against the drawer.
     private var copy: Copy {
         var copy = Copy(stub: stub, among: drawer)
-        #if DEBUG
+        #if DEBUG || PERF
         // `-viewings` and `-age` stand in for a drawer with more of this film in it, and for the years (ADR-009).
         if let viewing = DebugDrive.viewings {
             copy.viewing = viewing

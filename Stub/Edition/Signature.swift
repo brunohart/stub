@@ -92,7 +92,7 @@ final class Signatures {
         drawing.image(from: CGRect(origin: .zero, size: EditionBack.signatureMargin.size), scale: 4)
     }
 
-    #if DEBUG
+    #if DEBUG || PERF
     /// A signature for the simulator, which has no hand: a looped name and a flourish under it, drawn as a pencil would.
     static func fixture() -> PKDrawing {
         let ink = PKInk(.pencil, color: graphite)

@@ -102,8 +102,8 @@ struct PressRoom: View {
             if !reduceMotion { attitude.start() }
             session.undoManager = undoManager
             photo = PlateImage.image(for: stub.id, in: .detail, data: stub.imageData)
-            code = Aztec.mask(for: session.copy.message)
         }
+        .task(id: session.copy.message) { code = await Aztec.made(for: session.copy.message) }
         .onDisappear { attitude.stop() }
         .onChange(of: undoManager) { _, now in session.undoManager = now }
         // A pull: the ink is wet from now, and dries.
@@ -116,7 +116,7 @@ struct PressRoom: View {
                 if wetSince == since { wetSince = nil }
             }
         }
-        #if DEBUG
+        #if DEBUG || PERF
         .task { await DebugDrive.shared.press(session, reduceMotion: reduceMotion) }
         .onChange(of: session.letGo) { _, movement in
             guard let movement else { return }
@@ -154,7 +154,7 @@ struct PressRoom: View {
     // MARK: The bed
 
     private var light: Light {
-        #if DEBUG
+        #if DEBUG || PERF
         if let held = DebugDrive.shared.tilt { return Light(tilt: held) }
         #endif
         return Light(tilt: attitude.tilt)
@@ -257,7 +257,7 @@ struct PressRoom: View {
 
     /// How wet the ink still is, `drying` seconds after a pull: 1 at the pull, then falling away exponentially.
     private func wetness(at date: Date) -> Double {
-        #if DEBUG
+        #if DEBUG || PERF
         if let held = session.heldWet { return held }
         #endif
         guard !reduceMotion, let wetSince else { return 0 }

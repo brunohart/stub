@@ -1,5 +1,6 @@
 import SwiftUI
-import AVFoundation
+// AVFoundation is not yet annotated for Swift 6's concurrency checking; the capture session lives on its own queue.
+@preconcurrency import AVFoundation
 import Vision
 import OSLog
 import PhotosUI
@@ -53,7 +54,7 @@ struct Viewfinder: View {
             }
         }
         .task { await camera.start() }
-        #if DEBUG
+        #if DEBUG || PERF
         // `-shutter`, with `-camera`: take the photograph a moment after the marks lock, as a thumb would.
         .task(id: camera.locked) {
             guard DebugDrive.wantsShutter, camera.locked, !taking else { return }
@@ -373,8 +374,11 @@ final class Camera {
     @ObservationIgnored private var steady = 0
 
     func start() async {
-        #if DEBUG
-        if let path = DebugDrive.cameraFile, let data = FileManager.default.contents(atPath: path),
+        #if DEBUG || PERF
+        // A path on this Mac, or a fixture in the bundle by name (`-camera stub-7-thermal.png`), for the UI tests.
+        if let path = DebugDrive.cameraFile,
+           let data = FileManager.default.contents(atPath: path)
+               ?? Bundle.main.url(forResource: path, withExtension: nil).flatMap({ try? Data(contentsOf: $0) }),
            let image = PlateImage.decode(data, maxPixelSize: 2400) {
             state = .still(image)
             imageSize = CGSize(width: image.width, height: image.height)

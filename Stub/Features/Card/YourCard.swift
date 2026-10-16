@@ -175,6 +175,24 @@ struct YourCard: View {
                 .font(Type.words(15)).foregroundStyle(Ink.ink)
             }
             Text("Version \(Self.version)").font(Type.numbers(11)).foregroundStyle(Ink.grey)
+            fieldReports
+        }
+    }
+
+    /// How Stub has run on this phone: the system's own reports, kept here (decision 004). Shown only when there are some,
+    /// and shared only by hand, the person seeing what they send.
+    @ViewBuilder
+    private var fieldReports: some View {
+        let reports = FieldMetrics.shared.reports
+        if !reports.isEmpty {
+            ShareLink(items: reports) {
+                HStack(spacing: 6) {
+                    Text("How Stub runs on this phone: \(reports.count) \(reports.count == 1 ? "report" : "reports"), kept here")
+                    Image(systemName: "square.and.arrow.up").font(.system(size: 12, weight: .medium))
+                }
+                .font(Type.words(13)).foregroundStyle(Ink.ink.opacity(0.75))
+            }
+            .accessibilityHint("Shares the system's performance reports for Stub, which are kept on this phone. You choose where they go.")
         }
     }
 

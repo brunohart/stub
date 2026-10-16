@@ -94,7 +94,10 @@ struct Keepsake: View {
             .animation(Motion.place, value: turned)
         }
         .task(id: stub.id) { await press() }
-        .task(id: copy.message) { code = Aztec.mask(for: copy.message) }
+        #if DEBUG || PERF
+        .task { if Stage.tilts { await Stage.sweep() } }
+        #endif
+        .task(id: copy.message) { code = await Aztec.made(for: copy.message) }
         .onAppear {
             // A card asked to open turned over (`-turned`) is already turned: no turn to watch, no onChange to fire.
             angle = turned ? 180 : 0
@@ -119,14 +122,14 @@ struct Keepsake: View {
             lifted = false
             charging = false
         }
-        #if DEBUG
+        #if DEBUG || PERF
         .onChange(of: DebugDrive.shared.holding) { _, held in if turned { hold(held) } }
         #endif
     }
 
     /// The finger, the gyroscope and (in Debug) the driver, as one tilt.
     private var tilt: CGPoint {
-        #if DEBUG
+        #if DEBUG || PERF
         if let held = DebugDrive.shared.tilt { return held }
         #endif
         return CGPoint(x: max(-1, min(1, attitude.tilt.x + finger.x)), y: max(-1, min(1, attitude.tilt.y + finger.y)))

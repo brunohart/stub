@@ -1,4 +1,10 @@
 name: Stub
+# Performance is Release's optimiser with the staging hooks compiled in (PERF): what the budgets are measured on
+# (docs/decisions/004-budgets.md). It never ships.
+configs:
+  Debug: debug
+  Release: release
+  Performance: release
 options:
   bundleIdPrefix: com.designedbybruno
   deploymentTarget:
@@ -43,7 +49,7 @@ targets:
           - Newsreader-Italic-Variable.ttf
           - FragmentMono-Regular.ttf
           - FragmentMono-Italic.ttf
-        NSCameraUsageDescription: Stub photographs your ticket stub, and puts its edition on your table. Nothing from the camera leaves this device.
+        NSCameraUsageDescription: Stub photographs your ticket stub to read it. Nothing from the camera leaves this device.
         NSPhotoLibraryUsageDescription: Stub reads ticket stubs from your library. Nothing is uploaded.
         # No network, no crypto of our own (ADR-005): answers App Store Connect's export question for every upload.
         ITSAppUsesNonExemptEncryption: false
@@ -95,6 +101,10 @@ targets:
         # The fixtures are for the seed and the tests, both Debug only; a phone's Release build does not carry them.
         Release:
           EXCLUDED_SOURCE_FILE_NAMES: "stub-*.png stub-*.pdf"
+          STUB_APPLINKS_MODE: ""
+        # The fixtures stay in: the staged drawer and the staged camera are drawn from them.
+        Performance:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: PERF
           STUB_APPLINKS_MODE: ""
   # The widget: a stub's edition on the home screen and the lock screen (ADR-027). Shares the model, the inks, the type,
   # the store and the edition's composition with the app by compiling the same files; nothing it shares may need Metal.
@@ -188,12 +198,13 @@ targets:
           NSExtensionPointIdentifier: com.apple.share-services
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
           NSExtensionAttributes:
-            # One item: a Wallet pass, a PDF or a picture.
+            # One item: a Wallet pass, a PDF, a picture, or the words of a booking (docs/decisions/002-surfaces.md).
             NSExtensionActivationRule: >-
               SUBQUERY(extensionItems, $extensionItem, SUBQUERY($extensionItem.attachments, $attachment,
               ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.apple.pkpass"
               || ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.adobe.pdf"
-              || ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.image").@count == 1).@count == 1
+              || ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.image"
+              || ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.plain-text").@count == 1).@count == 1
         UIAppFonts:
           - HostGrotesk-Variable.ttf
           - FragmentMono-Regular.ttf
@@ -208,6 +219,20 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: NO
         SKIP_INSTALL: YES
+  # The UI tests: the performance budgets and the accessibility audit (docs/decisions/004, 005), run against the
+  # Performance configuration by the StubUI scheme.
+  StubUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: StubUITests
+    dependencies:
+      - target: Stub
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.designedbybruno.stub.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Stub
   StubTests:
     type: bundle.unit-test
     platform: iOS
@@ -233,3 +258,13 @@ schemes:
     test:
       config: Debug
       targets: [StubTests]
+  # The budgets and the audit: the UI tests against the Performance configuration (scripts/perf.sh).
+  StubUI:
+    build:
+      targets:
+        Stub: all
+        StubWidget: all
+        StubUITests: [test]
+    test:
+      config: Performance
+      targets: [StubUITests]

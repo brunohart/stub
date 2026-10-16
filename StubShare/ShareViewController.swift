@@ -45,6 +45,8 @@ final class ShareModel {
         case loading
         case pass(WalletPass, file: URL)
         case page(UIImage, kind: Inbox.Kind, file: URL)
+        /// A booking's words: a confirmation email's text, selected and shared.
+        case text(String, file: URL)
         case failed(String)
         case sent(Inbox.Kind)
     }
@@ -56,6 +58,7 @@ final class ShareModel {
         (UTType("com.apple.pkpass") ?? .data, .pass),
         (.pdf, .pdf),
         (.image, .image),
+        (.plainText, .text),
     ]
 
     func load(_ providers: [NSItemProvider]) async {
@@ -81,10 +84,13 @@ final class ShareModel {
                 } else {
                     state = .failed("That picture could not be opened.")
                 }
+            case .text:
+                let words = (try? String(contentsOf: file, encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                state = words.isEmpty ? .failed("There are no words in that to read.") : .text(words, file: file)
             }
             return
         }
-        state = .failed("Stub takes Wallet passes, PDF tickets and screenshots.")
+        state = .failed("Stub takes Wallet passes, PDF tickets, screenshots and the words of a booking.")
     }
 
     /// Puts the file in the inbox for the app.
@@ -93,6 +99,7 @@ final class ShareModel {
         switch state {
         case .pass(_, let f): (file, kind) = (f, .pass)
         case .page(_, let k, let f): (file, kind) = (f, k)
+        case .text(_, let f): (file, kind) = (f, .text)
         default: return
         }
         do {
@@ -106,11 +113,13 @@ final class ShareModel {
     /// A copy of the provider's file in this extension's own temporary folder: the system's copy lasts only as long as the
     /// call that hands it over.
     private static func copy(_ provider: NSItemProvider, type: UTType) async -> URL? {
-        await withCheckedContinuation { continuation in
+        // The provider is asked for data only after its file has come back empty, one call at a time: never shared at once.
+        let source = Handed(provider)
+        return await withCheckedContinuation { continuation in
             _ = provider.loadFileRepresentation(forTypeIdentifier: type.identifier) { url, _ in
                 guard let url else {
                     // Some apps offer an image only as data.
-                    provider.loadDataRepresentation(forTypeIdentifier: type.identifier) { data, _ in
+                    source.provider.loadDataRepresentation(forTypeIdentifier: type.identifier) { data, _ in
                         guard let data else { continuation.resume(returning: nil); return }
                         let ext = type.preferredFilenameExtension ?? "dat"
                         let out = FileManager.default.temporaryDirectory.appending(path: "\(UUID().uuidString).\(ext)")
@@ -123,4 +132,11 @@ final class ShareModel {
             }
         }
     }
+}
+
+/// An item provider carried into the callback that asks it again. `NSItemProvider` is not `Sendable`; this one is used by one
+/// callback after another, never by two at once.
+private struct Handed: @unchecked Sendable {
+    let provider: NSItemProvider
+    init(_ provider: NSItemProvider) { self.provider = provider }
 }

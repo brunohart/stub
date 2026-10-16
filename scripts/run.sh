@@ -3,7 +3,7 @@
 # Usage: scripts/run.sh [--seed] [--reset] [--drive] [--season] [--import] [--edition] [--turned] [--tilt x,y]
 #                       [--proof spec] [--keeps] [--open title] [--press] [--part id] [--take n] [--scrub x]
 #                       [--separated s] [--bench name] [--flood p] [--pulled] [--wet w] [--signed] [--record path.mov]
-#                       [--viewings n] [--age years] [--room] [--clip out.mp4] [--clip-card] [--inbox file] [--preview]
+#                       [--viewings n] [--age years] [--clip out.mp4] [--clip-card] [--inbox file] [--preview]
 #                       [--face ticket|edition] [--cabinet] [--drawer name] [--carry] [--type size] [--look metal|swiftui] [--wait-for regex] [--shot path.png]
 # --drive: after the seed, press, open, hold and close on a timer (see DebugDrive) so the run can be filmed.
 # --season: open the season sheet once the seed has settled.
@@ -25,7 +25,6 @@
 #   --press turns the card over on the bed. --signed: sign with the fixture signature at launch.
 # --viewings 3: the opened stub is that viewing of its release, punched n − 1 times through the strip (Day 28).
 #   --age 6: it has been in the drawer that many years, for its patina.
-# --room: with --edition, set the card on a table (Day 29). The simulator has no camera: a parchment stand-in.
 # --clip out.mp4: with --edition, draw the moving share (Day 30), wait for it, and copy it out of the app's container.
 #   Vertical, 1080 by 1920, with the watermark under the card (BEDIP-221); --clip-card draws the card-sized clip instead.
 # --inbox file: put a .pkpass, .pdf or image in the share extension's inbox at launch, as a share would (BEDIP-218); the
@@ -54,7 +53,7 @@ while [ $# -gt 0 ]; do case "$1" in
   --scrub) ARGS+=(-scrub "$2"); shift;; --record) RECORD="$2"; shift;; --separated) ARGS+=(-separated "$2"); shift;;
   --bench) ARGS+=(-bench "$2"); shift;; --flood) ARGS+=(-flood "$2"); shift;;
   --pulled) ARGS+=(-pulled);; --wet) ARGS+=(-wet "$2"); shift;; --signed) ARGS+=(-signed);;
-  --viewings) ARGS+=(-viewings "$2"); shift;; --age) ARGS+=(-age "$2"); shift;; --room) ARGS+=(-room);;
+  --viewings) ARGS+=(-viewings "$2"); shift;; --age) ARGS+=(-age "$2"); shift;;
   --clip) ARGS+=(-clip); CLIP="$2"; WAIT="${WAIT:-Clip: written}"; shift;;
   --clip-card) ARGS+=(-clipformat card);;
   --inbox) ARGS+=(-inbox "$(cd "$(dirname "$2")" && pwd)/$(basename "$2")"); shift;;

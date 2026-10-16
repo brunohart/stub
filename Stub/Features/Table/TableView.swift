@@ -44,6 +44,8 @@ struct TableView: View {
     /// hold (at the lift for the menu, again as the drag begins), so an item going away only puts the stub down once nothing
     /// has been seen moving for a moment. A box, so the drag's updates do not redraw the drawer.
     @State private var seen = CarryClock()
+    /// Every stub's viewing of its release, counted once per change to the drawer rather than once per card (decision 004).
+    @State private var viewings = Viewings()
     private var inHand: Bool { carried != nil && moving }
     /// Which label the shelf is showing: "every", a made drawer's id, or "new".
     @State private var page: String?
@@ -87,6 +89,7 @@ struct TableView: View {
 
     var body: some View {
         let summary = SeasonSummary(stubs: members)
+        let _ = viewings.refresh(stubs)
         NavigationStack {
             ZStack(alignment: .top) {
                 Paper()
@@ -97,6 +100,10 @@ struct TableView: View {
                     }
                     .padding(.bottom, 32)
                 }
+                .accessibilityIdentifier("drawer.scroll")
+                #if DEBUG || PERF
+                .modifier(StagedScroll())
+                #endif
                 // A stub let go between cards stays where the drawer made room for it.
                 .onDrop(of: [.stubCard], delegate: SettleDrop(carried: carried, commit: commitOrder, moved: startMoving))
                 if inHand {
@@ -193,6 +200,11 @@ struct TableView: View {
             .onChange(of: reach.arrival, initial: true) { _, _ in takeArrival() }
             // The widget's card opens its stub (ADR-027); a link or a shortcut goes to Reach.
             .onOpenURL { url in
+                // The Lock Screen's control: straight to the viewfinder, as the dock's Keep a stub (decision 002).
+                if StubLink.isKeep(url) {
+                    keeping = ImportRequest(drawer: open)
+                    return
+                }
                 guard let id = StubLink.id(in: url) else {
                     reach.open(url)
                     return
@@ -207,7 +219,7 @@ struct TableView: View {
             // Whatever the share extension left while the app was away (ADR-023).
             .onChange(of: scenePhase, initial: true) { _, phase in
                 guard phase == .active else { return }
-                #if DEBUG
+                #if DEBUG || PERF
                 // The preview lets the cards be dealt before the stub arrives.
                 if DebugDrive.wantsPreview {
                     Task { try? await Task.sleep(for: .seconds(2.6)); reach.drainInbox() }
@@ -240,7 +252,7 @@ struct TableView: View {
                 StubDetailView(stub: stub)
                     .navigationTransition(.zoom(sourceID: stub.id, in: table))
             }
-            #if DEBUG
+            #if DEBUG || PERF
             .modifier(TableDebug(stubs: stubs, drawers: drawers, selected: $selected, showSeason: $showSeason,
                                  importing: $importing, keeping: $keeping, showCard: $showCard, openID: $openID, page: $page, face: $face, carried: $carried, moving: $moving, working: $working,
                                  shown: shown))
@@ -430,9 +442,10 @@ struct TableView: View {
 
     private func cell(_ stub: Stub, order: Int, mount: CGFloat?) -> some View {
         Button { selected = stub } label: {
-            StubCard(stub: stub, face: face, copy: Copy(stub: stub, among: stubs), order: order, carried: inHand && carried == stub.id, mount: mount)
+            StubCard(stub: stub, face: face, copy: copy(of: stub), order: order, carried: inHand && carried == stub.id, mount: mount)
         }
         .buttonStyle(CardPress())
+        .accessibilityIdentifier("drawer.stub")
         .matchedTransitionSource(id: stub.id, in: table)
         // Held and let be, its menu: file it, or throw it away (ADR-035).
         .contextMenu { menu(for: stub) }
@@ -440,7 +453,7 @@ struct TableView: View {
         .onDrag {
             carry(stub)
         } preview: {
-            CarriedPicture(stub: stub, face: face, copy: Copy(stub: stub, among: stubs))
+            CarriedPicture(stub: stub, face: face, copy: copy(of: stub))
         }
         .onDrop(of: [.stubCard], delegate: ReorderDrop(target: stub.id, sameYear: sameYear, working: $working, carried: carried, commit: commitOrder,
                                                            moved: startMoving))
@@ -477,6 +490,12 @@ struct TableView: View {
         }
         Divider()
         Button("Throw away", systemImage: "trash", role: .destructive) { throwing = stub }
+    }
+
+    /// A card's copy of its edition: which viewing it is comes from the drawer's one count.
+    private func copy(of stub: Stub) -> Copy {
+        guard let counted = viewings.of[stub.id] else { return Copy(stub: stub, among: stubs) }
+        return Copy(stub: stub, viewing: counted.viewing, viewings: counted.of)
     }
 
     // MARK: Carrying and filing
@@ -629,6 +648,45 @@ struct TableView: View {
     }
 }
 
+#if DEBUG || PERF
+/// `-stage-scroll`: the drawer scrolled to its foot and back three times on its own, so Instruments can record the drawer's
+/// scroll without a test runner attached (docs/decisions/004-budgets.md).
+private struct StagedScroll: ViewModifier {
+    @State private var position = ScrollPosition(edge: .top)
+
+    func body(content: Content) -> some View {
+        content
+            .scrollPosition($position)
+            .task {
+                guard ProcessInfo.processInfo.arguments.contains("-stage-scroll") else { return }
+                try? await Task.sleep(for: .seconds(3))
+                for _ in 0..<3 {
+                    Stage.log.info("stage: scroll down")
+                    withAnimation(.easeInOut(duration: 2.5)) { position.scrollTo(edge: .bottom) }
+                    try? await Task.sleep(for: .seconds(3))
+                    withAnimation(.easeInOut(duration: 2.5)) { position.scrollTo(edge: .top) }
+                    try? await Task.sleep(for: .seconds(3))
+                }
+            }
+    }
+}
+#endif
+
+/// Every stub's viewing of its release, counted again only when the drawer's stubs or their titles or nights change. A
+/// reference, so recounting from the table's body redraws nothing.
+@MainActor
+final class Viewings {
+    private(set) var of: [UUID: (viewing: Int, of: Int)] = [:]
+    private var signature: [String] = []
+
+    func refresh(_ stubs: [Stub]) {
+        let now = stubs.map { "\($0.id)\($0.title)\(($0.screenedAt ?? $0.createdAt).timeIntervalSince1970)" }
+        guard now != signature else { return }
+        signature = now
+        of = Copy.viewings(in: stubs)
+    }
+}
+
 /// When a carried stub was last seen moving. A reference, so marking it on every drag update redraws nothing.
 final class CarryClock {
     private var last = Date.distantPast
@@ -694,9 +752,10 @@ struct PlaqueDepth: ViewModifier {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
-        content.scrollTransition(.interactive, axis: .horizontal) { view, phase in
+        let still = reduceMotion
+        return content.scrollTransition(.interactive, axis: .horizontal) { view, phase in
             view
-                .scaleEffect(reduceMotion || phase.isIdentity ? 1 : 0.9)
+                .scaleEffect(still || phase.isIdentity ? 1 : 0.9)
                 .brightness(phase.isIdentity ? 0 : -0.06)
                 .opacity(phase.isIdentity ? 1 : 0.8)
         }
@@ -813,7 +872,7 @@ struct Dock: View {
     }
 }
 
-#if DEBUG
+#if DEBUG || PERF
 /// The table's launch arguments: everything a screenshot needs that a finger would otherwise do (ADR-009).
 private struct TableDebug: ViewModifier {
     let stubs: [Stub]

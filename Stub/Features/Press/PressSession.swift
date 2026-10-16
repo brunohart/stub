@@ -38,13 +38,13 @@ final class PressSession {
     private(set) var pulls = 0
     /// The proof was pulled a moment ago and nothing has changed since: the status line says what next.
     private(set) var justPulled = false
-    #if DEBUG
+    #if DEBUG || PERF
     /// `-wet 0.6`: the ink held that wet, for a screenshot.
     var heldWet: Double?
     #endif
     /// Every change on the press can be undone: shake, or three fingers.
     @ObservationIgnored weak var undoManager: UndoManager?
-    #if DEBUG
+    #if DEBUG || PERF
     /// `-drive` letting go on a card in the fan, as a finger would.
     var letGo: Movement?
     #endif

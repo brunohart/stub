@@ -137,9 +137,9 @@ struct DrawerLabel: View {
                 Engraved(Text("Every stub").font(Type.display(16)).tracking(Type.displayTracking(16)))
                 Group {
                     if films > 0 {
-                        let places = Text("\(cinemas)").font(Type.numbers(11)) + Text(cinemas == 1 ? " cinema" : " cinemas")
-                        let span = years.map { Text("  ·  ") + Text($0).font(Type.numbers(11)) } ?? Text("")
-                        Engraved(places + span, depth: 0.7)
+                        let count = Text("\(cinemas)").font(Type.numbers(11))
+                        let span = years.map { Text("  ·  \(Text($0).font(Type.numbers(11)))") } ?? Text("")
+                        Engraved(Text("\(count) \(cinemas == 1 ? "cinema" : "cinemas")\(span)"), depth: 0.7)
                     } else {
                         Engraved(Text("Nothing kept yet"), depth: 0.7)
                     }

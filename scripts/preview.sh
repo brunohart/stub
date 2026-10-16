@@ -3,9 +3,9 @@
 # Usage: scripts/preview.sh [fixture]   (default fixtures/stub-1-the-brutalist.png; build first with scripts/build.sh)
 #
 # The story, on the app's own clock (`-preview`, DebugDrive): the drawer's cards dealt; a stub arrives and is read; it is
-# kept and its edition prints; into the drawer; opened; turned in the light; set on the table. The simulator's screen is
+# kept and its edition prints; into the drawer; opened; turned in the light; held in the light. The simulator's screen is
 # recorded whole, the app's log says when each beat happened, and three takes are cut from it: the deal and the stub
-# arriving; the read fields, the keep, the press and the drawer; the edition in the light and on the table. The wait while
+# arriving; the read fields, the keep, the press and the drawer; the edition in the light. The wait while
 # the model reads is cut, not sped up.
 #
 # Writes build/preview/: stub-preview-886x1920.mp4 (every iPhone with Face ID), stub-preview-750x1334.mp4 (iPhone SE),
@@ -30,14 +30,14 @@ xcrun simctl io "$SIM" recordVideo --codec=h264 --force "$OUT/raw.mov" >/dev/nul
 REC=$!
 sleep 0.6
 xcrun simctl launch "$SIM" com.designedbybruno.stub -preview -inbox "$FIXTURE" >/dev/null
-# Wait for the last beat, then a little of the table.
+# Wait for the last beat, then a little of the light.
 deadline=$(( $(date +%s) + ${STUB_PREVIEW_TIMEOUT:-120} ))
 events() {
   xcrun simctl spawn "$SIM" log show --start "$START" --info --predicate 'subsystem == "com.designedbybruno.stub" AND (category == "drive" OR category == "reach")' --style compact 2>/dev/null \
     | grep -E "preview:|Arrival from" || true
 }
-until events | grep -q "preview: on the table"; do
-  if [ "$(date +%s)" -ge "$deadline" ]; then echo "the preview never reached the table" >&2; kill -INT $REC; exit 1; fi
+until events | grep -q "preview: done"; do
+  if [ "$(date +%s)" -ge "$deadline" ]; then echo "the preview never finished" >&2; kill -INT $REC; exit 1; fi
   sleep 1
 done
 sleep "${STUB_TABLE_SECONDS:-6}"
@@ -55,15 +55,15 @@ for line in open(sys.argv[2]):
     m = re.match(r'(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d+)', line)
     if not m: continue
     t = datetime.datetime.strptime(m.group(1)[:26], '%Y-%m-%d %H:%M:%S.%f').timestamp() - t0
-    for key in ['Arrival from', 'preview: keep', 'preview: into the drawer', 'preview: open', 'preview: turn it in the light', 'preview: on the table']:
+    for key in ['Arrival from', 'preview: keep', 'preview: into the drawer', 'preview: open', 'preview: turn it in the light', 'preview: done']:
         if key in line and key not in at: at[key] = t
-arrive, keep, drawer, opened, table = at['Arrival from'], at['preview: keep'], at['preview: into the drawer'], at['preview: open'], at['preview: on the table']
+arrive, keep, drawer, opened, done = at['Arrival from'], at['preview: keep'], at['preview: into the drawer'], at['preview: open'], at['preview: done']
 # Take one: the deal and the stub arriving, until the reader is a few seconds in.
 # Take two: the fields read, the keep, the press printing, the drawer, the stub opened.
-# Take three: the edition in the light and on the table.
-takes = [(max(0.3, arrive - 2.6), arrive + 3.2), (keep - 1.6, opened + 0.5), (opened + 0.5, table + 5.5)]
+# Take three: the edition in the light.
+takes = [(max(0.3, arrive - 2.6), arrive + 3.2), (keep - 1.6, opened + 0.5), (opened + 0.5, done + 1.5)]
 total = sum(b - a for a, b in takes)
-if total > 29.5:   # Apple's ceiling is thirty seconds: shorten the table first, then the light.
+if total > 29.5:   # Apple's ceiling is thirty seconds: shorten the light.
     over = total - 29.5
     a, b = takes[2]; takes[2] = (a, b - over)
 print(' '.join(f'{a:.2f} {b:.2f}' for a, b in takes))

@@ -15,6 +15,44 @@ struct StubDraft: Equatable, Sendable {
     var organization: String = ""
 
     var isUsable: Bool { !title.trimmingCharacters(in: .whitespaces).isEmpty }
+
+    /// The model's answer over the rules': every field the model filled, and the rules' where it left one empty. The model
+    /// read the rules' draft as its hint (ADR-010), so a field it leaves empty is one it did not disagree with.
+    func over(_ floor: StubDraft) -> StubDraft {
+        var merged = self
+        if merged.title.isEmpty { merged.title = floor.title }
+        if merged.cinema.isEmpty { merged.cinema = floor.cinema }
+        if merged.screenedAt == nil { merged.screenedAt = floor.screenedAt }
+        if merged.screen.isEmpty { merged.screen = floor.screen }
+        if merged.seat.isEmpty { merged.seat = floor.seat }
+        if merged.price == nil { merged.price = floor.price; merged.currency = floor.currency }
+        if merged.currency.isEmpty, merged.price != nil { merged.currency = floor.currency }
+        if merged.organization.isEmpty { merged.organization = floor.organization }
+        return merged
+    }
+
+    /// Whether the person changed any field the reader offered: the read was wrong somewhere.
+    func corrected(from offered: StubDraft) -> Bool {
+        title != offered.title || cinema != offered.cinema || screenedAt != offered.screenedAt || screen != offered.screen
+            || seat != offered.seat || price != offered.price
+    }
+
+    /// A later answer laid over the draft the person is looking at. A field they have changed since `offered` was put in
+    /// front of them stays theirs; every other field takes the later answer (decision 001: the model improves the draft in
+    /// place, it never undoes a hand).
+    func adopting(_ later: StubDraft, unchangedFrom offered: StubDraft) -> StubDraft {
+        var next = self
+        if title == offered.title { next.title = later.title }
+        if cinema == offered.cinema { next.cinema = later.cinema }
+        if screenedAt == offered.screenedAt { next.screenedAt = later.screenedAt }
+        if screen == offered.screen { next.screen = later.screen }
+        if seat == offered.seat { next.seat = later.seat }
+        if price == offered.price, currency == offered.currency { next.price = later.price; next.currency = later.currency }
+        if organization == offered.organization { next.organization = later.organization }
+        next.readBy = later.readBy
+        next.confidence = later.confidence
+        return next
+    }
 }
 
 /// Who a stub says read it (DESIGN.md rule 7), in words. The stored value is a short name; the screen says who.
