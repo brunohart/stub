@@ -12,3 +12,8 @@ Stub/Info.plist
 StubWidget/Info.plist
 *.entitlements
 StubShare/Info.plist
+
+# Real tickets stay on this Mac (corpus/README.md)
+corpus/*
+!corpus/README.md
+!corpus/labels.example.json

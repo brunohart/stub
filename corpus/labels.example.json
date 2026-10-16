@@ -1,0 +1,7 @@
+{
+  "_about": "Copy to labels.json. One entry per file, keyed by its path inside corpus/. Write what the ticket prints, not what Stub read. Dates are local time, yyyy-MM-dd HH:mm. Empty string = not printed.",
+  "tickets": [
+    { "file": "paper/example-paper.jpg", "title": "A Film Title", "cinema": "A Cinema Name", "screenedAt": "2025-03-04 18:45", "screen": "Screen 7", "seat": "J14", "price": "22.00", "currency": "NZD", "circuit": "Event", "condition": "crumpled" },
+    { "file": "wallet/example.pkpass", "title": "A Film Title", "cinema": "A Cinema Name", "screenedAt": "2025-04-11 19:00", "screen": "Screen 1", "seat": "", "price": "", "currency": "", "circuit": "independent", "condition": "" }
+  ]
+}
