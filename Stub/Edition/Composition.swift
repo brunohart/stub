@@ -19,6 +19,9 @@ struct Composition: Sendable, Equatable {
     let punches: [Punch]
     /// The surface the card has earned since the night it was seen (brief §6.2).
     let patina: Patina
+    /// This copy's pull: where each plate landed (first, second, type, foil), and its sheet of stock. Rolled once.
+    private let pull: [CGSize]
+    let paper: UInt64
 
     struct InBetween: Equatable, Sendable {
         var part: Part.ID
@@ -58,6 +61,8 @@ struct Composition: Sendable, Equatable {
         inBetween = nil
         punches = Remarque.punches(for: edition, copy: copy, strip: strip)
         patina = Patina(age: copy.age, seed: edition.seed, viewing: copy.viewing, handled: copy.handled)
+        pull = [Plate.first, .second, .type, nil].map { Self.rolled($0, seed: edition.seed, viewing: copy.viewing) }
+        paper = Dice(seed: edition.seed).fork("pull/\(copy.viewing)/paper").seed
     }
 
     /// This composition with another poster: an in-between, drawn by `between`.
@@ -65,6 +70,7 @@ struct Composition: Sendable, Equatable {
         edition = c.edition; inks = c.inks; copy = c.copy; strip = c.strip
         posterField = c.posterField; stripField = c.stripField
         punches = c.punches; patina = c.patina
+        pull = c.pull; paper = c.paper
         self.poster = poster
         self.inBetween = inBetween
     }
@@ -76,7 +82,16 @@ struct Composition: Sendable, Equatable {
     /// so the title stays crisp, a third for the foil (`plate` nil). Seeded by the release and the viewing, so a card never
     /// moves between one look and the next.
     func registration(_ plate: Plate?) -> CGSize {
-        var dice = Dice(seed: edition.seed).fork("pull/\(copy.viewing)/\(plate.map { String($0.rawValue) } ?? "foil")")
+        switch plate {
+        case .first?: pull[0]
+        case .second?: pull[1]
+        case .type?: pull[2]
+        case nil: pull[3]
+        }
+    }
+
+    private static func rolled(_ plate: Plate?, seed: UInt64, viewing: Int) -> CGSize {
+        var dice = Dice(seed: seed).fork("pull/\(viewing)/\(plate.map { String($0.rawValue) } ?? "foil")")
         let reach: Double = switch plate {
         case .first?, .second?: 0.75
         case .type?: 0.25
@@ -85,8 +100,6 @@ struct Composition: Sendable, Equatable {
         return CGSize(width: dice.between(-reach, reach), height: dice.between(-reach, reach))
     }
 
-    /// This copy's sheet of stock: where its fibres lie and how its sheen falls (ADR-043).
-    var paper: UInt64 { Dice(seed: edition.seed).fork("pull/\(copy.viewing)/paper").seed }
 
     /// The marks are a function of the edition, the copy and, mid-turn, where between two takes the wheel is, so two
     /// compositions of the same are the same.

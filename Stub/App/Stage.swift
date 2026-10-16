@@ -9,7 +9,8 @@ import OSLog
 ///
 /// - `-stage-drawer N`: the drawer emptied and filled with N stubs at once, read by nobody. No two are alike (ADR-043): the
 ///   ten bundled fixtures first, then tickets drawn here for invented films at invented cinemas, each its own night, seat,
-///   paper and tilt. Invented, so a screenshot never carries a real film or cinema's name past the fixtures.
+///   paper. Invented, so a screenshot never carries a real film or cinema's name past the fixtures. Every photograph is
+///   kept as capture keeps one: the ticket cut from the table and straightened.
 /// - `-stage-rules`: the rules read and the hash chooses; the model is never asked. The rule path's budget, and the only
 ///   path the oldest phones have.
 /// - `-stage-tilt`: a hand turning the phone, for the simulator, which has none: the light swept across the card at 60 Hz
@@ -67,7 +68,7 @@ enum Stage {
                let url = Bundle.main.url(forResource: truth.file, withExtension: nil),
                let data = try? Data(contentsOf: url),
                let cg = PlateImage.decode(data, maxPixelSize: PlateImage.intake) {
-                photos[truth.file] = UIImage(cgImage: cg).jpegData(compressionQuality: 0.82)
+                photos[truth.file] = cropped(truth.file, cg)
             }
             let night = format.date(from: truth.at)
             let place = Venue.resolve(cinema: truth.cinema)
@@ -79,6 +80,26 @@ enum Stage {
         }
         try? context.save()
         log.info("stage: drawer filled with \(count) stubs")
+    }
+
+    /// A fixture's photograph as capture keeps it: found, straightened and cut from the table by `StubCrop`, so the staged
+    /// drawer looks as a person's does. Cropped once per simulator and kept in Caches; a staged launch the first time waits
+    /// for it, which no measured interval includes.
+    private static func cropped(_ file: String, _ image: CGImage) -> Data? {
+        let folder = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appending(path: "stage-crops")
+        let kept = folder.appending(path: file + ".jpg")
+        if let data = try? Data(contentsOf: kept) { return data }
+        let done = DispatchSemaphore(value: 0)
+        nonisolated(unsafe) var outcome: CGImage = image
+        Task.detached(priority: .userInitiated) {
+            outcome = await StubCrop.crop(image).image
+            done.signal()
+        }
+        done.wait()
+        let data = UIImage(cgImage: outcome).jpegData(compressionQuality: 0.82)
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        if let data { try? data.write(to: kept) }
+        return data
     }
 
     /// Invented films and cinemas: plausible, and as far as we know nobody's. Past the list's end a film comes back as its
@@ -107,7 +128,7 @@ enum Stage {
     }
 
     /// The `index`th invented stub, and a photograph of its ticket drawn as the fixtures are (`scripts/make-fixtures.swift`):
-    /// a card on a dark table, at its own tilt, on its own paper.
+    /// the card cut from the table, straight, on its own paper.
     private static func invented(_ index: Int) -> Invented {
         var dice = Dice(seed: Release.fnv("stage/\(index)"))
         let round = index / films.count
@@ -126,26 +147,21 @@ enum Stage {
         let when = night.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).year().hour().minute())
         let photo = ticket(film: title.uppercased(), venue: cinema.uppercased(), when: when, screen: screen.uppercased(),
                            seat: "SEAT \(seat)", price: "ADULT $\(printed)", ref: "Booking ref \(String(dice.next() % 99_999, radix: 36).uppercased())",
-                           paper: paper, tilt: dice.between(-2.6, 2.6))
+                           paper: paper)
         return Invented(title: title, cinema: cinema, night: night, screen: screen, seat: seat, price: price, photo: photo)
     }
 
     private static func ticket(film: String, venue: String, when: String, screen: String, seat: String, price: String,
-                               ref: String, paper: UIColor, tilt: Double) -> Data? {
-        let size = CGSize(width: 1200, height: 700)
+                               ref: String, paper: UIColor) -> Data? {
+        // As capture keeps a ticket: found, straightened and cut from the table, so the card alone, edge to edge.
+        let size = CGSize(width: 980, height: 420)
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
         let image = UIGraphicsImageRenderer(size: size, format: format).image { renderer in
             let ctx = renderer.cgContext
-            UIColor(red: 0.22, green: 0.20, blue: 0.18, alpha: 1).setFill()
-            ctx.fill(CGRect(origin: .zero, size: size))
-            ctx.translateBy(x: size.width / 2, y: size.height / 2)
-            ctx.rotate(by: tilt * .pi / 180)
-            let card = CGRect(x: -490, y: -210, width: 980, height: 420)
-            ctx.setShadow(offset: CGSize(width: 6, height: 8), blur: 18, color: UIColor.black.withAlphaComponent(0.5).cgColor)
+            let card = CGRect(origin: .zero, size: size)
             paper.setFill()
-            UIBezierPath(roundedRect: card, cornerRadius: 8).fill()
-            ctx.setShadow(offset: .zero, blur: 0, color: nil)
+            ctx.fill(card)
             let ink = UIColor(red: 0.12, green: 0.12, blue: 0.13, alpha: 1)
             func text(_ s: String, _ size: CGFloat, _ x: CGFloat, _ y: CGFloat, bold: Bool = false, mono: Bool = true) {
                 let font = mono ? UIFont.monospacedSystemFont(ofSize: size, weight: .regular)

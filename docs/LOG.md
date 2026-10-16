@@ -76,6 +76,18 @@ postmark), each in one of the card's three inks, over the drawing in order, "Tak
 reference board: Rauschenberg's transfers, Martens's overprints, risograph halftones, luggage tags, date stamps and
 postmarks. Screenshot: `2026-10-16-studio-stub.png`.
 
+**Coated finishes, and the overprint made sure** (ADR-047). Bruno: more coated card options; and the overprint did not
+work.
+- Gloss, matte, soft-touch and pearl card are in the swatch book, now a rail. Each is a material in the stock shader: the
+  coat's highlight tight or broad, a quiet mica shift for pearl (the first, rainbow pearl was too loud).
+- A touch test drove the studio as a person would and found the overprint fragile: a quick stroke could be dropped, and
+  the stroke shared the card with other gestures. A pass now commits from the stroke's own ends with priority, a tap
+  overprints too, and the press cannot be swiped away mid-stroke. `StudioUITests` stays as the guard.
+- The year tab's two sides are marks now, a notched ticket and a standing card, as Bruno asked.
+
+The staged drawer's photographs are now kept as capture keeps them: cut from the table and straightened, the fixtures
+by `StubCrop` itself.
+
 **CI** runs green on GitHub's `xcode-27` image. The first runs failed for two reasons, both fixed: the image lacks the
 Metal compiler, which CI now downloads, and a date test assumed New Zealand's order on a US-locale runner. The ci lane's
 ceilings come from that machine's first full run: it is about twice this Mac's times, and its model path is the rules

@@ -1,4 +1,5 @@
 import SwiftUI
+import Synchronization
 import UIKit
 
 /// The card, in points. Every edition is composed at this size and scaled to wherever it is shown, so it is
@@ -112,8 +113,23 @@ struct Mark: Sendable, Equatable {
 
 /// How wide a line of type is, from the font itself. CoreText here; a canvas in `docs/editions/edition.js`.
 enum Measure {
+    /// Fonts by face and size, made once: a composition measures hundreds of words, and a font made from its name each
+    /// time was most of what laying out a drawer of editions cost (decision 004).
+    private static let fonts = Mutex<[String: UIFont]>([:])
+
+    static func font(_ face: Face, size: CGFloat) -> UIFont {
+        let key = "\(face.postScriptName)/\(size)"
+        return fonts.withLock { cache in
+            if let font = cache[key] { return font }
+            let font = UIFont(name: face.postScriptName, size: size) ?? .systemFont(ofSize: size)
+            if cache.count > 400 { cache.removeAll() }
+            cache[key] = font
+            return font
+        }
+    }
+
     static func width(_ text: String, face: Face, size: CGFloat, tracking: CGFloat = 0) -> CGFloat {
-        let font = UIFont(name: face.postScriptName, size: size) ?? .systemFont(ofSize: size)
+        let font = font(face, size: size)
         let width = (text as NSString).size(withAttributes: [.font: font]).width
         return width + tracking * size * CGFloat(text.count)
     }

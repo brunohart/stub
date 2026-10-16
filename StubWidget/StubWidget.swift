@@ -349,7 +349,7 @@ private struct Words: View {
         let natural = Measure.width(w.text, face: w.face, size: w.size, tracking: w.tracking)
         let size = w.maxWidth.map { natural > $0 && natural > 0 ? w.size * $0 / natural : w.size } ?? w.size
         let width = Measure.width(w.text, face: w.face, size: size, tracking: w.tracking)
-        let ascent = UIFont(name: w.face.postScriptName, size: size)?.ascender ?? size * 0.8
+        let ascent = Measure.font(w.face, size: size).ascender
         let x: CGFloat = switch w.anchor {
         case .leading: w.at.x
         case .center: w.at.x - width / 2

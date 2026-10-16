@@ -780,8 +780,13 @@ private struct LeaveCheck: ViewModifier {
             .navigationBarBackButtonHidden(true)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button(action: back) { Image(systemName: "chevron.left").font(.system(size: 17, weight: .semibold)) }
-                        .accessibilityLabel("Back")
+                    Button(action: back) {
+                        Image(systemName: "chevron.left").font(.system(size: 17, weight: .semibold))
+                            // A whole 44-point target at every text size (decision 005; flagged in CI at the largest).
+                            .frame(minWidth: 44, minHeight: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityLabel("Back")
                 }
             }
             .confirmationDialog("This proof is not kept yet", isPresented: $asking, titleVisibility: .visible) {

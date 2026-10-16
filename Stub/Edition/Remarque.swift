@@ -183,8 +183,8 @@ enum BackLayout {
         let inset = stripInset
         let bottom = Card.height - inset.height
         let code = CGRect(x: Card.width - inset.width - codeSide, y: bottom - codeSide, width: codeSide, height: codeSide)
-        let viewing = UIFont(name: Face.serifItalic.postScriptName, size: 14) ?? .italicSystemFont(ofSize: 14)
-        let serial = UIFont(name: Face.mono.postScriptName, size: 11) ?? .monospacedSystemFont(ofSize: 11, weight: .regular)
+        let viewing = Measure.font(.serifItalic, size: 14)
+        let serial = Measure.font(.mono, size: 11)
         let width = max(Measure.width(copy.viewingWords, face: .serifItalic, size: 14),
                         Measure.width(Self.serial(edition), face: .mono, size: 11))
         let height = viewing.lineHeight + 4 + serial.lineHeight
