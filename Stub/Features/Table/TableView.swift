@@ -57,6 +57,11 @@ struct TableView: View {
     @State private var dealt = false
     /// The years closed into their folders, as "drawer/year", kept between launches.
     @AppStorage("drawer.closedYears") private var closedYears = ""
+    /// Which way up each year is, by folder ("every/2026=e"): a year turns over on its own (ADR-044). A year never turned
+    /// shows `face`, the way the drawer was last set as a whole.
+    @AppStorage("drawer.turnedYears") private var turnedYears = ""
+    /// One soft knock as a year turns over.
+    @State private var turns = 0
     @State private var folderTaps = 0
     @State private var folderThud: SensoryFeedback = .impact(weight: .medium)
     /// The zoom transition's pair: the card on the table is the source, the detail grows out of it.
@@ -122,6 +127,7 @@ struct TableView: View {
             .animation(reduceMotion ? Motion.plain : Motion.place, value: inHand)
             .sensoryFeedback(.selection, trigger: working)
             .sensoryFeedback(folderThud, trigger: folderTaps)
+            .sensoryFeedback(.impact(weight: .light, intensity: 0.6), trigger: turns)
             // The drawer's two doors, at the bottom where a thumb is, named (ADR-022). The empty drawer has its own one
             // button, so the dock waits for the first stub.
             .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -189,8 +195,8 @@ struct TableView: View {
                 await season.update(summary)
             }
             // Editions the press has not printed yet are printed in turn, one at a time, while the drawer shows editions.
-            .task(id: face == .edition ? members.count : -1) {
-                guard face == .edition else { return }
+            .task(id: showsEditions ? members.count : -1) {
+                guard showsEditions else { return }
                 await printMissing()
             }
             // A stub found in Spotlight, or asked for by Siri or a shortcut (decision 002).
@@ -272,6 +278,8 @@ struct TableView: View {
                     .navigationTransition(.zoom(sourceID: stub.id, in: table))
             }
             #if DEBUG || PERF
+            // `-face`: every year that way up, whatever was turned before.
+            .onAppear { if DebugDrive.face != nil { turnedYears = "" } }
             .modifier(TableDebug(stubs: stubs, drawers: drawers, selected: $selected, showSeason: $showSeason,
                                  importing: $importing, keeping: $keeping, showCard: $showCard, openID: $openID, page: $page, face: $face, carried: $carried, moving: $moving, working: $working,
                                  shown: shown))
@@ -296,9 +304,9 @@ struct TableView: View {
                 .opacity(inHand ? 0 : 1)
                 .scaleEffect(!inHand || reduceMotion ? 1 : 0.96)
                 .animation(reduceMotion ? Motion.plain : Motion.place, value: inHand)
-            if !stubs.isEmpty, page != "new" {
+            // Each year turns over on its own, on its folder's tab (ADR-044); a drawer the person made keeps its list here.
+            if !stubs.isEmpty, page != "new", open != nil {
                 HStack(spacing: 12) {
-                    FacePicker(face: $face)
                     Spacer(minLength: 0)
                     if let open {
                         Button { choosing = open } label: {
@@ -385,22 +393,29 @@ struct TableView: View {
             let order = Dictionary(shown.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { a, _ in a })
             ForEach(years) { year in
                 let closed = isClosed(year.year)
+                let side = face(of: year.year)
                 Section {
                     if !closed {
                         let mounts = mounts(year.stubs)
                         LazyVGrid(columns: columns, alignment: .leading, spacing: 28) {
-                            ForEach(year.stubs) { stub in
-                                cell(stub, order: order[stub.id] ?? 0, mount: mounts[stub.id])
+                            ForEach(Array(year.stubs.enumerated()), id: \.element.id) { place, stub in
+                                cell(stub, order: order[stub.id] ?? 0, place: place, face: side, mount: mounts[stub.id])
                             }
                         }
                         .padding(.horizontal, 20)
                         .padding(.top, 18)
                         .padding(.bottom, 30)
+                        // A flick across the year turns it over: the tab's control, for a thumb already on the cards.
+                        .simultaneousGesture(DragGesture(minimumDistance: 24).onEnded { flick in
+                            // Where the finger was heading, so a quick flick counts as much as a long drag.
+                            let across = flick.predictedEndTranslation.width, down = flick.translation.height
+                            if abs(across) > 110, abs(flick.translation.width) > 2.5 * abs(down), !inHand { turn(year.year) }
+                        })
                         .transition(reduceMotion ? .opacity : .modifier(active: Filed(away: true), identity: Filed(away: false)))
                     }
                 } header: {
-                    YearFolder(year: year.year, count: year.stubs.count, closed: closed, slips: slips(year.stubs),
-                               months: months(year.stubs)) { toggle(year.year) }
+                    YearFolder(year: year.year, count: year.stubs.count, closed: closed, slips: slips(year.stubs, face: side),
+                               months: months(year.stubs), toggle: { toggle(year.year) }, face: side, turn: { turn(year.year) })
                 }
             }
         }
@@ -409,6 +424,27 @@ struct TableView: View {
     // MARK: The year folders
 
     private func folderKey(_ year: Int) -> String { "\(openID.isEmpty ? "every" : openID)/\(year)" }
+
+    /// Which way up a year is in the drawer open now.
+    private func face(of year: Int) -> DrawerFace {
+        let key = folderKey(year) + "="
+        guard let turned = turnedYears.split(separator: ",").first(where: { $0.hasPrefix(key) }) else { return face }
+        return turned.hasSuffix("e") ? .edition : .ticket
+    }
+
+    /// Any year in the drawer showing editions, so the press prints the ones it has not yet.
+    private var showsEditions: Bool { face == .edition || turnedYears.contains("=e") }
+
+    /// Turns a year over: its stubs turn one after another, from the first in the year, and the tab's ink passes to the
+    /// other side. A year turned back to the drawer's way forgets that it was ever turned.
+    private func turn(_ year: Int) {
+        let next: DrawerFace = face(of: year) == .ticket ? .edition : .ticket
+        let key = folderKey(year) + "="
+        var turned = turnedYears.split(separator: ",").map(String.init).filter { !$0.hasPrefix(key) }
+        if next != face { turned.append(key + (next == .edition ? "e" : "t")) }
+        turnedYears = turned.sorted().joined(separator: ",")
+        turns += 1
+    }
 
     private func isClosed(_ year: Int) -> Bool {
         closedYears.split(separator: ",").contains { $0 == folderKey(year) }
@@ -427,7 +463,7 @@ struct TableView: View {
     }
 
     /// The tops of a year's tickets standing in its closed folder: the edition's ground, or a ticket's card.
-    private func slips(_ stubs: [Stub]) -> [Color] {
+    private func slips(_ stubs: [Stub], face: DrawerFace) -> [Color] {
         let papers: [UInt32] = [0xF7F3EA, 0xF1E8D2, 0xE6DCC6, 0xFAF8F2, 0xD9D3C3]
         return stubs.map { stub in
             if face == .edition, let edition = Editions.shared.edition(for: stub.title) {
@@ -464,9 +500,10 @@ struct TableView: View {
         return mounts
     }
 
-    private func cell(_ stub: Stub, order: Int, mount: CGFloat?) -> some View {
+    private func cell(_ stub: Stub, order: Int, place: Int, face: DrawerFace, mount: CGFloat?) -> some View {
         Button { selected = stub } label: {
-            StubCard(stub: stub, face: face, copy: copy(of: stub), order: order, carried: inHand && carried == stub.id, mount: mount)
+            // Turned with its year, a beat after the card before it in the year.
+            StubCard(stub: stub, face: face, copy: copy(of: stub), order: place, carried: inHand && carried == stub.id, mount: mount)
         }
         .buttonStyle(CardPress())
         .accessibilityIdentifier("drawer.stub")

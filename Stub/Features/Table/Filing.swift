@@ -163,17 +163,37 @@ struct YearFolder: View {
     /// "FEB – NOV": the months the year's stubs span.
     var months: String? = nil
     var toggle: (() -> Void)? = nil
+    /// Which way up the year's stubs are: the year turns over on its own, the folder's tab says which side shows (ADR-044).
+    var face: DrawerFace = .ticket
+    /// Turns the year over. `nil` where a folder only names its year.
+    var turn: (() -> Void)? = nil
 
     static let manila = Color(hex: 0xEFE5CF)
     static let front = Color(hex: 0xE8DCC0)
 
     var body: some View {
-        let step = year % 3
         VStack(spacing: 0) {
-            HStack(spacing: 0) {
-                if step != 0 { Spacer(minLength: 0) }
-                tab
-                if step != 2 { Spacer(minLength: 0) }
+            // The year's tab, a folder's tabs staggered as real ones are, and at the folder's right end always, under the
+            // thumb, the tab that says which way up the year is and turns it (ADR-044).
+            HStack(alignment: .bottom, spacing: 10) {
+                if turn == nil {
+                    if year % 3 != 0 { Spacer(minLength: 0) }
+                    tab
+                    if year % 3 != 2 { Spacer(minLength: 0) }
+                } else {
+                    // Side by side where they fit; at the largest sizes the year over its sides.
+                    ViewThatFits(in: .horizontal) {
+                        HStack(alignment: .bottom, spacing: 10) {
+                            tab.padding(.leading, year % 2 == 0 ? 0 : 30)
+                            Spacer(minLength: 0)
+                            sides
+                        }
+                        VStack(alignment: .leading, spacing: 6) {
+                            sides
+                            tab
+                        }
+                    }
+                }
             }
             .padding(.horizontal, 26)
             // The folder's back, the tab rising from it.
@@ -193,13 +213,10 @@ struct YearFolder: View {
         .padding(.top, 12)
         .background(Ink.paper)
         .clipped()
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(year), \(count) \(count == 1 ? "stub" : "stubs")\(toggle == nil ? "" : closed ? ", closed" : ", open")")
-        .accessibilityAddTraits(toggle == nil ? .isHeader : [.isHeader, .isButton])
-        .accessibilityHint(toggle == nil ? "" : closed ? "Opens the year." : "Closes the year.")
-        .accessibilityAction { toggle?() }
+        .accessibilityElement(children: .contain)
     }
 
+    /// The folder's tab: the year and its count. Tapped, the folder closes on its year, or opens.
     private var tab: some View {
         Button { toggle?() } label: {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -207,7 +224,7 @@ struct YearFolder: View {
                 Text("\(count)").font(Type.numbers(12)).foregroundStyle(Ink.grey)
                 if toggle != nil {
                     Image(systemName: "chevron.down")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(Type.display(10))
                         .foregroundStyle(Ink.grey)
                         .rotationEffect(.degrees(closed ? -90 : 0))
                 }
@@ -215,20 +232,36 @@ struct YearFolder: View {
             .padding(.horizontal, 16)
             .padding(.top, 9)
             .padding(.bottom, 7)
-            .background(
-                UnevenRoundedRectangle(topLeadingRadius: 9, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: 9, style: .continuous)
-                    .fill(LinearGradient(colors: [Color(hex: 0xF6EEDC), Self.manila], startPoint: .top, endPoint: .bottom))
-                    .overlay(
-                        UnevenRoundedRectangle(topLeadingRadius: 9, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: 9, style: .continuous)
-                            .stroke(Ink.ink.opacity(0.12), lineWidth: 0.75)
-                    )
-                    .shadow(color: Color(hex: 0x3B2A12).opacity(0.08), radius: 2, x: 0, y: -1)
-            )
+            .background(Self.tabShape(Self.tabFill))
             .frame(minHeight: 44, alignment: .bottom)
             .contentShape(Rectangle())
         }
         .buttonStyle(TabPress())
         .disabled(toggle == nil)
+        .accessibilityLabel("\(year), \(count) \(count == 1 ? "stub" : "stubs")\(toggle == nil ? "" : closed ? ", closed" : ", open")")
+        .accessibilityAddTraits(.isHeader)
+        .accessibilityHint(toggle == nil ? "" : closed ? "Opens the year." : "Closes the year.")
+    }
+
+    /// A folder's tab: manila, lit along its top, rounded where it rises from the folder.
+    static func tabShape(_ fill: some ShapeStyle) -> some View {
+        let shape = UnevenRoundedRectangle(topLeadingRadius: 9, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: 9,
+                                           style: .continuous)
+        return shape
+            .fill(fill)
+            .overlay(shape.stroke(Ink.ink.opacity(0.12), lineWidth: 0.75))
+            .shadow(color: Color(hex: 0x3B2A12).opacity(0.08), radius: 2, x: 0, y: -1)
+    }
+
+    static let tabFill = LinearGradient(colors: [Color(hex: 0xF6EEDC), manila], startPoint: .top, endPoint: .bottom)
+
+    /// The tab that says which way up the year is: Tickets and Editions, the side showing under an ink thumb that slides to
+    /// the other when it is chosen; each side a whole 44-point target (ADR-044).
+    @ViewBuilder
+    private var sides: some View {
+        if let turn {
+            Sides(face: face, turn: turn).background(Self.tabShape(Self.tabFill))
+        }
     }
 
     /// The closed folder: the tickets' tops standing out of it, and the front, with what is in it written on it.
@@ -278,7 +311,57 @@ struct YearFolder: View {
     }
 }
 
-/// The tab pressed: it goes down a touch into the folder, and the tap lands at contact.
+/// Which way up a year is, and the way to turn it: its two sides in words under one ink thumb, as the drawer's other
+/// choices are (ADR-029). Choosing the side not showing turns the year over (ADR-044).
+private struct Sides: View {
+    let face: DrawerFace
+    let turn: () -> Void
+    @Namespace private var thumb
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        HStack(spacing: 0) {
+            side(.ticket)
+            side(.edition)
+        }
+        .padding(.horizontal, 4)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Show the year as")
+    }
+
+    private func side(_ side: DrawerFace) -> some View {
+        let showing = side == face
+        return Button {
+            guard !showing else { return }
+            turn()
+        } label: {
+            Text(side.name).font(Type.display(14))
+            .foregroundStyle(showing ? Ink.paper : Ink.soft(0.7))
+            .fixedSize()
+            .padding(.horizontal, 14)
+            .frame(minHeight: 34)
+            .background {
+                if showing {
+                    Capsule(style: .continuous)
+                        .fill(Ink.ink)
+                        .shadow(color: Ink.ink.opacity(0.18), radius: 3, x: 0, y: 1.5)
+                        .matchedGeometryEffect(id: "thumb", in: thumb)
+                }
+            }
+            // The capsule is drawn 34 points tall; the side is touched across the tab's whole height.
+            .padding(.top, 6)
+            .padding(.bottom, 4)
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(TabPress())
+        .animation(reduceMotion ? Motion.plain : .spring(response: 0.34, dampingFraction: 0.78), value: face)
+        .accessibilityLabel(side.name)
+        .accessibilityAddTraits(showing ? [.isButton, .isSelected] : .isButton)
+        .accessibilityHint(showing ? "" : side == .edition ? "Turns the year over to its editions." : "Turns the year over to its tickets.")
+    }
+}
+
 private struct TabPress: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View { TabPressed(configuration: configuration) }
 }
