@@ -209,10 +209,10 @@ final class KeyArtPrints {
         making.insert(key)
         defer { making.remove(key) }
         guard let poster = await Posters.shared.poster(for: release), let source = poster.image.cgImage else { return }
+        // A card flung past before its turn is not printed: it asks again when it comes back.
+        guard !Task.isCancelled else { return }
         let frame = KeyArt.frame(for: poster, in: window)
-        let image = await Task.detached(priority: .utility) {
-            Self.printed(source, frame: frame, window: window, screen: screen, centre: centre)
-        }.value
+        let image = await Self.pressman.print(source, frame: frame, window: window, screen: screen, centre: centre)
         guard let image else { return }
         made[key] = image
         seen.append(key)
@@ -222,6 +222,15 @@ final class KeyArtPrints {
             if let gone = made.removeValue(forKey: oldest) { bytes -= Self.cost(gone) }
         }
     }
+
+    /// One print at a time, off the main thread: a drawer of sixty cards asking at once would take the graphics processor
+    /// from the drawer itself (CI, 2026-10-17).
+    private actor Pressman {
+        func print(_ source: CGImage, frame: CGRect, window: CGRect, screen: KeyArtScreen, centre: CGPoint?) -> UIImage? {
+            Task.isCancelled ? nil : KeyArtPrints.printed(source, frame: frame, window: window, screen: screen, centre: centre)
+        }
+    }
+    nonisolated private static let pressman = Pressman()
 
     /// A print's weight: one byte a pixel.
     private static func cost(_ image: UIImage) -> Int { image.cgImage.map { $0.bytesPerRow * $0.height } ?? 0 }

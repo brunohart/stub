@@ -118,11 +118,15 @@ final class AccessibilityTests: XCTestCase {
                     if let sheet, !sheet.contains(middle) { return false }
                     let words = Self.plain(found.words)
                     // An element's words within a few points, or a field's own label just above it: the visible word a
-                    // field is named by.
+                    // field is named by. Or a fragment Vision read of an element's words where they are, clipped by an
+                    // edge or softened by the scroll edge: it begins as they begin ("Wed.a" over "Wednesdays, three
+                    // films", CI 2026-10-17).
                     return !named.contains { element in
                         let near = element.frame.insetBy(dx: -4, dy: -4).union(element.frame.offsetBy(dx: 0, dy: -24))
-                        return near.intersects(found.frame) && !element.words.isEmpty
-                            && (element.words.contains(words) || words.contains(element.words))
+                        guard near.intersects(found.frame), !element.words.isEmpty else { return false }
+                        if element.words.contains(words) || words.contains(element.words) { return true }
+                        return words.count >= 3 && words.count < element.words.count
+                            && element.words.hasPrefix(String(words.prefix(3)))
                     }
                 }.map(\.words)
                 : nil

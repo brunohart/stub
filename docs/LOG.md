@@ -21,7 +21,14 @@ edition printed the profile into its panel as it arrived.
 The audit is clean (0 issues). Budgets all pass; launch is unchanged with the ledger reading names before bytes (4.09 s to
 first frame, ≤ 4.6 s).
 
-**Broke and fixed.** A 200 × 300 image passed as a poster at a 300-pixel floor; the floor is 400. The first screenshot
+**Broke and fixed.** CI's run for the posters commit failed twice over. The fling with posters timed out before it
+measured anything: every card prepared the stand-in at once and every print ran together, and the runner's emulated
+graphics processor gave out. The stand-in is prepared once now, and prints go one at a time. The audit flagged "Wed.a" on
+the season: Vision's fragment of "Wednesdays", which CI's US time zone puts there. A fragment over an element that begins
+as its words begin is counted as that element's (decision 005). A 200 × 300 image passed as a poster at a 300-pixel
+floor; the floor is 400. One budgets run read Keep to the press at 0.150 s, on its 0.15 s ceiling, with three simulators
+under test at once (load average 45). Measured again alone, it was 0.107 and 0.108 s, as before; the ceiling stands. The
+fling with posters measured 0.373 s with prints taken one at a time. The first screenshot
 caught the drawer before the sheet: a link arrives two seconds after launch and the sheet takes a moment more.
 
 ## 2026-10-17 — The film's own poster

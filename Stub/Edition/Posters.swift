@@ -36,6 +36,7 @@ final class Posters {
     @ObservationIgnored var ledger: PressLedger?
     #if DEBUG || PERF
     @ObservationIgnored private var staged: Poster?
+    @ObservationIgnored private var staging: Task<Poster?, Never>?
     #endif
 
     /// The person's choice, in Your card: posters on (the default) or off, in which case no title is ever sent and the
@@ -222,11 +223,16 @@ final class Posters {
     /// `-poster poster-orchard.jpg`: a stand-in poster from the bundle for every release, so the key art is built and
     /// screenshotted without TMDB (scripts/make-posters.py draws them).
     private func stage(_ file: String, for key: String) async {
-        if staged == nil {
-            guard let url = Bundle.main.url(forResource: file, withExtension: nil), let data = try? Data(contentsOf: url),
-                  let poster = await Self.prepare(data) else { return }
-            staged = poster
+        // Prepared once for every release, not once a release: sixty cards asking at once would be sixty decodes and
+        // sixty saliency passes (CI, 2026-10-17: the drawer stopped answering).
+        if staging == nil {
+            staging = Task.detached(priority: .utility) {
+                guard let url = Bundle.main.url(forResource: file, withExtension: nil), let data = try? Data(contentsOf: url) else { return nil }
+                return await Self.prepare(data)
+            }
         }
+        guard let poster = await staging?.value else { return }
+        staged = poster
         ready.insert(key)
     }
     #endif
@@ -335,7 +341,11 @@ final class Posters {
         if let saved, saved.count == 4 {
             return Poster(image: decoded, focus: CGRect(x: saved[0], y: saved[1], width: saved[2], height: saved[3]))
         }
-        return Poster(image: decoded, focus: focus(of: decoded.cgImage!))
+        // A poster from another phone comes without its subject: found once, and kept beside it.
+        let found = await Task.detached(priority: .utility) { focus(of: decoded.cgImage!) }.value
+        let numbers = [found.minX, found.minY, found.width, found.height].map { String(format: "%.4f", $0) }
+        try? numbers.joined(separator: ",").write(to: file(key, "focus"), atomically: true, encoding: .utf8)
+        return Poster(image: decoded, focus: found)
     }
 
     nonisolated private static func prepareImage(_ data: Data) async -> UIImage? {

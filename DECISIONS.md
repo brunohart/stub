@@ -703,6 +703,12 @@ bytes.
 gone: a cinema's poster is part of the keepsake and may not be fetchable again. TMDB's notice and the privacy line's
 mention of TMDB appear only in a build with TMDB's token.
 
+**CI, the same day.** The new fling with posters never measured on the runner: XCTest timed out reading the screen. Under
+`-poster`, all sixty cards prepared the stand-in at once (sixty decodes, sixty saliency passes) and every print ran
+together, and on the runner's emulated graphics processor the drawer stopped answering. Now the stand-in is prepared
+once, prints go through one `Pressman` at a time and are skipped for a card already flung past, and a poster's subject
+found on one phone is kept beside it.
+
 **Debug.** `-link "<Add to Stub link>"` hands a link over two seconds after launch. Driven on the simulator with the
 stand-in poster served from this repository on GitHub: the sheet named the host, Keep fetched it once, and the
 blueprint edition printed it as it arrived.

@@ -63,7 +63,7 @@ evidence, and each verdict is printed, so the record says why (`build/a11y-settl
 | Contrast, under the drawer's doors | The caption has scrolled under the doors' fade, which is meant to fade it | — |
 | Dynamic Type | The label is at least 1.4 times as tall at the largest size as at the default; or it is a navigation bar's own button, which shows the Large Content Viewer | Fails |
 | Text clipped | Vision reads every letter of the element's words where it is drawn | Fails |
-| Text found in the pixels | Every word Vision reads on the screen is an element's, on a picture, behind a half-height sheet, or the system's status bar | Fails, naming the words |
+| Text found in the pixels | Every word Vision reads on the screen is an element's, on a picture, behind a half-height sheet, or the system's status bar. A fragment Vision reads over an element, clipped by an edge or softened by the scroll edge, counts as that element's when it begins as the element's words begin (2026-10-17: "Wed.a" over "Wednesdays, three films" on CI) | Fails, naming the words |
 
 Anything else fails the run. A11Y lines in `build/a11y.txt` are the failures; the job in CI fails on one.
 
