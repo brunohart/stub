@@ -82,6 +82,9 @@ variants with `-a11y-lab -a11y-lab-card` (Debug and Performance only).
 | The press: print run, wet ink, plates parting, the wheel coasting | Printed at once, no gloss, sheets laid flat side by side, the wheel steps without coasting |
 | Every press spring | Critically damped, no overshoot |
 
+Checked in the simulator with Reduce Motion set (2026-10-16): the drawer's stubs lie level and are simply there. The light
+and the haptics need the phone.
+
 ## The Accessibility Nutrition Label
 
 | Label | Claim | Evidence, and what it waits on |

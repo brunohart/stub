@@ -26,12 +26,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Tools
-        run: brew install xcodegen && xcodebuild -version
+        # Xcode 26 and later ship without the Metal compiler; the shaders need it.
+        run: brew install xcodegen && xcodebuild -downloadComponent MetalToolchain && xcodebuild -version
       - name: Release build for a phone, no warnings
         run: |
           xcodegen generate --quiet
           xcodebuild -project Stub.xcodeproj -scheme Stub -configuration Release -destination 'generic/platform=iOS' \
-            -derivedDataPath build/dd-release build CODE_SIGNING_ALLOWED=NO 2>&1 | tee build-release.log | tail -3
+            -derivedDataPath build/dd-release build CODE_SIGNING_ALLOWED=NO 2>&1 | tee build-release.log \
+            | grep -E "error:|BUILD (SUCCEEDED|FAILED)" || true
           grep -q "BUILD SUCCEEDED" build-release.log
           if grep "warning: " build-release.log | grep -v "appintentsmetadataprocessor\|Metadata extraction skipped"; then
             echo "::error::the Release build has warnings"; exit 1
@@ -51,7 +53,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Tools
-        run: brew install xcodegen
+        run: brew install xcodegen && xcodebuild -downloadComponent MetalToolchain
       - name: Performance budgets, simulator
         run: scripts/perf.sh --ci
       - name: Keep the numbers
@@ -71,7 +73,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Tools
-        run: brew install xcodegen
+        run: brew install xcodegen && xcodebuild -downloadComponent MetalToolchain
       - name: Accessibility audit
         run: scripts/a11y.sh
       - name: Keep the issues
@@ -79,7 +81,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: a11y
-          path: build/a11y.txt
+          path: |
+            build/a11y.txt
+            build/a11y-settled.txt
 
   device:
     if: vars.DEVICE_LANE == 'on'
