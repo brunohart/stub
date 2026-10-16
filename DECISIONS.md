@@ -598,3 +598,24 @@ screen's other gestures. Now:
 - the press cannot be swiped away while a tool is out.
 
 The test runs every act by touch: Overprint opens, a tap and a drag each pull a pass, Stamp stamps, a finish is chosen.
+
+## ADR-048 — The press is one instrument; the editions drawer is a gallery; the first screen is composed
+
+**Date:** 2026-10-17 · **Status:** decided; built; the audit passes; `StudioUITests` drives the strip. DESIGN.md rules 5 (press), 9.
+
+**What changed.** Bruno: not yet world class; keep going. A review of every screen on a large phone found, in order of
+impact:
+- **The press had seven controls of one weight**: three choice tiles, two tool pills, two text links. The card got
+  what was left. Now one strip of five tools sits along the foot (Movement, Inks, Stock, Overprint, Stamp), each a mark
+  drawn in the card's own inks over its name. The tool in hand rests on a raised slip and its tray rises above the
+  strip; tapped again it is put down; at rest the card fills the room. "See the plates" and "Turn it over" are marks in
+  the top bar. The strip goes three over two at the large sizes. `ToolStrip` replaces `StudioTools` and the choice tiles.
+- **The year's sides tab was the second-heaviest thing on the screen**: an ink thumb beside Keep a stub, the drawer's one
+  ink button. The side showing is now a raised slip of paper with its mark in ink.
+- **Editions repeated themselves**: each prints its title, night and seat, and the caption under it said them again. The
+  drawer of editions has no captions now, a gallery; at the accessibility sizes the words return.
+- **The first screen was a list**: a small blank stub, a left-set sentence, a button, half the screen empty. Now it is
+  composed and centred: an unissued ticket with its fields printed and waiting (Film, Cinema, Seat, Date, Price), the
+  line "Nothing in the drawer yet." over Bruno's new sentence ("Every film you saw in cinemas, and a place to store and
+  design keepsakes from each moment"), and the button.
+- The season's sentence said "Twenty-Four"; only its first letter is raised now.

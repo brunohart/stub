@@ -859,15 +859,21 @@ struct Dropped: ViewModifier {
 struct EmptyDrawer: View {
     let add: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
     /// The blank stub breathes once when the drawer opens: one inhale, one settle, then still. Never a loop.
     @State private var breath: CGFloat = 1
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            BlankStub(tilt: reduceMotion ? 0 : -1.1)
-                .frame(width: 210, height: 118)
-                .scaleEffect(breath, anchor: .bottomLeading)
-                .padding(.top, 20)
+        // The first thing a new person sees, composed rather than listed: the blank stub that is waiting to be filled,
+        // what the drawer is for, and the one act, centred in the room the drawer has (ADR-048).
+        let sentence = SeasonSummary().handSentence
+        let parts = sentence.split(separator: ". ", maxSplits: 1).map(String.init)
+        VStack(spacing: 26) {
+            BlankStub(tilt: reduceMotion ? 0 : -1.4, unissued: true)
+                .frame(maxWidth: typeSize.isAccessibilitySize ? .infinity : 300)
+                .aspectRatio(1.75, contentMode: .fit)
+                .scaleEffect(breath, anchor: .bottom)
+                .shadow(color: Color(hex: 0x3B2A12).opacity(0.10), radius: 14, x: 0, y: 10)
                 .task {
                     guard !reduceMotion else { return }
                     try? await Task.sleep(for: .milliseconds(400))
@@ -875,20 +881,31 @@ struct EmptyDrawer: View {
                         withAnimation(Motion.settle) { breath = 1 }
                     }
                 }
-            // The empty drawer's one sentence: what the drawer is for. Reading type, smaller and quieter than the season's.
-            Text(SeasonSummary().handSentence)
-                .font(Type.reading(19))
-                .foregroundStyle(Ink.soft(0.8))
-                .lineSpacing(3)
-                .fixedSize(horizontal: false, vertical: true)
+            VStack(spacing: 10) {
+                Text(parts.first.map { $0.hasSuffix(".") ? $0 : $0 + "." } ?? sentence)
+                    .displayText(24)
+                if parts.count > 1 {
+                    Text(parts[1])
+                        .font(Type.reading(19))
+                        .foregroundStyle(Ink.soft(0.8))
+                        .lineSpacing(3)
+                }
+            }
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: 340)
+            .accessibilityElement(children: .combine)
             Button(action: add) {
                 HStack(spacing: 8) {
-                    Image(systemName: "camera").font(.system(size: 15, weight: .medium))
+                    Image(systemName: "camera").font(Type.display(15))
                     Text("Keep the first stub")
                 }
             }
             .buttonStyle(.stub(.ink))
         }
+        .frame(maxWidth: .infinity)
+        // Centred in what the drawer leaves under its plate, never pushed below the fold.
+        .containerRelativeFrame(.vertical, alignment: .center) { length, _ in length * 0.68 }
     }
 }
 

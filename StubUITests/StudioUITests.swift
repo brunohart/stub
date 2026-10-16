@@ -10,6 +10,7 @@ final class StudioUITests: XCTestCase {
         app.launchArguments = ["-stage-drawer", "12", "-stage-rules", "-edition", "-press"]
         app.launch()
 
+        // The tool strip (ADR-048).
         let overprint = app.buttons["Overprint"]
         XCTAssertTrue(overprint.waitForExistence(timeout: 30))
         // The card on the bed, found by the label every edition's front carries in the press.
@@ -30,8 +31,8 @@ final class StudioUITests: XCTestCase {
         let from = card.coordinate(withNormalizedOffset: CGVector(dx: 0.15, dy: 0.2))
         let to = card.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.55))
         from.press(forDuration: 0.05, thenDragTo: to)
-        // Put down, the line counts what is on the card.
-        app.buttons["Done"].tap()
+        // Put down (the tool tapped again), the line counts what is on the card.
+        overprint.tap()
         XCTAssertTrue(app.descendants(matching: .any)["2 on it now. Keep going, or keep it."].waitForExistence(timeout: 5),
                       "a tap and a drag: two passes")
 
@@ -42,7 +43,7 @@ final class StudioUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["Tap the card where it goes."].waitForExistence(timeout: 5),
                       "one tap on Stamp opens the stamps")
         card.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.2)).tap()
-        app.buttons["Done"].tap()
+        stamp.tap()
         XCTAssertTrue(app.descendants(matching: .any)["3 on it now. Keep going, or keep it."].waitForExistence(timeout: 5), "a tap stamps")
 
         // The stocks: the swatch book on a rail, every finish a tap away (ADR-047).

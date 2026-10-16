@@ -14,9 +14,6 @@ struct PressRoom: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     /// A stroke being drawn across the card with the screens out: where it began and where the finger is, in card points.
     @State private var stroke: (from: CGPoint, to: CGPoint)?
-    /// How tall the edition's three choices stand: one row when their words fit across, more when they do not. The bench
-    /// grows by what is over one row, so a word never breaks and the bed still never moves when an object opens.
-    @State private var choicesHeight: CGFloat = PressRoom.oneRow
     @Namespace private var rotor
     /// Where the separation stood when the pinch began.
     @State private var pinchedFrom: CGFloat?
@@ -51,9 +48,6 @@ struct PressRoom: View {
         _session = State(initialValue: PressSession(title: stub.title, copy: copy))
     }
 
-    /// The choices' height as one row, which the bench's heights were set for.
-    fileprivate static let oneRow: CGFloat = 56
-
     var body: some View {
         ZStack {
             Paper()
@@ -66,6 +60,7 @@ struct PressRoom: View {
             }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar { topActs }
         // With a tool out, a stroke across the card is the tool's, never a swipe that closes the room.
         .interactiveDismissDisabled(session.bench == .pull || session.bench == .stamp)
         .toolbarBackground(.hidden, for: .navigationBar)
@@ -111,12 +106,6 @@ struct PressRoom: View {
         #endif
     }
 
-    /// The bench's height for what is on it, grown by however much the choices stand over one row.
-    private var benchHeight: CGFloat {
-        if session.focus != nil { return 268 }
-        return (session.bench == .rest ? 214 : 262) + max(0, choicesHeight - Self.oneRow)
-    }
-
     /// The press: the line that says whether it is kept, the bed and its lever, the status line and the bench.
     private func room(scrolls: Bool) -> some View {
         VStack(spacing: 0) {
@@ -143,12 +132,11 @@ struct PressRoom: View {
             status
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, minHeight: 48)
+                .frame(maxWidth: .infinity, minHeight: 44)
                 // Clear of the lever's words, which hang below the bed on the right; centred all the same.
                 .padding(.horizontal, scrolls ? 28 : 62)
 
             bench
-                .frame(height: scrolls && session.focus == nil ? nil : benchHeight)
                 .animation(reduceMotion ? Motion.plain : Motion.settle, value: session.bench)
         }
     }
@@ -470,78 +458,67 @@ struct PressRoom: View {
 
     // MARK: The bench
 
-    /// What you are holding decides the bench: the wheel for a part, the edition's three choices at rest.
+    /// The bench: the tool in hand's tray over the strip of tools (ADR-048).
     @ViewBuilder
     private var bench: some View {
-        VStack(spacing: 18) {
-            // The genome's three choices are the front's; on the back there is only the margin. A tool, while it is out,
-            // has the bench to itself.
-            if !session.turned, session.bench != .pull, session.bench != .stamp {
-                choices
+        VStack(spacing: 14) {
+            // The tool in hand's tray, rising above the strip; nothing when no tool is in hand, so the card keeps the room.
+            Group {
+                switch session.bench {
+                case .movement:
+                    Fan(session: session, light: light, namespace: fan) { take($0) }
+                        .frame(height: 176)
+                case .inks:
+                    DrawDowns(session: session) { palette in flood(palette, from: CGPoint(x: Card.width / 2, y: Card.height / 2)) }
+                        .frame(height: 130)
+                case .stock:
+                    SwatchBook(session: session, light: light) { printAgain(on: $0) }
+                        .frame(height: 130)
+                case .pull, .stamp:
+                    StudioTray(session: session, photo: photo)
+                case .rest:
+                    EmptyView()
+                }
             }
-            switch session.bench {
-            case .movement:
-                Fan(session: session, light: light, namespace: fan) { take($0) }
-                    .frame(height: 176)
-                    .transition(Self.benchChange)
-            case .inks:
-                DrawDowns(session: session) { palette in flood(palette, from: CGPoint(x: Card.width / 2, y: Card.height / 2)) }
-                    .frame(height: 130)
-                    .transition(Self.benchChange)
-            case .stock:
-                SwatchBook(session: session, light: light) { printAgain(on: $0) }
-                    .frame(height: 130)
-                    .transition(Self.benchChange)
-            case .pull, .stamp:
-                StudioTray(session: session, photo: photo) {
-                    withAnimation(reduceMotion ? Motion.plain : Motion.settle) { session.bench = .rest }
+            .transition(Self.benchChange)
+            .id(session.bench)
+
+            // The back has only the margin to sign; its one way back is in the top bar.
+            if !session.turned {
+                ToolStrip(session: session) { tool in
+                    if session.separation > 0 { separate(false) }
+                    withAnimation(reduceMotion ? Motion.plain : Motion.settle) { session.bench = tool }
                 }
-                .transition(Self.benchChange)
-            case .rest:
-                VStack(spacing: 10) {
-                    // The studio's two tools (ADR-046); the back has only the margin to sign.
-                    if !session.turned {
-                        StudioTools(composition: session.composition) { tool in
-                            if session.separation > 0 { separate(false) }
-                            withAnimation(reduceMotion ? Motion.plain : Motion.settle) { session.bench = tool }
-                        }
-                    }
-                    // Side by side where they fit, one over the other at the large sizes (decision 005).
-                    ViewThatFits(in: .horizontal) {
-                        HStack(spacing: 22) { quietActs }
-                        VStack(spacing: 4) { quietActs }
-                    }
-                }
-                .padding(.top, 4)
-                .transition(Self.benchChange)
             }
         }
-        // The three words stay where they are whatever is open, so opening and closing moves nothing but the object.
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .padding(.top, 22)
-        .padding(.horizontal, 20)
-        .transition(Self.benchChange)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 6)
         // A stamp lands with a thud; a pass, with the softer drag of a blade.
         .sensoryFeedback(trigger: session.acted) { _, _ in
             session.acts.last?.kind == .stamp ? .impact(weight: .heavy, intensity: 0.85) : .impact(weight: .light, intensity: 0.6)
         }
     }
 
-    /// The plates, and turning the card over: separations are a pinch on the card, and a word for anyone who does not pinch.
-    @ViewBuilder private var quietActs: some View {
-        if !session.turned {
-            quiet(session.separation > 0 ? "Press them together" : "See the plates") { separate(session.separation == 0) }
+    /// The top bar's two quiet acts: the plates parted, and the card turned over. Marks, named for VoiceOver.
+    @ToolbarContentBuilder private var topActs: some ToolbarContent {
+        ToolbarItemGroup(placement: .topBarTrailing) {
+            if !session.turned {
+                Button { separate(session.separation == 0) } label: {
+                    Image(systemName: session.separation > 0 ? "square.stack.3d.down.forward" : "square.stack.3d.up")
+                        .font(.system(size: 16, weight: .medium))
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel(session.separation > 0 ? "Press the plates together" : "See the plates")
+            }
+            Button { turn() } label: {
+                Image(systemName: "rectangle.portrait.rotate")
+                    .font(.system(size: 16, weight: .medium))
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
+            }
+            .accessibilityLabel(session.turned ? "Turn it back" : "Turn it over")
         }
-        quiet(session.turned ? "Turn it back" : "Turn it over") { turn() }
-    }
-
-    /// A word for what should not be shouted: the plates, and turning the card over.
-    private func quiet(_ title: String, action: @escaping () -> Void) -> some View {
-        Button(title, action: action)
-            .font(Type.words(15))
-            .buttonStyle(.stub(.quiet))
-            .contentTransition(.identity)
-            .transaction { $0.animation = nil }
     }
 
     /// The bench changes hands: what was on it leaves quickly, then what replaces it arrives, so the words and the
@@ -613,75 +590,6 @@ private struct FlatSheets: View {
             .padding(.horizontal, 4)
         }
         .frame(height: height)
-    }
-}
-
-extension PressRoom {
-    /// The edition's three choices: side by side where their words fit, the movement on a row of its own over the other
-    /// two where it is long ("Constructivist" on a small phone), all three as rows where the type is large. A word is never
-    /// broken or shrunk (decision 005).
-    fileprivate var choices: some View {
-        let movement = session.edition.movement.rawValue.capitalized
-        let inks = session.inks.rawValue.capitalized
-        let stock = session.edition.stock.words
-        return ViewThatFits(in: .horizontal) {
-            HStack(alignment: .top, spacing: 10) {
-                choice(.movement, "Movement", movement)
-                choice(.inks, "Inks", inks)
-                choice(.stock, "Stock", stock)
-            }
-            VStack(spacing: 8) {
-                choice(.movement, "Movement", movement, wide: true)
-                HStack(alignment: .top, spacing: 10) {
-                    choice(.inks, "Inks", inks)
-                    choice(.stock, "Stock", stock)
-                }
-            }
-            VStack(spacing: 8) {
-                choice(.movement, "Movement", movement, wide: true)
-                choice(.inks, "Inks", inks, wide: true)
-                choice(.stock, "Stock", stock, wide: true)
-            }
-        }
-        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { choicesHeight = $0 }
-    }
-
-    /// One of the edition's three choices on the bench: what it is now, and the word for it. Tapped, it opens its
-    /// object; tapped again, it closes. `wide`, it is a row: the word for it on the left, what it is on the right.
-    fileprivate func choice(_ bench: PressSession.Bench, _ label: String, _ value: String, wide: Bool = false) -> some View {
-        let open = session.bench == bench
-        let other = session.bench != .rest && !open
-        return Button {
-            if session.separation > 0 { separate(false) }
-            withAnimation(reduceMotion ? Motion.plain : Motion.settle) {
-                session.putDown()
-                session.bench = open ? .rest : bench
-            }
-        } label: {
-            let quiet = open ? Ink.paper.opacity(0.78) : Ink.soft(0.7)
-            Group {
-                if wide {
-                    HStack(alignment: .firstTextBaseline, spacing: 12) {
-                        Text(label).font(Type.words(12)).foregroundStyle(quiet)
-                        Spacer(minLength: 0)
-                        Text(value).font(Type.words(16)).multilineTextAlignment(.trailing)
-                    }
-                } else {
-                    VStack(spacing: 3) {
-                        // One line: where it would not fit, the choices change shape instead (`choices`).
-                        Text(value).font(Type.words(16)).lineLimit(1).fixedSize()
-                        Text(label).font(Type.words(12)).foregroundStyle(quiet)
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .opacity(other ? 0.55 : 1)
-        }
-        // The open one is inked: the bench says which object is out (ADR-022).
-        .buttonStyle(.stub(open ? .ink : .paper, tight: true))
-        .accessibilityLabel("\(label), \(value)")
-        .accessibilityHint(open ? "Closes it." : "Opens the choices.")
-        .accessibilityAddTraits(open ? .isSelected : [])
     }
 }
 

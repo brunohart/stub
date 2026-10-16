@@ -41,6 +41,7 @@ struct SeasonTests {
 
     @Test func handSentenceIsTheFloor() {
         #expect(SeasonSummary(stubs: []).handSentence.hasPrefix("Nothing in the drawer yet"))
+        #expect(SeasonSummary(stubs: []).handSentence.contains("Every film you saw in cinemas"))
         #expect(SeasonSummary(stubs: [drawer[0]]).handSentence == "One stub. The drawer has started.")
         #expect(SeasonSummary(stubs: drawer).handSentence == "Four stubs across three cinemas, most of them in March.")
         let one = SeasonSummary(stubs: [drawer[0], drawer[2]])

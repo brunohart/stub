@@ -337,17 +337,20 @@ private struct Sides: View {
             guard !showing else { return }
             turn()
         } label: {
+            // The side showing is a slip of paper raised in the tab, its mark in ink; the other lies flat in grey. Quiet
+            // beside the drawer's one ink button, Keep a stub: a toggle, not a call to act.
             Cut(standing: side == .edition)
-                .fill(showing ? Ink.paper : Ink.soft(0.62))
+                .fill(showing ? Ink.ink : Ink.grey)
                 .frame(width: (side == .edition ? 12 : 20) * unit, height: (side == .edition ? 18 : 12) * unit)
                 .frame(width: 22 * unit, height: 20 * unit)
             .padding(.horizontal, 15)
             .frame(minHeight: 34)
             .background {
                 if showing {
-                    Capsule(style: .continuous)
-                        .fill(Ink.ink)
-                        .shadow(color: Ink.ink.opacity(0.18), radius: 3, x: 0, y: 1.5)
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(Color(hex: 0xFCF9F2))
+                        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Ink.ink.opacity(0.1), lineWidth: 0.75))
+                        .shadow(color: Color(hex: 0x3B2A12).opacity(0.16), radius: 2.5, x: 0, y: 1.5)
                         .matchedGeometryEffect(id: "thumb", in: thumb)
                 }
             }

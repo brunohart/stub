@@ -115,11 +115,12 @@ struct SeasonSummary: Equatable, Sendable {
     /// when the model is absent, slow, or breaks a rule.
     var handSentence: String {
         switch films {
-        case 0: return "Nothing in the drawer yet. Every film you saw in a room with strangers, kept here, read here, never uploaded."
+        case 0: return "Nothing in the drawer yet. Every film you saw in cinemas, and a place to store and design keepsakes from each moment."
         case 1: return "One stub. The drawer has started."
         default:
             let places = cinemas.count <= 1 ? "one cinema" : "\(Self.spelled(cinemas.count)) cinemas"
-            var sentence = "\(Self.spelled(films).capitalized) stubs across \(places)"
+            // "Twenty-four", not "Twenty-Four": only the sentence's first letter is raised.
+            var sentence = "\(Self.spelled(films).prefix(1).uppercased() + Self.spelled(films).dropFirst()) stubs across \(places)"
             if circuits.count >= 2 { sentence += " and \(Self.spelled(circuits.count)) circuits" }
             if let month = busiestMonth, month.count >= 2, months.count >= 2 {
                 sentence += ", most of them in \(month.name.split(separator: " ").first.map(String.init) ?? month.name)"

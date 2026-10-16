@@ -156,7 +156,7 @@ private struct Nights: View {
                     HStack(alignment: .firstTextBaseline) {
                         Text(verbatim: "\(Calendar.current.monthSymbols[month]) \(year)").font(Type.words(15)).foregroundStyle(Ink.ink)
                         Spacer(minLength: 12)
-                        Text(count == 1 ? "One night" : "\(SeasonSummary.spelled(count).capitalized) nights")
+                        Text(count == 1 ? "One night" : "\(SeasonSummary.spelled(count).prefix(1).uppercased() + SeasonSummary.spelled(count).dropFirst()) nights")
                             .font(Type.words(15)).foregroundStyle(isBusiest(year, month) ? Ink.orange : Ink.grey)
                     }
                     .padding(.vertical, 10)

@@ -28,6 +28,7 @@ struct StubCard: View {
     @State private var shown: DrawerFace
     @State private var angle: Double = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
     /// A finger on the card, from the drawer's button.
     @Environment(\.cardPressed) private var touched
 
@@ -142,7 +143,15 @@ struct StubCard: View {
         }
     }
 
+    /// Under a ticket, what it says, which its photograph may be too small or too faded to. An edition prints its own title,
+    /// night and seat, so under an edition there is nothing: the drawer of editions is a gallery (ADR-048). At the
+    /// accessibility sizes the words come back, at the person's own size.
+    @ViewBuilder
     private var caption: some View {
+        if shown == .ticket || typeSize.isAccessibilitySize { words }
+    }
+
+    private var words: some View {
         VStack(alignment: .leading, spacing: 3) {
             // Never truncated: at the large Dynamic Type sizes a title takes the lines it needs.
             Text(stub.title)
@@ -242,6 +251,9 @@ enum Compositions {
 struct BlankStub: View {
     var tilt: Double
     var title: String? = nil
+    /// An unissued ticket: its fields printed and waiting to be filled, as a booking office's blank stock is. The empty
+    /// drawer's, so the first thing a new person sees says what the drawer is for (ADR-048).
+    var unissued = false
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -255,6 +267,7 @@ struct BlankStub: View {
                 if let title {
                     Text(title).displayText(15).fixedSize(horizontal: false, vertical: true)
                 }
+                if unissued { fields.padding(.top, 8) }
             }
             .padding(12)
             .padding(.trailing, 28)
@@ -265,6 +278,25 @@ struct BlankStub: View {
         // A drawing of a ticket, said in words (decision 005).
         .accessibilityAddTraits(.isImage)
         .accessibilityIdentifier("artwork")
+    }
+
+    /// The blank fields of an unissued ticket: a label in the mono over a ruled line, the film's line the longest.
+    private var fields: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            field("FILM")
+            HStack(alignment: .bottom, spacing: 16) { field("CINEMA"); field("SEAT", width: 58) }
+            HStack(alignment: .bottom, spacing: 16) { field("DATE"); field("PRICE", width: 58) }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func field(_ label: String, width: CGFloat? = nil) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(label).font(Type.numbers(9)).foregroundStyle(Ink.greyMark)
+            Rectangle().fill(Ink.ink.opacity(0.16)).frame(height: 0.75)
+        }
+        .frame(width: width)
+        .frame(maxWidth: width == nil ? .infinity : nil, alignment: .leading)
     }
 
     private var perforation: some View {

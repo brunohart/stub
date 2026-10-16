@@ -1,6 +1,6 @@
 # Stub
 
-**A private archive of every film you saw in a room with strangers.**
+**Every film you saw in cinemas, and a place to store and design keepsakes from each moment.**
 
 Built for one moment: the ninety seconds after the lights come up, the ticket in your pocket or your inbox. Press **Keep a stub** on the Lock Screen, hold the phone over the ticket, and it is read on the phone and kept, in under ten seconds, one-handed, with no signal. Or share in the Wallet pass, the PDF, the booking email or the screenshot the cinema sent. Later you get two things back: the stub as it was, and an **edition**, a ticket designed for that film's release, printed with your own seat and night, lit by the phone and felt under your finger. No two are alike: see a film again and that viewing pulls a **variant**, the same drawing in its own inks. Take it to the **press** and pull your own proof of it, and send it turning in the light. Nothing reaches anyone but you: the drawer lives on the phone and, unless you say otherwise, in your own private iCloud. The App Store label is **Data Not Collected**.
 

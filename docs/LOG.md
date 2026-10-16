@@ -2,6 +2,23 @@
 
 Newest at the top. One entry per slot. What shipped, what broke, what the reader did.
 
+## 2026-10-17 — The press as one instrument, the drawer as a gallery
+
+Bruno: not yet world class; keep going until it is. Every screen was captured on a large phone and reviewed. Shipped,
+in order of impact (ADR-048):
+- the press's seven controls became one strip of five tools, the tray rising only for the tool in hand;
+- the year's sides tab went from an ink thumb to a raised paper slip;
+- the drawer of editions lost its captions and became a gallery;
+- the empty drawer is composed around an unissued ticket and Bruno's new opening line: "Every film you saw in cinemas,
+  and a place to store and design keepsakes from each moment";
+- the season's "Twenty-Four" bug is fixed.
+
+Screenshots: `2026-10-17-press-strip.png` (at rest, stamping, choosing a movement), `2026-10-17-first-screen.png`.
+
+**Broke and fixed.** The audit measured the Stock tool at 1.6:1; its mark was a pale sheet. It is drawn in ink now, with
+a turned-up corner. A fresh simulator's staged drawer looked empty because launches were killed before the fixtures had
+been cropped once; later launches use the crops kept in Caches.
+
 ## 2026-10-16 — The moment, measured: budgets, reach, accessibility and the record
 
 Not a playbook day. Bruno's brief: define the moment, build the corpus, set budgets that are the definition of done, make

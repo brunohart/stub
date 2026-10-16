@@ -129,12 +129,12 @@ final class AccessibilityTests: XCTestCase {
             // Every word on the screen that is interface, measured: the evidence when the audit raises contrast without
             // saying where, and a note of the lowest on every screen either way.
             let screenRect = CGRect(origin: .zero, size: shot.size)
-            let measuredWords: [(label: String, ratio: Double)] = words.compactMap { word in
+            let measuredWords: [(label: String, ratio: Double, frame: CGRect)] = words.compactMap { word in
                 guard !word.picture, word.frame.width >= 4, word.frame.height >= 4, screenRect.contains(word.frame),
                       !system.intersects(word.frame), !(doors?.intersects(word.frame) ?? false),
                       sheet.map({ $0.contains(word.frame) }) ?? true,
                       let ratio = Self.measured(word.frame, in: shot) else { return nil }
-                return (word.label, ratio)
+                return (word.label, ratio, word.frame)
             }
             if let lowest = measuredWords.min(by: { $0.ratio < $1.ratio }) {
                 let at = size.isEmpty ? screen : "\(screen) at AX5"
@@ -142,7 +142,9 @@ final class AccessibilityTests: XCTestCase {
                              measuredWords.count, lowest.label, lowest.ratio))
             }
             let dim: [String]? = issues.contains { $0.auditType == .contrast && $0.element == nil }
-                ? measuredWords.filter { $0.ratio < 4.5 }.map { String(format: "'%@' %.1f:1", $0.label, $0.ratio) }
+                ? measuredWords.filter { $0.ratio < 4.5 }.map {
+                    String(format: "'%@' %.1f:1 at %.0f,%.0f %.0f×%.0f", $0.label, $0.ratio, $0.frame.minX, $0.frame.minY, $0.frame.width, $0.frame.height)
+                }
                 : nil
             // Every control on the screen smaller than Apple's 44 points: the evidence when the audit names none.
             var small: [String]?

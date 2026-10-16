@@ -4,51 +4,136 @@ import SwiftUI
 /// the finger; Stamp presses a rubber stamp of the night where a finger taps. Everything on the trays is drawn by the same
 /// printer as the card, in the card's own inks, so what is offered is what will print.
 
-/// The studio's two tools at rest on the bench: each a button with its mark drawn in the edition's inks.
-struct StudioTools: View {
-    let composition: Composition
-    let open: (PressSession.Bench) -> Void
+/// The press's tools, in one strip along the foot of the room (ADR-048): the genome's three choices and the studio's two
+/// acts, each a mark drawn in the card's own inks over its name. The tool in hand rests on a raised slip of paper and its
+/// tray rises above the strip; tapped again, it is put down. One row, as an editor's tools are, so the card keeps the room.
+struct ToolStrip: View {
+    let session: PressSession
+    let choose: (PressSession.Bench) -> Void
+    @Namespace private var slip
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var tools: [(bench: PressSession.Bench, name: String, value: String?)] {
+        [(.movement, "Movement", session.edition.movement.rawValue.capitalized),
+         (.inks, "Inks", session.inks.rawValue.capitalized),
+         (.stock, "Stock", session.edition.stock.words),
+         (.pull, "Overprint", nil),
+         (.stamp, "Stamp", nil)]
+    }
 
     var body: some View {
-        // Side by side where they fit, one over the other at the large sizes (decision 005).
+        // One row where the names fit; at the large sizes, three over two (decision 005).
         ViewThatFits(in: .horizontal) {
-            HStack(spacing: 12) { tools }
-            VStack(spacing: 10) { tools }
+            HStack(spacing: 2) { ForEach(tools, id: \.name) { tool($0) } }
+            VStack(spacing: 2) {
+                HStack(spacing: 2) { ForEach(tools.prefix(3), id: \.name) { tool($0) } }
+                HStack(spacing: 2) { ForEach(tools.suffix(2), id: \.name) { tool($0) } }
+            }
+        }
+        .padding(4)
+        .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Ink.cream))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Ink.ink.opacity(0.08), lineWidth: 0.75))
+        .sensoryFeedback(.selection, trigger: session.bench)
+    }
+
+    private func tool(_ tool: (bench: PressSession.Bench, name: String, value: String?)) -> some View {
+        let open = session.bench == tool.bench
+        return Button { choose(open ? .rest : tool.bench) } label: {
+            VStack(spacing: 5) {
+                mark(tool.bench)
+                    .frame(width: 26, height: 22)
+                    .opacity(open ? 1 : 0.82)
+                    .accessibilityHidden(true)
+                Text(tool.name)
+                    .font(Type.words(12))
+                    .foregroundStyle(open ? Ink.ink : Ink.grey)
+                    .fixedSize()
+            }
+            .frame(maxWidth: .infinity, minHeight: 58)
+            .background {
+                if open {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color(hex: 0xFCF9F2))
+                        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Ink.ink.opacity(0.1), lineWidth: 0.75))
+                        .shadow(color: Color(hex: 0x3B2A12).opacity(0.14), radius: 3, x: 0, y: 2)
+                        .matchedGeometryEffect(id: "slip", in: slip)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .animation(reduceMotion ? Motion.plain : .spring(response: 0.34, dampingFraction: 0.78), value: session.bench)
+        .accessibilityLabel(tool.value.map { "\(tool.name), \($0)" } ?? tool.name)
+        .accessibilityAddTraits(open ? [.isButton, .isSelected] : .isButton)
+        .accessibilityHint(open ? "Puts it down." : Self.hint(tool.bench))
+    }
+
+    private static func hint(_ bench: PressSession.Bench) -> String {
+        switch bench {
+        case .movement: "Opens the movements."
+        case .inks: "Opens the inks."
+        case .stock: "Opens the swatch book."
+        case .pull: "Opens the screens. Drag across the card, or tap it, to overprint it."
+        case .stamp: "Opens the stamps. Tap the card to stamp it."
+        case .rest: ""
         }
     }
 
-    @ViewBuilder private var tools: some View {
-        tool("Overprint", .pull, hint: "Opens the screens. Drag across the card to overprint it.") {
+    /// Each tool's mark, in the card's own inks: what it changes, drawn small.
+    @ViewBuilder private func mark(_ bench: PressSession.Bench) -> some View {
+        let inks = session.composition.inks
+        switch bench {
+        case .movement:
+            // A composition in miniature: a disc and a bar laid across it.
             ZStack {
-                Circle().fill(composition.inks.color(.primary)).frame(width: 15, height: 15).offset(x: -4)
-                Circle().fill(composition.inks.color(.secondary)).frame(width: 15, height: 15).offset(x: 4)
-                    .blendMode(.multiply)
+                Circle().fill(inks.color(.primary)).frame(width: 15, height: 15).offset(x: 4, y: -2)
+                Capsule().fill(inks.color(.ink)).frame(width: 22, height: 4).rotationEffect(.degrees(-24)).offset(y: 4)
+            }
+        case .inks:
+            // The three inks, as drops on the slab.
+            HStack(spacing: -4) {
+                Circle().fill(inks.color(.primary)).frame(width: 12, height: 12)
+                Circle().fill(inks.color(.secondary)).frame(width: 12, height: 12)
+                Circle().fill(inks.color(.ink)).frame(width: 12, height: 12)
+            }
+            .overlay(Capsule().strokeBorder(Ink.ink.opacity(0.12), lineWidth: 0.5).padding(-1))
+        case .stock:
+            // A sheet of card with the light across it and a corner turned up, drawn in ink like the others.
+            ZStack(alignment: .topTrailing) {
+                RoundedRectangle(cornerRadius: 2.5, style: .continuous)
+                    .fill(Color(hex: inks.groundIsLight ? inks.ground : inks.hex(.light)))
+                    .overlay(LinearGradient(colors: [.white.opacity(0), .white.opacity(0.75), .white.opacity(0)],
+                                            startPoint: .topLeading, endPoint: .bottomTrailing)
+                        .clipShape(RoundedRectangle(cornerRadius: 2.5, style: .continuous)))
+                    .overlay(RoundedRectangle(cornerRadius: 2.5, style: .continuous).strokeBorder(inks.color(.ink), lineWidth: 1.3))
+                Path { p in
+                    p.move(to: CGPoint(x: 0, y: 0)); p.addLine(to: CGPoint(x: 6, y: 6)); p.addLine(to: CGPoint(x: 0, y: 6)); p.closeSubpath()
+                }
+                .fill(inks.color(.primary))
+                .frame(width: 6, height: 6)
+                .offset(x: -1.3, y: 1.3)
+            }
+            .frame(width: 16, height: 21)
+            .rotationEffect(.degrees(-8))
+        case .pull:
+            ZStack {
+                Circle().fill(inks.color(.primary)).frame(width: 15, height: 15).offset(x: -4)
+                Circle().fill(inks.color(.secondary)).frame(width: 15, height: 15).offset(x: 4).blendMode(.multiply)
             }
             .compositingGroup()
-        }
-        tool("Stamp", .stamp, hint: "Opens the stamps. Tap the card to stamp it.") {
+        case .stamp:
             // A date stamp's impression: a frame, a figure and a rule, pressed a little crooked.
-            VStack(spacing: 2.5) {
-                Text("06").font(Type.numbers(9)).foregroundStyle(composition.inks.color(.ink))
-                Rectangle().fill(composition.inks.color(.ink)).frame(width: 12, height: 1.4)
+            VStack(spacing: 2) {
+                Text("06").font(Type.numbers(8)).foregroundStyle(inks.color(.ink))
+                Rectangle().fill(inks.color(.ink)).frame(width: 11, height: 1.3)
             }
-            .padding(.horizontal, 4)
-            .padding(.vertical, 3)
-            .overlay(RoundedRectangle(cornerRadius: 2.5).strokeBorder(composition.inks.color(.ink), lineWidth: 1.4))
+            .padding(.horizontal, 3.5)
+            .padding(.vertical, 2.5)
+            .overlay(RoundedRectangle(cornerRadius: 2.5).strokeBorder(inks.color(.ink), lineWidth: 1.3))
             .rotationEffect(.degrees(-11))
+        case .rest:
+            EmptyView()
         }
-    }
-
-    private func tool(_ title: String, _ bench: PressSession.Bench, hint: String, @ViewBuilder mark: () -> some View) -> some View {
-        Button { open(bench) } label: {
-            HStack(spacing: 10) {
-                mark().frame(width: 24, height: 24).accessibilityHidden(true)
-                Text(title).font(Type.display(16))
-            }
-            .frame(maxWidth: .infinity)
-        }
-        .buttonStyle(.stub(.paper))
-        .accessibilityHint(hint)
     }
 }
 
@@ -57,25 +142,10 @@ struct StudioTray: View {
     let session: PressSession
     /// The stub's photograph: with it, the trays offer a pass through the stub itself.
     var photo: UIImage? = nil
-    let close: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // The tool's own line: its name, the way to take the last act off, and the way to put it down.
-            HStack(alignment: .center, spacing: 12) {
-                Text(session.bench == .pull ? "Overprint" : "Stamp").font(Type.display(20)).foregroundStyle(Ink.ink)
-                    .accessibilityAddTraits(.isHeader)
-                Spacer(minLength: 8)
-                Button("Take it off") {
-                    withAnimation(reduceMotion ? Motion.plain : Motion.settle) { session.takeOffLast() }
-                }
-                .buttonStyle(.stub(.quiet))
-                .disabled(session.acts.isEmpty)
-                .accessibilityHint("Takes the last pass or stamp off the card.")
-                Button("Done", action: close).buttonStyle(.stub(.ink))
-            }
-
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
                     if session.bench == .pull {
@@ -104,6 +174,13 @@ struct StudioTray: View {
 
             HStack(spacing: 6) {
                 ForEach(Act.Inking.allCases, id: \.self) { inking in pot(inking) }
+                Spacer(minLength: 8)
+                Button("Take it off") {
+                    withAnimation(reduceMotion ? Motion.plain : Motion.settle) { session.takeOffLast() }
+                }
+                .buttonStyle(.stub(.quiet))
+                .disabled(session.acts.isEmpty)
+                .accessibilityHint("Takes the last pass or stamp off the card.")
             }
         }
     }
