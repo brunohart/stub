@@ -287,7 +287,9 @@ struct BlankStub: View {
             HStack(alignment: .bottom, spacing: 16) { field("CINEMA"); field("SEAT", width: 58) }
             HStack(alignment: .bottom, spacing: 16) { field("DATE"); field("PRICE", width: 58) }
         }
+        // Printed on the drawing of a ticket, which is spoken as one picture (decision 005).
         .accessibilityHidden(true)
+        .accessibilityIdentifier("artwork")
     }
 
     private func field(_ label: String, width: CGFloat? = nil) -> some View {

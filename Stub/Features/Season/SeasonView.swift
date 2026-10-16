@@ -53,7 +53,7 @@ struct SeasonView: View {
                     if !ledger.isEmpty {
                         VStack(spacing: 0) {
                             ForEach(Array(ledger.enumerated()), id: \.offset) { i, line in
-                                Line(label: line.label, value: line.value, accent: line.accent)
+                                LedgerLine(label: line.label, value: line.value, accent: line.accent)
                                     .placedInTurn(2 + i, placed: placed)
                             }
                         }
@@ -229,9 +229,9 @@ private struct Nights: View {
     }
 }
 
-/// One ruled line of the ledger: the label in the quiet grey, the fact in words. The label stands above the fact
-/// where the two would not fit side by side.
-private struct Line: View {
+/// One ruled line of a ledger: the label in the quiet grey, the fact in words. The label stands above the fact where the
+/// two would not fit side by side. The season's ledger, and the colophon under a card (ADR-034, ADR-048).
+struct LedgerLine: View {
     let label: String
     let value: String
     var accent = false

@@ -168,9 +168,12 @@ struct Edition: Hashable, Codable, Sendable {
         return pulled
     }
 
-    /// "Constructivist, on holographic stock": the colophon's words for what this is.
-    var described: String {
-        let stockWords: String = switch stock {
+    /// "Constructivist, overprinted, sand inks": the design, as the colophon names it.
+    var designWords: String { "\(movement.rawValue.capitalized), \(Hand.of(self).word), \(palette.rawValue) inks" }
+
+    /// "Foil on coated card": the card it is printed on.
+    var stockWords: String {
+        let words: String = switch stock {
         case .cotton: "on cotton"
         case .coated: "on coated card"
         case .foil: "foil on coated card"
@@ -180,8 +183,11 @@ struct Edition: Hashable, Codable, Sendable {
         case .velvet: "on soft-touch card"
         case .pearl: "on pearl card"
         }
-        return "\(movement.rawValue.capitalized), \(Hand.of(self).word), \(palette.rawValue) inks, \(stockWords)"
+        return words
     }
+
+    /// "Constructivist, overprinted, sand inks, foil on coated card": the colophon's words for what this is.
+    var described: String { "\(designWords), \(stockWords)" }
 }
 
 /// The floor: an edition drawn from the release's hash alone, before and without the model.

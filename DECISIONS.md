@@ -619,3 +619,7 @@ impact:
   line "Nothing in the drawer yet." over Bruno's new sentence ("Every film you saw in cinemas, and a place to store and
   design keepsakes from each moment"), and the button.
 - The season's sentence said "Twenty-Four"; only its first letter is raised now.
+- **The detail's machinery read as debug output**: "Read by heuristics · confidence 100%" and the edition's line in
+  wrapped mono. It is now a colophon set as the season's ledger is (`LedgerLine`): Read by, Edition or Variant, Printed,
+  Chosen, History, one fact to a ruled line. The rules are named "Stub's reader", not "heuristics". What scrolls under
+  the bar's buttons softens into the system's scroll edge, so the card's words never run into Back and Share.

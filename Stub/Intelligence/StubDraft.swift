@@ -60,7 +60,8 @@ enum ReadBy {
     static func words(_ readBy: String) -> String {
         switch readBy {
         case "foundation-models": return "the on-device model"
-        case "heuristic": return "heuristics"
+        // The rules that read a ticket on the phone, named as a person would, not as an engineer would (ADR-048).
+        case "heuristic": return "Stub's reader"
         case "manual": return "you"
         case "link": return "a link"
         case "shortcut": return "a shortcut"

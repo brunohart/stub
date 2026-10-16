@@ -68,27 +68,18 @@ struct StubDetailView: View {
                             if let p = stub.displayPrice { Figure("Paid", p) }
                         }
 
-                        Divider().overlay(Ink.ink.opacity(0.15))
-
-                        Text("Read by \(ReadBy.words(stub.readBy)) · confidence \(Int(stub.confidence * 100))%")
-                            .font(Type.numbers(12)).foregroundStyle(Ink.grey)
-                            .accessibilityLabel("Read by \(ReadBy.words(stub.readBy)), \(Int(stub.confidence * 100)) percent confident.")
-
-                        // Honest machinery for the edition too: what it is, and who chose it (DESIGN.md rule 7).
-                        if let edition = editions.edition(for: stub.title)?.pulled(viewing: copy.viewing) {
-                            Text("\(edition.kind.capitalized): \(edition.described.lowercased()) · \(edition.directedBy.words)")
-                                .font(Type.numbers(12)).foregroundStyle(Ink.grey)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-
-                        // What the card has earned, said plainly: the punches and the patina are its history (ADR-032).
-                        if let history {
-                            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                                Image(systemName: "clock.arrow.circlepath").font(.system(size: 12)).foregroundStyle(Ink.grey)
-                                Text(history).font(Type.words(13)).foregroundStyle(Ink.soft(0.7))
-                                    .fixedSize(horizontal: false, vertical: true)
+                        // The colophon: honest machinery, set as the season's ledger is, one fact to a ruled line: who
+                        // read the ticket and how sure, what the card is, what it is printed on, who chose it, and what
+                        // time and hands have done to it (DESIGN.md rule 7, ADR-032, ADR-048).
+                        VStack(spacing: 0) {
+                            Rectangle().fill(Ink.ink.opacity(0.14)).frame(height: 0.5)
+                            LedgerLine(label: "Read by", value: "\(ReadBy.words(stub.readBy).prefix(1).uppercased() + ReadBy.words(stub.readBy).dropFirst()), \(Int(stub.confidence * 100))% sure")
+                            if let edition = editions.edition(for: stub.title)?.pulled(viewing: copy.viewing) {
+                                LedgerLine(label: edition.kind.capitalized, value: edition.designWords)
+                                LedgerLine(label: "Printed", value: edition.stockWords)
+                                LedgerLine(label: "Chosen", value: edition.directedBy.words)
                             }
-                            .accessibilityElement(children: .combine)
+                            if let history { LedgerLine(label: "History", value: history) }
                         }
 
                         // What the press keeps: the whole difference between this card and the title's, as it is stored
@@ -143,6 +134,9 @@ struct StubDetailView: View {
                     .padding(20)
                     .padding(.bottom, 80)
                 }
+                // What scrolls under the bar's buttons softens into the paper there, as the system's own bars do, so the
+                // card's words never run into Back and Share (ADR-048).
+                .scrollEdgeEffectStyle(.soft, for: .top)
                 #if DEBUG || PERF
                 .task {
                     // `-keeps`: open what the press keeps and bring it on screen, so it can be screenshotted.
