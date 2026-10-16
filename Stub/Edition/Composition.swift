@@ -33,9 +33,20 @@ struct Composition: Sendable, Equatable {
         self.inks = edition.palette.inks
         self.copy = copy
         let composer = Composer(edition: edition, inks: inks, copy: copy)
-        // The press's moves made over the movement's drawing (ADR-031): As drawn changes nothing.
-        poster = composer.treated(composer.poster())
         posterField = edition.movement == .noir ? .dark : .ground
+        // The press's moves made over the movement's drawing (ADR-031): As drawn changes nothing. Under it, the hand's
+        // one move (ADR-045).
+        let drawn = composer.treated(composer.poster())
+        // The hand reads the release's own drawing, takes and all left out, so turning a part never moves it.
+        var bare = edition
+        bare.takes = [:]
+        let base = edition.takes.isEmpty ? drawn : Composer(edition: bare, inks: inks, copy: copy).poster()
+        let hand = Hand.of(edition).marks(under: base, edition: edition, inks: inks, field: posterField).map { mark in
+            var mark = mark
+            mark.part = edition.movement.hand.id
+            return mark
+        }
+        poster = Hand.laid(hand, into: drawn)
         stripField = edition.movement == .noir ? .dark : .ground
         strip = composer.strip(on: stripField)
         inBetween = nil

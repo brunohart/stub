@@ -185,6 +185,8 @@ struct PressTests {
             let copy = Copy(title: title, time: "19:30", seat: "H12", year: 2024)
             return Composition(edition: edition, copy: copy).poster.filter {
                 if case .words = $0.shape { return false }
+                // The mirror draws the movements; the hand is laid over them in Swift (ADR-045).
+                if $0.part?.hasSuffix("/hand") == true { return false }
                 return $0.part != "blueprint/grid"
             }
         }
@@ -510,7 +512,7 @@ struct PullTests {
         #expect(pencil.artistsProof)
         #expect(pencil.takes == "disc echo · bars turned", "in the order the parts are drawn")
         #expect(pencil.spoken(signed: true) == "Signed, artist's proof, disc echoed, bars turned.")
-        #expect(edition.colophon == "Constructivist, sand inks, foil on coated card. Artist's proof, pulled by you.")
+        #expect(edition.colophon == "Constructivist, \(Hand.of(edition).word), sand inks, foil on coated card. Artist's proof, pulled by you.")
         let inks = Genome.floor(for: "The Brutalist").applying(Proof(release: edition.release, palette: .moss))
         #expect(Pencil(edition: inks)?.takes == nil, "A/P alone when no take differs")
     }

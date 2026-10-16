@@ -48,6 +48,16 @@ enum Parts {}
 extension Movement {
     /// The parts this movement draws, in order.
     var parts: [Part] {
+        drawn + [hand]
+    }
+
+    /// The edition's own pass, laid by its hand (ADR-045): the release's, drawn under the rest, and never turned.
+    var hand: Part {
+        Part.set("\(rawValue)/hand", "the hand", note: "The hand is the release's own pass, under the drawing.")
+    }
+
+    /// The parts the movement draws itself, in order.
+    private var drawn: [Part] {
         switch self {
         case .swiss: Parts.Swiss.all
         case .constructivist: Parts.Constructivist.all

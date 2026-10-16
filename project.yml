@@ -122,6 +122,7 @@ targets:
       # The edition, drawn from its marks (ADR-027): everything but the light, the stock's shaders and the back.
       - path: Stub/Edition/Edition.swift
       - path: Stub/Edition/Composition.swift
+      - path: Stub/Edition/Hand.swift
       - path: Stub/Edition/Marks.swift
       - path: Stub/Edition/Part.swift
       - path: Stub/Edition/PaletteInks.swift

@@ -498,3 +498,43 @@ beside the regular.
 **Consequences.** The edition is still the film's and the same on every phone for a first viewing. A later viewing's
 card is the same on every phone for that viewing number. `VariantTests` render two viewings and require that more than
 half the card differs.
+
+## ADR-044 — Each year turns over on its own, from a tab on its folder
+
+**Date:** 2026-10-16 · **Status:** decided; built. DESIGN.md rule 4.
+
+**What changed.** Bruno: the tickets and editions switch, floating over the drawer as one control for every year, felt
+off; each year should flick between editions and stubs, integrated into the design, and the control should be larger
+and more obvious while staying elegant. The drawer-wide picker is gone. Every year folder has a second tab at its right
+end, always in the same place, under the thumb: Tickets and Editions in words, the side showing under the ink thumb the
+drawer's other choices use (ADR-029), each side a 44-point target that turns the year over when chosen. The year's tab
+staggers between two positions so the two tabs never meet. At the accessibility sizes they stack. A flick across a
+year's stubs turns it too. The flick reads the finger's predicted end, so a quick one counts. Its stubs turn one after
+another from the first in the year, not from the top of the drawer. Each year remembers its side, per drawer
+(`drawer.turnedYears`). A year turned back to the drawer's way forgets it was turned. The press prints missing editions
+whenever any year shows them. `-face` sets every year one way, for screenshots and tests.
+
+**Why.** A switch above the cabinet is the app's chrome; a tab on the folder is the cabinet's own. A person looks at a
+year as a year: a festival's editions beside last winter's tickets.
+
+## ADR-045 — Every edition has a hand: one master's move under the movement's drawing
+
+**Date:** 2026-10-16 · **Status:** decided; built; contact sheets checked by eye. DESIGN.md, Editions rule 9.
+
+**What changed.** Bruno: push the editions' quality, style and individuality, with taste from designers such as Karel
+Martens, without losing the movements or the press. A contact sheet of every movement showed the fault: within a
+movement every film came out nearly the same, the hash changing a title and inks but hardly the composition. Each edition
+now has a hand (`Hand`), drawn from the release's seed among the devices its movement admits: overprinted (Martens),
+on the grid (Crouwel), in sequence (Aicher), at scale (Corita Kent, Paula Scher). The hand reads the release's own
+drawing (takes left out, so turning a part never moves it), keeps clear of its type and its large forms, and is laid
+over the field a movement lays first and under everything else. It multiplies into a light ground and screens onto a
+dark one in the lighter ink. It is a declared part of every movement (`<movement>/hand`) that never turns. The colophon
+names it ("Constructivist, overprinted, sand inks, …").
+
+**Why.** A movement is a grammar; the hand is the decision a designer makes inside it. The first pass, checked on contact
+sheets, overprinted rectangles into stray frames, scattered grid cells at random, and hid under full-bleed fields; the
+second admits each device only where it survives the movement's grammar, echoes only discs and rings, and builds the grid's
+monogram from a five-by-seven alphabet in the clear place nearest a seeded corner.
+
+**Consequences.** `docs/editions/edition.js` draws the movements, not the hand; the goldens compare the movement's marks.
+The masters are named here and in DESIGN.md, never on a card.

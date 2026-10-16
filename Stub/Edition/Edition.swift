@@ -164,7 +164,7 @@ struct Edition: Hashable, Codable, Sendable {
         case .foil: "foil on coated card"
         case .holographic: "holographic film on coated card"
         }
-        return "\(movement.rawValue.capitalized), \(palette.rawValue) inks, \(stockWords)"
+        return "\(movement.rawValue.capitalized), \(Hand.of(self).word), \(palette.rawValue) inks, \(stockWords)"
     }
 }
 
