@@ -2,6 +2,53 @@
 
 Newest at the top. One entry per slot. What shipped, what broke, what the reader did.
 
+## 2026-10-16 — The moment, measured: budgets, reach, accessibility and the record
+
+Not a playbook day. Bruno's brief: define the moment, build the corpus, set budgets that are the definition of done, make
+every flow accessible, design network effects that collect nothing, draft the proof kits, and keep the record.
+
+**The record.** `docs/decisions/`: 001 the moment (the ninety seconds after the lights come up), 002 the surfaces, 003 the
+kill list (the room and the inline widget cut; three cuts put to Bruno with their evidence), 004 the budgets, 005
+accessibility, 006 network effects without collecting data and the business model, 007 proof outside us, 008 the corpus.
+`docs/proof/`: the exit test, the TestFlight cohort, the very-disappointed survey and the VoiceOver session, ready to run.
+
+**Shipped.** The rules' draft is keepable at once and the model improves it in place for at most eight seconds (ADR-037).
+Signposts, a Performance configuration, `StubUITests` with Apple's performance metrics, `perf/budgets.json`,
+`scripts/perf.sh` and `scripts/budgets.py`, and `.github/workflows/ci.yml` (ADR-038). Fixed in order of feel, before and
+after on the SE 2 simulator (ADR-039): shutter to keepable on the model path 4.20 s to 1.50 s; the reader's last word
+14.1 s to 9.7 s; Keep to saved 0.34 s to 0.03 s; Keep to the press 0.31 s to 0.10 s; launch to responsive 5.29 s to
+4.68 s; the drawer's time in `Copy.init` 9.9% to 0.4%; one motion manager instead of five. A Keep a stub control for the
+Lock Screen and the Action button, a booking's words through the share sheet, stubs in Spotlight, and shares that say
+which share they were (ADR-040). MetricKit reports kept on the phone; a corrected read can send its ticket's shape and
+never its contents (ADR-041). `corpus/` for real tickets, kept off git, and `scripts/eval.sh --corpus`. The accessibility
+audit in `StubUITests` and `scripts/a11y.sh`, and what it fixed (ADR-042). The Release build for a phone has no warnings.
+
+**Broke and fixed.** `ShareTests` read pixels through `Pixels`, which lived beside the room's card; it moved to the tests.
+A freshly booted simulator's model did not answer the eval's probe, and the run rewrote `docs/evals.md` without its
+model columns; the file was put back. The scroll test's identifier did not survive a drawer of editions redrawing; the
+fling now lands on the app.
+
+**The audit, judged** (ADR-042, decision 005). Apple's audit failed ink at 14:1 on Your card and passed a grey at 3.2:1 on
+a sample sheet (`-a11y-lab`): text grouped with its background under any rotation fails, whatever the inks. So the test
+collects every issue and settles only what evidence settles: printed artwork; contrast measured on the screen (the lowest
+5.1:1); type measured growing at the largest size; words Vision reads whole where they are drawn. Everything else fails.
+It found real faults, all fixed:
+- the press's part chips were out of VoiceOver's reach;
+- an empty, unlabelled element sat over the bed;
+- "Constructivist" broke mid-word on an SE at the default size;
+- the press, the plates, the drawer's picker and Your card cut words at the largest sizes, and the doors covered a third
+  of the drawer there;
+- an engraving measured 2.1:1 on the darkest brass;
+- words were set at 9 to 11 points.
+
+Words are now set level (DESIGN.md rule 3), and nothing in the interface is under 12 points. Clean on all ten screens, at
+both sizes, with Increase Contrast off and on: 0 issues, 234 settled by evidence. The simulator budgets all pass again
+afterwards, and the 170 unit tests pass. Screenshots: `2026-10-16-ax5-drawer.png`, `2026-10-16-press-choices.png`.
+
+**Still open.** Nothing has run on a phone (BEDIP-217): the device lane, hitches, energy, the model path on the Neural
+Engine and every *(device)* number wait for it. The corpus is empty. The shapes' address and the App Store campaign
+redirect wait on Bruno. Three kill-list cuts wait for his word.
+
 ## 2026-10-16 — The season's sentence, upright
 
 Not a playbook day. Bruno's note on the season sheet: not a fan of the cursive.

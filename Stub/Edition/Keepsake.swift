@@ -15,6 +15,9 @@ struct Keepsake: View {
     var takeToPress: (() -> Void)?
     /// Where the press room's zoom grows from.
     var pressSource: Namespace.ID?
+    /// The angle the card lay at in the drawer, in degrees: the card wears it, the words under it stay level (DESIGN.md
+    /// rule 3).
+    var restingTilt: Double = 0
 
     private let editions = Editions.shared
     @State private var attitude = Attitude()
@@ -40,13 +43,14 @@ struct Keepsake: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(stub: Stub, copy: Copy, turned: Binding<Bool>, pressesOnAppear: Bool = false,
-         takeToPress: (() -> Void)? = nil, pressSource: Namespace.ID? = nil) {
+         takeToPress: (() -> Void)? = nil, pressSource: Namespace.ID? = nil, restingTilt: Double = 0) {
         self.stub = stub
         self.copy = copy
         _turned = turned
         self.pressesOnAppear = pressesOnAppear
         self.takeToPress = takeToPress
         self.pressSource = pressSource
+        self.restingTilt = restingTilt
         _printed = State(initialValue: pressesOnAppear ? 0 : Plate.foil)
     }
 
@@ -55,7 +59,10 @@ struct Keepsake: View {
         VStack(alignment: .leading, spacing: 14) {
             GeometryReader { proxy in
                 let scale = proxy.size.width / Card.width
+                // Printed artwork: the card's spoken label (below) says what it shows (decision 005).
                 card(edition)
+                    .accessibilityHidden(true)
+                    .accessibilityIdentifier("artwork")
                     .scaleEffect(scale, anchor: .topLeading)
                     .frame(width: proxy.size.width, height: Card.height * scale, alignment: .topLeading)
                     .modifier(PressSource(namespace: pressSource))
@@ -65,6 +72,7 @@ struct Keepsake: View {
                     .simultaneousGesture(handle(scale: scale, stock: edition?.stock ?? .coated))
             }
             .aspectRatio(Card.width / Card.height, contentMode: .fit)
+            .rotationEffect(.degrees(restingTilt))
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(spoken(edition))
             .accessibilityHint(turned ? "Turns it back to the edition." : "Turns it over to the stub as it was scanned.")
@@ -80,7 +88,7 @@ struct Keepsake: View {
                     HStack(spacing: 10) {
                         ProgressView().tint(Ink.orange)
                         Text("Choosing an edition for \(stub.title)…")
-                            .font(Type.words(14)).foregroundStyle(Ink.ink.opacity(0.75))
+                            .font(Type.words(14)).foregroundStyle(Ink.soft(0.75))
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 } else {
@@ -370,18 +378,23 @@ struct GestureLegend: View {
     let items: [(symbol: String, words: String)]
 
     var body: some View {
-        HStack(spacing: 18) {
-            ForEach(items, id: \.words) { item in
-                HStack(spacing: 6) {
-                    Image(systemName: item.symbol).font(.system(size: 13, weight: .regular))
-                    Text(item.words).font(Type.words(13))
-                }
-                .foregroundStyle(Ink.ink.opacity(0.6))
-            }
+        // Side by side where they fit, one above the other where the type is large: never shrunk to fit (decision 005).
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 18) { lines }
+            VStack(alignment: .leading, spacing: 8) { lines }
         }
-        .lineLimit(1)
-        .minimumScaleFactor(0.8)
         .accessibilityElement(children: .combine)
+    }
+
+    private var lines: some View {
+        ForEach(items, id: \.words) { item in
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                // The symbol in the words' own face, so it grows with them.
+                Image(systemName: item.symbol).font(Type.words(13))
+                Text(item.words).font(Type.words(13)).fixedSize(horizontal: false, vertical: true)
+            }
+            .foregroundStyle(Ink.soft(0.7))
+        }
     }
 }
 

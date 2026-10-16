@@ -32,7 +32,7 @@ struct ShareView: View {
         case .loading:
             HStack(spacing: 10) {
                 ProgressView().tint(Ink.orange)
-                Text("Opening it…").font(Type.words(15)).foregroundStyle(Ink.ink.opacity(0.75))
+                Text("Opening it…").font(Type.words(15)).foregroundStyle(Ink.soft(0.75))
             }
         case .pass(let pass, _):
             PassPreview(pass: pass)
@@ -47,20 +47,20 @@ struct ShareView: View {
                 Label(kind == .pdf ? "The first page of the PDF. Stub reads it on the phone when you open it."
                                    : "A picture of the ticket. Stub reads it on the phone when you open it.",
                       systemImage: kind == .pdf ? "doc.richtext" : "rectangle.on.rectangle")
-                    .font(Type.words(14)).foregroundStyle(Ink.ink.opacity(0.75))
+                    .font(Type.words(14)).foregroundStyle(Ink.soft(0.75))
                     .fixedSize(horizontal: false, vertical: true)
             }
         case .text(let words, _):
             VStack(alignment: .leading, spacing: 12) {
                 // The booking's first lines, as handed over: the film and the night are nearly always near the top.
                 Text(words.split(whereSeparator: \.isNewline).prefix(12).joined(separator: "\n"))
-                    .font(Type.numbers(12)).foregroundStyle(Ink.ink.opacity(0.8))
+                    .font(Type.numbers(12)).foregroundStyle(Ink.soft(0.8))
                     .lineLimit(12)
                     .padding(14)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Ink.cream, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
                 Label("The words of a booking. Stub reads them on the phone when you open it.", systemImage: "envelope.open")
-                    .font(Type.words(14)).foregroundStyle(Ink.ink.opacity(0.75))
+                    .font(Type.words(14)).foregroundStyle(Ink.soft(0.75))
                     .fixedSize(horizontal: false, vertical: true)
             }
         case .failed(let why):
@@ -116,22 +116,22 @@ private struct PassPreview: View {
                 .font(Type.display(26)).tracking(Type.displayTracking(26)).foregroundStyle(Ink.ink)
                 .fixedSize(horizontal: false, vertical: true)
             if !pass.ticket.cinema.isEmpty {
-                Text(pass.ticket.cinema).font(Type.words(16)).foregroundStyle(Ink.ink.opacity(0.8))
+                Text(pass.ticket.cinema).font(Type.words(16)).foregroundStyle(Ink.soft(0.8))
             }
             HStack(spacing: 18) {
                 if let at = pass.ticket.at {
                     Text(at.formatted(.dateTime.day().month(.abbreviated).year().hour().minute()))
-                        .font(Type.numbers(13)).foregroundStyle(Ink.ink.opacity(0.75))
+                        .font(Type.numbers(13)).foregroundStyle(Ink.soft(0.75))
                 }
                 if !pass.ticket.seat.isEmpty {
-                    Text(pass.ticket.seat).font(Type.numbers(13)).foregroundStyle(Ink.ink.opacity(0.75))
+                    Text(pass.ticket.seat).font(Type.numbers(13)).foregroundStyle(Ink.soft(0.75))
                 }
                 if !pass.ticket.screen.isEmpty {
                     Text(pass.ticket.screen).font(Type.words(13)).foregroundStyle(Ink.grey)
                 }
             }
             Label("Read from the pass. No camera, no model.", systemImage: "wallet.pass")
-                .font(Type.words(14)).foregroundStyle(Ink.ink.opacity(0.75))
+                .font(Type.words(14)).foregroundStyle(Ink.soft(0.75))
         }
     }
 }

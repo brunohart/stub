@@ -12,7 +12,7 @@ An entry is never rewritten to look right later. If a decision is reversed, a ne
 | [002](002-surfaces.md) | The surfaces that reach that moment without opening the app | decided |
 | [003](003-kill-list.md) | The kill list | decided, three cuts awaiting Bruno |
 | [004](004-budgets.md) | Performance budgets are the definition of done | decided |
-| [005](005-accessibility.md) | Accessibility: every flow, every setting, an honest label | decided |
+| [005](005-accessibility.md) | Accessibility: every flow, every setting, an honest label | decided; the audit is clean; the VoiceOver session awaits a tester |
 | [006](006-network-without-data.md) | Network effects without collecting data | decided, pricing awaiting Bruno |
 | [007](007-proof.md) | Proof outside us | decided |
 | [008](008-corpus.md) | The corpus: real tickets, measured by kind | decided, corpus awaiting tickets |

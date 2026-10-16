@@ -103,6 +103,7 @@ struct CabinetRail: View {
     /// Shown when the open drawer is one the person made: let go here and the stub leaves it.
     var takeOut: (name: String, act: () -> Void)?
     @State private var over: String?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let scale: CGFloat = 0.62
 
     var body: some View {
@@ -128,7 +129,7 @@ struct CabinetRail: View {
                         .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(over == "out" ? Ink.rust : Ink.cream))
                         .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Ink.rust.opacity(0.4), style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
                         .scaleEffect(over == "out" ? 1.06 : 1)
-                        .animation(Motion.stamp, value: over)
+                        .animation(Motion.press(reduceMotion: reduceMotion), value: over)
                         .onDrop(of: [.stubCard], delegate: FileDrop(id: "out", over: $over, file: takeOut.act))
                     }
                 }
@@ -203,7 +204,7 @@ struct YearFolder: View {
         Button { toggle?() } label: {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(verbatim: "\(year)").font(Type.numbers(16)).foregroundStyle(Ink.ink)
-                Text("\(count)").font(Type.numbers(11)).foregroundStyle(Ink.grey)
+                Text("\(count)").font(Type.numbers(12)).foregroundStyle(Ink.grey)
                 if toggle != nil {
                     Image(systemName: "chevron.down")
                         .font(.system(size: 10, weight: .semibold))
@@ -257,8 +258,8 @@ struct YearFolder: View {
             .clipped()
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(count == 1 ? "One stub" : "\(SeasonSummary.spelled(count).capitalizedFirst) stubs")
-                    .font(Type.words(14)).foregroundStyle(Ink.ink.opacity(0.75))
-                if let months { Text(months).font(Type.numbers(11)).foregroundStyle(Ink.grey) }
+                    .font(Type.words(14)).foregroundStyle(Ink.soft(0.75))
+                if let months { Text(months).font(Type.numbers(12)).foregroundStyle(Ink.grey) }
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 18)
@@ -279,11 +280,18 @@ struct YearFolder: View {
 
 /// The tab pressed: it goes down a touch into the folder, and the tap lands at contact.
 private struct TabPress: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
+    func makeBody(configuration: Configuration) -> some View { TabPressed(configuration: configuration) }
+}
+
+private struct TabPressed: View {
+    let configuration: ButtonStyleConfiguration
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
         configuration.label
             .offset(y: configuration.isPressed ? 2 : 0)
             .brightness(configuration.isPressed ? -0.03 : 0)
-            .animation(configuration.isPressed ? Motion.touchDown : Motion.stamp, value: configuration.isPressed)
+            .animation(configuration.isPressed ? Motion.touchDown : Motion.press(reduceMotion: reduceMotion), value: configuration.isPressed)
             .sensoryFeedback(.impact(flexibility: .solid, intensity: 0.45), trigger: configuration.isPressed) { _, now in now }
     }
 }
@@ -364,6 +372,7 @@ struct ChooseStubsSheet: View {
     let stubs: [Stub]
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         NavigationStack {
@@ -395,7 +404,7 @@ struct ChooseStubsSheet: View {
     private func row(_ stub: Stub) -> some View {
         let filed = drawer.stubIDs.contains(stub.id)
         return Button {
-            withAnimation(Motion.stamp) {
+            withAnimation(Motion.press(reduceMotion: reduceMotion)) {
                 if filed { Cabinet.takeOut(stub.id, of: drawer) } else { Cabinet.file(stub, in: drawer, among: stubs) }
             }
             try? context.save()
@@ -403,12 +412,12 @@ struct ChooseStubsSheet: View {
             HStack(spacing: 14) {
                 Image(systemName: filed ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 22))
-                    .foregroundStyle(filed ? Ink.orange : Ink.grey.opacity(0.6))
+                    .foregroundStyle(filed ? Ink.orange : Ink.greyMark)
                     .contentTransition(.symbolEffect(.replace))
                 VStack(alignment: .leading, spacing: 2) {
                     Text(stub.title).displayText(16)
                     HStack(spacing: 8) {
-                        if let d = stub.displayDate { Text(d).numberText(11) }
+                        if let d = stub.displayDate { Text(d).numberText(12) }
                         if let place = stub.venue ?? stub.cinema { Text(place).font(Type.words(12)).foregroundStyle(Ink.grey).lineLimit(1) }
                     }
                 }

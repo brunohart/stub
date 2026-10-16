@@ -70,10 +70,12 @@ struct StubCard: View {
                 .overlay(alignment: .bottomLeading) { picture }
                 .rotation3DEffect(.degrees(angle), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
                 .opacity(carried ? 0.18 : 1)
+                // Touch-down: the stub sits up straight, overshooting once. Reduce Motion: it never tilts. Only the stub lies
+                // at an angle; the words under it are set level, as a label is (DESIGN.md rule 3).
+                .rotationEffect(.degrees(isPressed || reduceMotion ? 0 : stub.tilt))
             caption
         }
-        // Touch-down: the stub sits up straight and lifts a little, overshooting once. Reduce Motion: it never tilts.
-        .rotationEffect(.degrees(isPressed || reduceMotion ? 0 : stub.tilt))
+        // And lifts a little.
         .scaleEffect(isPressed ? 1.02 : 1)
         .animation(Motion.press(reduceMotion: reduceMotion), value: isPressed)
         .onChange(of: face) { _, next in turn(to: next) }
@@ -104,10 +106,16 @@ struct StubCard: View {
 
     @ViewBuilder
     private var picture: some View {
-        switch shown {
-        case .ticket: ticket
-        case .edition: EditionThumbnail(stub: stub, copy: copy)
+        // Printed artwork: the card's spoken label says what it shows, so its own type is not read out a second time, and
+        // is not judged as interface text (docs/decisions/005-accessibility.md).
+        Group {
+            switch shown {
+            case .ticket: ticket
+            case .edition: EditionThumbnail(stub: stub, copy: copy)
+            }
         }
+        .accessibilityHidden(true)
+        .accessibilityIdentifier("artwork")
     }
 
     /// The ticket as it was kept, its own shape, standing at the foot of the mount. A photograph that could not be cropped
@@ -141,8 +149,8 @@ struct StubCard: View {
                 .displayText(16)
                 .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) {
-                if let d = stub.displayDate { Text(d).numberText(11) }
-                if let s = stub.seat { Text(s).numberText(11) }
+                if let d = stub.displayDate { Text(d).numberText(12) }
+                if let s = stub.seat { Text(s).numberText(12) }
             }
             // An edition prints its cinema on its strip; a ticket may be too small to read.
             if shown == .ticket, let place = stub.venue ?? stub.cinema {
@@ -256,7 +264,7 @@ struct BlankStub: View {
     private var perforation: some View {
         VStack(spacing: 5) {
             ForEach(0..<14, id: \.self) { _ in
-                Circle().fill(Ink.grey.opacity(0.35)).frame(width: 4, height: 4)
+                Circle().fill(Ink.greyMark.opacity(0.55)).frame(width: 4, height: 4)
             }
         }
         .padding(.trailing, 22)

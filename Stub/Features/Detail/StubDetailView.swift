@@ -44,13 +44,13 @@ struct StubDetailView: View {
             ScrollViewReader { scroller in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
-                        Keepsake(stub: stub, copy: copy, turned: $turned, takeToPress: { pressing = true }, pressSource: press)
-                            .rotationEffect(.degrees(reduceMotion ? 0 : tilt))
+                        Keepsake(stub: stub, copy: copy, turned: $turned, takeToPress: { pressing = true }, pressSource: press,
+                                 restingTilt: reduceMotion ? 0 : tilt)
 
                         VStack(alignment: .leading, spacing: 6) {
                             Text(stub.title).displayText(34).fixedSize(horizontal: false, vertical: true)
                             if let cinema = stub.cinema {
-                                Text(cinema).font(Type.reading(20)).foregroundStyle(Ink.ink.opacity(0.8))
+                                Text(cinema).font(Type.reading(20)).foregroundStyle(Ink.soft(0.8))
                             }
                             // Which drawers it is filed in, and the way to file it: one quiet line (ADR-026, ADR-030).
                             file.padding(.top, 4)
@@ -68,13 +68,13 @@ struct StubDetailView: View {
                         Divider().overlay(Ink.ink.opacity(0.15))
 
                         Text("Read by \(ReadBy.words(stub.readBy)) · confidence \(Int(stub.confidence * 100))%")
-                            .font(Type.numbers(11)).foregroundStyle(Ink.grey)
+                            .font(Type.numbers(12)).foregroundStyle(Ink.grey)
                             .accessibilityLabel("Read by \(ReadBy.words(stub.readBy)), \(Int(stub.confidence * 100)) percent confident.")
 
                         // Honest machinery for the edition too: what it is, and who chose it (DESIGN.md rule 7).
                         if let edition = editions.edition(for: stub.title) {
                             Text("Edition: \(edition.described.lowercased()) · \(edition.directedBy.words)")
-                                .font(Type.numbers(11)).foregroundStyle(Ink.grey)
+                                .font(Type.numbers(12)).foregroundStyle(Ink.grey)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
 
@@ -82,7 +82,7 @@ struct StubDetailView: View {
                         if let history {
                             HStack(alignment: .firstTextBaseline, spacing: 8) {
                                 Image(systemName: "clock.arrow.circlepath").font(.system(size: 12)).foregroundStyle(Ink.grey)
-                                Text(history).font(Type.words(13)).foregroundStyle(Ink.ink.opacity(0.7))
+                                Text(history).font(Type.words(13)).foregroundStyle(Ink.soft(0.7))
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                             .accessibilityElement(children: .combine)
@@ -94,11 +94,11 @@ struct StubDetailView: View {
                             DisclosureGroup(isExpanded: $showProof) {
                                 VStack(alignment: .leading, spacing: 6) {
                                     Text(String(decoding: proof.json, as: UTF8.self))
-                                        .font(Type.numbers(12)).foregroundStyle(Ink.ink.opacity(0.7))
+                                        .font(Type.numbers(12)).foregroundStyle(Ink.soft(0.7))
                                         .fixedSize(horizontal: false, vertical: true)
                                         .textSelection(.enabled)
                                     Text("\(proof.json.count) bytes")
-                                        .font(Type.numbers(11)).foregroundStyle(Ink.grey)
+                                        .font(Type.numbers(12)).foregroundStyle(Ink.grey)
                                 }
                                 .padding(.top, 8)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -111,7 +111,7 @@ struct StubDetailView: View {
 
                         if !stub.rawText.isEmpty {
                             DisclosureGroup(isExpanded: $showRaw) {
-                                Text(stub.rawText).font(Type.numbers(12)).foregroundStyle(Ink.ink.opacity(0.7)).padding(.top, 8)
+                                Text(stub.rawText).font(Type.numbers(12)).foregroundStyle(Ink.soft(0.7)).padding(.top, 8)
                             } label: {
                                 Text("What the reader saw").font(Type.words(14)).foregroundStyle(Ink.grey)
                             }
@@ -247,7 +247,7 @@ struct StubDetailView: View {
                     .font(Type.words(14))
                 Image(systemName: "chevron.up.chevron.down").font(.system(size: 9, weight: .semibold)).foregroundStyle(Ink.grey)
             }
-            .foregroundStyle(Ink.ink.opacity(0.75))
+            .foregroundStyle(Ink.soft(0.75))
             .frame(minHeight: 44)
             .contentShape(Rectangle())
         }

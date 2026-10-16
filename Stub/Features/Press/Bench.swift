@@ -150,7 +150,7 @@ struct Fan: View {
             }
             // Honest machinery: which card the title drew, and which the model chose.
             Text(movement == session.modelsMovement ? "the model's" : movement == session.titlesMovement ? "drawn from the title" : " ")
-                .font(Type.words(9))
+                .font(Type.words(12))
                 .foregroundStyle(Ink.grey)
                 .lineLimit(1)
                 .fixedSize()

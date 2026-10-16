@@ -11,6 +11,7 @@ struct Lever: View {
     var pulled: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var travel: CGFloat = 0
     @State private var gave = false
     @State private var feel = LeverFeel()
@@ -19,6 +20,21 @@ struct Lever: View {
     static let length: CGFloat = 150
     /// The share of the way down at which it gives.
     static let gives: CGFloat = 0.92
+
+    /// "Pull to keep" under the rail, fading as the handle comes down.
+    private var words: some View {
+        VStack(spacing: 1) {
+            Image(systemName: "arrow.down").font(Type.display(12))
+            Text("Pull").font(Type.display(12))
+            Text("to keep").font(Type.words(12))
+        }
+        .fixedSize()
+        .foregroundStyle(ready ? Ink.orange : Ink.grey)
+        .animation(Motion.settle, value: ready)
+        .opacity(1 - Double(travel / Self.length) * 1.6)
+        .offset(y: 36)
+        .accessibilityHidden(true)
+    }
 
     /// Where the handle is for a finger `drag` points down: a little behind the finger, more so the deeper it goes, so
     /// the resistance you feel is also one you see. It takes about 166 points of drag to reach the point where it gives.
@@ -46,16 +62,9 @@ struct Lever: View {
         .frame(width: 44, height: Self.length + 44, alignment: .top)
         // Named, so the way to pull a proof is not a thing to guess (ADR-022); the word goes as the handle comes down.
         .overlay(alignment: .bottom) {
-            VStack(spacing: 1) {
-                Image(systemName: "arrow.down").font(.system(size: 11, weight: .semibold))
-                Text("Pull").font(Type.display(12))
-                Text("to keep").font(Type.words(11))
-            }
-            .foregroundStyle(ready ? Ink.orange : Ink.grey)
-            .animation(Motion.settle, value: ready)
-            .opacity(1 - Double(travel / Self.length) * 1.6)
-            .offset(y: 36)
-            .accessibilityHidden(true)
+            // At the accessibility sizes the words would not fit beside the bed; the line over the bed says "Pull the
+            // lever to keep it" whenever there is something to keep (decision 005).
+            if !typeSize.isAccessibilitySize { words }
         }
         // When there is something new to keep, the handle dips once and comes back, so it is seen to move.
         .onChange(of: ready) { was, now in

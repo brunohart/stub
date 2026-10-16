@@ -53,6 +53,9 @@ struct EditionBack: View {
         .frame(width: Card.width, height: Card.height)
         // The punches go through both faces: from the back, each is where it is on the front, mirrored.
         .clipShape(TicketShape(punches: c.punches, mirrored: true))
+        // Printed artwork: whoever shows the card says what is on it (decision 005).
+        .accessibilityHidden(true)
+        .accessibilityIdentifier("artwork")
     }
 
     /// The photograph in four corners, or a blank stub if there is none.

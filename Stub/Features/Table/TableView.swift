@@ -49,6 +49,8 @@ struct TableView: View {
     private var inHand: Bool { carried != nil && moving }
     /// Which label the shelf is showing: "every", a made drawer's id, or "new".
     @State private var page: String?
+    /// Each plate's height on the shelf, which the shelf is as tall as (decision 005).
+    @State private var plateHeights: [String: CGFloat] = [:]
     /// A line over the dock for a moment after something is filed.
     @State private var notice: String?
     /// The cards have been dealt. Once a launch: coming back from a stub does not deal them again.
@@ -126,7 +128,7 @@ struct TableView: View {
                 VStack(spacing: 0) {
                     if let notice {
                         Text(notice)
-                            .font(Type.words(14)).foregroundStyle(Ink.ink.opacity(0.8))
+                            .font(Type.words(14)).foregroundStyle(Ink.soft(0.8))
                             .padding(.horizontal, 14).padding(.vertical, 9)
                             .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Ink.cream))
                             .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Ink.ink.opacity(0.12), lineWidth: 0.75))
@@ -190,6 +192,23 @@ struct TableView: View {
             .task(id: face == .edition ? members.count : -1) {
                 guard face == .edition else { return }
                 await printMissing()
+            }
+            // A stub found in Spotlight, or asked for by Siri or a shortcut (decision 002).
+            .onChange(of: reach.wantsStub, initial: true) { _, wanted in
+                guard let wanted else { return }
+                reach.wantsStub = nil
+                guard let stub = stubs.first(where: { $0.id == wanted }) else { return }
+                if !members.contains(where: { $0.id == wanted }) {
+                    openID = ""
+                    page = "every"
+                }
+                selected = stub
+            }
+            // The drawer in Spotlight's index, a moment after it last changed (decision 002).
+            .task(id: viewings.count) {
+                try? await Task.sleep(for: .seconds(2))
+                guard !Task.isCancelled else { return }
+                await Spotlight.index(stubs)
             }
             .onChange(of: reach.wantsImport, initial: true) { _, wants in
                 guard wants else { return }
@@ -306,11 +325,13 @@ struct TableView: View {
                                        years: DrawerLabel.years(of: stubs))) { showSeason = true }
                         .id("every")
                         .modifier(PlaqueDepth())
+                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { plateHeights["every"] = $0 }
                     ForEach(drawers) { drawer in
                         let filed = Cabinet.members(of: drawer, among: stubs)
                         DrawerLabel(.made(name: drawer.name, films: filed.count, years: DrawerLabel.years(of: filed))) { showSeason = true }
                             .id(drawer.id.uuidString)
                             .modifier(PlaqueDepth())
+                            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { plateHeights[drawer.id.uuidString] = $0 }
                             .contextMenu {
                                 Button("Rename", systemImage: "character.cursor.ibeam") { naming = .rename(drawer) }
                                 Button("Choose stubs", systemImage: "checklist") { choosing = drawer }
@@ -321,16 +342,18 @@ struct TableView: View {
                         DrawerLabel(.blank) { naming = .new(filing: nil) }
                             .id("new")
                             .modifier(PlaqueDepth())
+                            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { plateHeights["new"] = $0 }
                     }
                 }
                 .scrollTargetLayout()
             }
-            .contentMargins(.horizontal, max(20, (proxy.size.width - DrawerLabel.size.width) / 2), for: .scrollContent)
+            .contentMargins(.horizontal, max(20, (proxy.size.width - DrawerLabel.size(for: typeSize).width) / 2), for: .scrollContent)
             .scrollTargetBehavior(.viewAligned)
             .scrollPosition(id: $page, anchor: .center)
             .scrollClipDisabled()
         }
-        .frame(height: DrawerLabel.size.height + 16)
+        // As tall as the tallest plate on it, which grows with the type (decision 005).
+        .frame(height: (plateHeights.values.max() ?? DrawerLabel.size(for: typeSize).height) + 16)
         .onAppear { if page == nil { page = openID.isEmpty ? "every" : openID } }
         .onChange(of: page) { _, now in
             guard let now, now != "new" else { return }
@@ -678,12 +701,15 @@ private struct StagedScroll: ViewModifier {
 final class Viewings {
     private(set) var of: [UUID: (viewing: Int, of: Int)] = [:]
     private var signature: [String] = []
+    /// Changes whenever the drawer's stubs, titles or nights do: what Spotlight's index follows.
+    private(set) var count = 0
 
     func refresh(_ stubs: [Stub]) {
         let now = stubs.map { "\($0.id)\($0.title)\(($0.screenedAt ?? $0.createdAt).timeIntervalSince1970)" }
         guard now != signature else { return }
         signature = now
         of = Copy.viewings(in: stubs)
+        count &+= 1
     }
 }
 
@@ -718,7 +744,7 @@ struct Invitation: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(title).font(Type.reading(21)).foregroundStyle(Ink.ink).fixedSize(horizontal: false, vertical: true)
-            Text(words).font(Type.words(15)).foregroundStyle(Ink.ink.opacity(0.7)).fixedSize(horizontal: false, vertical: true)
+            Text(words).font(Type.words(15)).foregroundStyle(Ink.soft(0.7)).fixedSize(horizontal: false, vertical: true)
             Button(action: act) {
                 HStack(spacing: 8) {
                     Image(systemName: symbol).font(.system(size: 15, weight: .medium))
@@ -737,12 +763,13 @@ extension Dock {
     var keepButton: some View {
         Button(action: keep) {
             HStack(spacing: 8) {
-                Image(systemName: "camera").font(.system(size: 15, weight: .medium))
+                Image(systemName: "camera").font(Type.display(15))
                 Text("Keep a stub")
             }
             .frame(maxWidth: .infinity)
         }
         .buttonStyle(.stub(.ink))
+        .accessibilityShowsLargeContentViewer()
         .accessibilityHint("Opens the camera on a ticket. A photograph or typing it in are there too.")
     }
 }
@@ -813,7 +840,7 @@ struct EmptyDrawer: View {
             // The empty drawer's one sentence: what the drawer is for. Reading type, smaller and quieter than the season's.
             Text(SeasonSummary().handSentence)
                 .font(Type.reading(19))
-                .foregroundStyle(Ink.ink.opacity(0.8))
+                .foregroundStyle(Ink.soft(0.8))
                 .lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)
             Button(action: add) {
@@ -855,6 +882,7 @@ struct Dock: View {
                 .frame(maxWidth: typeSize.isAccessibilitySize ? .infinity : nil)
             }
             .buttonStyle(.stub(.paper))
+            .accessibilityShowsLargeContentViewer()
             .accessibilityLabel("The season, \(films) \(films == 1 ? "film" : "films")")
             .accessibilityHint("The numbers behind the sentence.")
 
@@ -863,6 +891,11 @@ struct Dock: View {
         .padding(.horizontal, 20)
         .padding(.top, 44)
         .padding(.bottom, 8)
+        // A bar that stays on screen grows to the first accessibility size and no further, and a hold shows its words
+        // large, as the system's own bars do; otherwise the doors would cover a third of the drawer (decision 005).
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+        // For the audit: the drawer scrolls under the doors' fade on purpose (decision 005).
+        .accessibilityIdentifier("bar")
         .background {
             LinearGradient(stops: [.init(color: Ink.paper.opacity(0), location: 0), .init(color: Ink.paper.opacity(0.92), location: 0.42),
                                    .init(color: Ink.paper, location: 0.6)],

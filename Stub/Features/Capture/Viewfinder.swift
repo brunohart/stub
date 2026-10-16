@@ -35,6 +35,12 @@ struct Viewfinder: View {
                     feed
                         .frame(width: full.size.width, height: full.size.height)
                         .clipped()
+                        // The camera's picture: what is printed on a ticket in it is the ticket's, said by the line below
+                        // once it is read (decision 005).
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Viewfinder")
+                        .accessibilityAddTraits(.isImage)
+                        .accessibilityIdentifier("artwork")
                     if camera.canTake {
                         RegistrationFrame(quad: camera.quad.map { $0.inView(full.size, image: camera.imageSize, fill: camera.fills) },
                                           rest: restingFrame(in: full.size), locked: camera.locked)
@@ -196,10 +202,10 @@ private struct SideControl: View {
     var body: some View {
         VStack(spacing: 6) {
             Image(systemName: symbol).font(.system(size: 21, weight: .regular)).frame(height: 26)
-            Text(title).font(Type.words(13))
+            Text(title).font(Type.words(13)).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
         }
         .foregroundStyle(Ink.paper)
-        .frame(width: 84, height: 64)
+        .frame(minWidth: 72, minHeight: 64)
         .contentShape(Rectangle())
     }
 }

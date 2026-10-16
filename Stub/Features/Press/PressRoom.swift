@@ -11,6 +11,10 @@ struct PressRoom: View {
     @State private var session: PressSession
     @State private var attitude = Attitude()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
+    /// How tall the edition's three choices stand: one row when their words fit across, more when they do not. The bench
+    /// grows by what is over one row, so a word never breaks and the bed still never moves when an object opens.
+    @State private var choicesHeight: CGFloat = PressRoom.oneRow
     @Namespace private var rotor
     /// Where the separation stood when the pinch began.
     @State private var pinchedFrom: CGFloat?
@@ -45,41 +49,18 @@ struct PressRoom: View {
         _session = State(initialValue: PressSession(title: stub.title, copy: copy))
     }
 
+    /// The choices' height as one row, which the bench's heights were set for.
+    fileprivate static let oneRow: CGFloat = 56
+
     var body: some View {
         ZStack {
             Paper()
-            VStack(spacing: 0) {
-                // Whether what is on the press is kept: pulling is the only way it becomes the card (ADR-030).
-                KeepLine(unkept: session.somethingToPull && !session.turned, justPulled: session.justPulled)
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 6)
-                HStack(alignment: .top, spacing: 4) {
-                    bed
-                    // The lever runs down the right of the bed.
-                    Lever(ready: session.somethingToPull) { pull() }
-                        .padding(.top, 28)
-                        .opacity(session.turned ? 0.3 : 1)
-                        .disabled(session.turned)
-                }
-                .frame(maxHeight: .infinity)
-                .padding(.leading, 20)
-                .padding(.trailing, 6)
-                .padding(.top, 4)
-
-                // The status line: what is in hand and which take, or what to do next. Words, and the take in the mono:
-                // an instruction is not the app's voice, so it is not the italic (ADR-022).
-                status
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, minHeight: 48)
-                    .padding(.horizontal, 28)
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(session.sentence(at: session.position))
-                    .accessibilityAddTraits(.updatesFrequently)
-
-                bench
-                    .frame(height: session.focus != nil ? 268 : session.bench == .rest ? 214 : 262)
-                    .animation(reduceMotion ? Motion.plain : Motion.settle, value: session.bench)
+            // At the accessibility sizes the room scrolls, the card at a height of its own, rather than squeezing the card
+            // to a stamp or cutting a word (decision 005).
+            if typeSize.isAccessibilitySize {
+                ScrollView { room(scrolls: true) }
+            } else {
+                room(scrolls: false)
             }
         }
         .navigationBarTitleDisplayMode(.inline)
@@ -126,6 +107,47 @@ struct PressRoom: View {
         #endif
     }
 
+    /// The bench's height for what is on it, grown by however much the choices stand over one row.
+    private var benchHeight: CGFloat {
+        if session.focus != nil { return 268 }
+        return (session.bench == .rest ? 214 : 262) + max(0, choicesHeight - Self.oneRow)
+    }
+
+    /// The press: the line that says whether it is kept, the bed and its lever, the status line and the bench.
+    private func room(scrolls: Bool) -> some View {
+        VStack(spacing: 0) {
+            // Whether what is on the press is kept: pulling is the only way it becomes the card (ADR-030).
+            KeepLine(unkept: session.somethingToPull && !session.turned, justPulled: session.justPulled)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 6)
+            HStack(alignment: .top, spacing: 4) {
+                bed
+                // The lever runs down the right of the bed.
+                Lever(ready: session.somethingToPull) { pull() }
+                    .padding(.top, 28)
+                    .opacity(session.turned ? 0.3 : 1)
+                    .disabled(session.turned)
+            }
+            .frame(maxHeight: scrolls ? nil : .infinity)
+            .frame(height: scrolls ? 440 : nil)
+            .padding(.leading, 20)
+            .padding(.trailing, 6)
+            .padding(.top, 4)
+
+            // The status line: what is in hand and which take, or what to do next. Words, and the take in the mono:
+            // an instruction is not the app's voice, so it is not the italic (ADR-022).
+            status
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, minHeight: 48)
+                .padding(.horizontal, 28)
+
+            bench
+                .frame(height: scrolls && session.focus == nil ? nil : benchHeight)
+                .animation(reduceMotion ? Motion.plain : Motion.settle, value: session.bench)
+        }
+    }
+
     /// A part in hand reads as its name and its take, the number in the mono; anything else is the session's sentence.
     @ViewBuilder
     private var status: some View {
@@ -137,7 +159,9 @@ struct PressRoom: View {
                     .contentTransition(.identity)
                     .transaction { $0.animation = nil }
             }
+            .modifier(Spoken(sentence: session.sentence(at: session.position)))
         } else if session.focus == nil, session.bench == .rest, !session.turned, session.separation == 0, session.explaining == nil {
+            // The chips are buttons, each reached on its own; the line above them is their heading.
             PartChips(session: session) { part in
                 withAnimation(reduceMotion ? Motion.plain : Motion.settle) { session.pickUp(part) }
             }
@@ -145,9 +169,21 @@ struct PressRoom: View {
             // The words change the moment the press does, never cross-fading under the plates' spring.
             Text(session.sentence(at: session.position))
                 .font(Type.words(16))
-                .foregroundStyle(Ink.ink.opacity(0.75))
+                .foregroundStyle(Ink.soft(0.75))
                 .contentTransition(.identity)
                 .transaction { $0.animation = nil }
+                .modifier(Spoken(sentence: session.sentence(at: session.position)))
+        }
+    }
+
+    /// The status line as VoiceOver hears it: the session's whole sentence, which changes as the dial turns.
+    private struct Spoken: ViewModifier {
+        let sentence: String
+        func body(content: Content) -> some View {
+            content
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(sentence)
+                .accessibilityAddTraits(.updatesFrequently)
         }
     }
 
@@ -454,11 +490,7 @@ struct PressRoom: View {
             VStack(spacing: 18) {
                 // The genome's three choices are the front's; on the back there is only the margin.
                 if !session.turned {
-                    HStack(alignment: .top, spacing: 10) {
-                        choice(.movement, "Movement", session.edition.movement.rawValue.capitalized)
-                        choice(.inks, "Inks", session.edition.palette.rawValue.capitalized)
-                        choice(.stock, "Stock", session.edition.stock.words)
-                    }
+                    choices
                 }
                 switch session.bench {
                 case .movement:
@@ -569,9 +601,38 @@ private struct FlatSheets: View {
 }
 
 extension PressRoom {
+    /// The edition's three choices: side by side where their words fit, the movement on a row of its own over the other
+    /// two where it is long ("Constructivist" on a small phone), all three as rows where the type is large. A word is never
+    /// broken or shrunk (decision 005).
+    fileprivate var choices: some View {
+        let movement = session.edition.movement.rawValue.capitalized
+        let inks = session.edition.palette.rawValue.capitalized
+        let stock = session.edition.stock.words
+        return ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: 10) {
+                choice(.movement, "Movement", movement)
+                choice(.inks, "Inks", inks)
+                choice(.stock, "Stock", stock)
+            }
+            VStack(spacing: 8) {
+                choice(.movement, "Movement", movement, wide: true)
+                HStack(alignment: .top, spacing: 10) {
+                    choice(.inks, "Inks", inks)
+                    choice(.stock, "Stock", stock)
+                }
+            }
+            VStack(spacing: 8) {
+                choice(.movement, "Movement", movement, wide: true)
+                choice(.inks, "Inks", inks, wide: true)
+                choice(.stock, "Stock", stock, wide: true)
+            }
+        }
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { choicesHeight = $0 }
+    }
+
     /// One of the edition's three choices on the bench: what it is now, and the word for it. Tapped, it opens its
-    /// object; tapped again, it closes.
-    fileprivate func choice(_ bench: PressSession.Bench, _ label: String, _ value: String) -> some View {
+    /// object; tapped again, it closes. `wide`, it is a row: the word for it on the left, what it is on the right.
+    fileprivate func choice(_ bench: PressSession.Bench, _ label: String, _ value: String, wide: Bool = false) -> some View {
         let open = session.bench == bench
         let other = session.bench != .rest && !open
         return Button {
@@ -581,9 +642,21 @@ extension PressRoom {
                 session.bench = open ? .rest : bench
             }
         } label: {
-            VStack(spacing: 3) {
-                Text(value).font(Type.words(16))
-                Text(label).font(Type.words(12)).opacity(0.6)
+            let quiet = open ? Ink.paper.opacity(0.78) : Ink.soft(0.7)
+            Group {
+                if wide {
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        Text(label).font(Type.words(12)).foregroundStyle(quiet)
+                        Spacer(minLength: 0)
+                        Text(value).font(Type.words(16)).multilineTextAlignment(.trailing)
+                    }
+                } else {
+                    VStack(spacing: 3) {
+                        // One line: where it would not fit, the choices change shape instead (`choices`).
+                        Text(value).font(Type.words(16)).lineLimit(1).fixedSize()
+                        Text(label).font(Type.words(12)).foregroundStyle(quiet)
+                    }
+                }
             }
             .frame(maxWidth: .infinity)
             .opacity(other ? 0.55 : 1)
@@ -643,6 +716,7 @@ private struct PartChips: View {
     var body: some View {
         VStack(spacing: 8) {
             Text("Tap a part of the poster, or choose one").font(Type.words(13)).foregroundStyle(Ink.grey)
+                .accessibilityAddTraits(.isHeader)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(session.turnable) { part in
@@ -755,25 +829,28 @@ private struct KeepLine: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        HStack(spacing: 8) {
+        let saying = unkept || justPulled
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
             if unkept {
                 Circle().fill(Ink.orange).frame(width: 7, height: 7)
                 Text("Not kept yet").font(Type.display(14)).foregroundStyle(Ink.ink)
                 Text("Pull the lever to keep it").font(Type.words(14)).foregroundStyle(Ink.grey)
-                Image(systemName: "arrow.right").font(.system(size: 11, weight: .semibold)).foregroundStyle(Ink.orange)
+                Image(systemName: "arrow.right").font(Type.display(12)).foregroundStyle(Ink.orange)
             } else if justPulled {
-                Image(systemName: "checkmark").font(.system(size: 12, weight: .semibold)).foregroundStyle(Ink.ink)
+                Image(systemName: "checkmark").font(Type.display(13)).foregroundStyle(Ink.ink)
                 Text("Kept. This is the card now.").font(Type.display(14)).foregroundStyle(Ink.ink)
             }
         }
-        .lineLimit(1)
-        .minimumScaleFactor(0.8)
-        .padding(.horizontal, unkept || justPulled ? 14 : 0)
-        .frame(height: 34)
+        // Wraps rather than shrinks at the large sizes (decision 005).
+        .fixedSize(horizontal: false, vertical: true)
+        .padding(.horizontal, saying ? 14 : 0)
+        .padding(.vertical, saying ? 8 : 0)
+        .frame(minHeight: 34)
         .background {
-            if unkept || justPulled {
-                Capsule(style: .continuous).fill(Ink.cream)
-                    .overlay(Capsule(style: .continuous).strokeBorder(unkept ? Ink.orange.opacity(0.45) : Ink.ink.opacity(0.1), lineWidth: 0.75))
+            if saying {
+                RoundedRectangle(cornerRadius: 17, style: .continuous).fill(Ink.cream)
+                    .overlay(RoundedRectangle(cornerRadius: 17, style: .continuous)
+                        .strokeBorder(unkept ? Ink.orange.opacity(0.45) : Ink.ink.opacity(0.1), lineWidth: 0.75))
             }
         }
         .frame(maxWidth: .infinity, alignment: .trailing)
@@ -781,6 +858,8 @@ private struct KeepLine: View {
         .animation(reduceMotion ? Motion.plain : Motion.settle, value: justPulled)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.updatesFrequently)
+        // Nothing to say, nothing for VoiceOver to land on.
+        .accessibilityHidden(!saying)
     }
 }
 

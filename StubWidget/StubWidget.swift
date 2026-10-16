@@ -161,7 +161,7 @@ struct DeckView: View {
                         .minimumScaleFactor(0.8)
                         .widgetAccentable()
                     if let numbers = card.numbers {
-                        Text(numbers).font(Type.numbers(11)).foregroundStyle(Ink.ink.opacity(0.75)).lineLimit(1).minimumScaleFactor(0.8)
+                        Text(numbers).font(Type.numbers(11)).foregroundStyle(Ink.soft(0.75)).lineLimit(1).minimumScaleFactor(0.8)
                     }
                     if let cinema = card.cinema {
                         Text(cinema).font(Type.words(11)).foregroundStyle(Ink.grey).lineLimit(2)

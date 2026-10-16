@@ -24,8 +24,22 @@ struct DrawerLabel: View {
 
     @State private var attitude = Attitude()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
+    /// The engraved total: large, and growing as a large title grows, not as body text (decision 005).
+    @ScaledMetric(relativeTo: .largeTitle) private var totalSize: CGFloat = 36
 
+    /// The plate at the default text sizes; the drag rail keeps it.
     static let size = CGSize(width: 264, height: 80)
+
+    /// The plate grows with the person's text size, as the type on it does, so what is typed or engraved on it is never
+    /// shrunk or cut (decision 005): taller with every size, wider until it is as wide as a small phone allows.
+    static func size(for type: DynamicTypeSize) -> CGSize {
+        let metrics = UIFontMetrics(forTextStyle: .body)
+        let traits = UITraitCollection(preferredContentSizeCategory: UIContentSizeCategory(type))
+        let height = max(size.height, min(metrics.scaledValue(for: size.height, compatibleWith: traits), 168))
+        let width = max(size.width, min(metrics.scaledValue(for: size.width, compatibleWith: traits), 336))
+        return CGSize(width: width, height: height)
+    }
 
     /// The drawer of every stub's label, from the drawer's numbers.
     init(summary: SeasonSummary, years: String?, open: @escaping () -> Void) {
@@ -47,6 +61,7 @@ struct DrawerLabel: View {
                 if case .every(let films, let cinemas, let years) = typed {
                     engraving(films: films, cinemas: cinemas, years: years)
                         .padding(.horizontal, 30)
+                        .padding(.vertical, 11)
                 } else {
                     window
                     card
@@ -60,7 +75,10 @@ struct DrawerLabel: View {
                 }
                 .padding(.horizontal, 11)
             }
-            .frame(width: Self.size.width, height: Self.size.height)
+            // As wide as the size allows, and as tall as its words need beyond that: never a word cut at the largest sizes.
+            .frame(width: Self.size(for: typeSize).width)
+            .frame(minHeight: Self.size(for: typeSize).height)
+            .fixedSize(horizontal: false, vertical: true)
             .scaleEffect(open ? 1.06 : 1)
             .offset(y: open ? 6 : 0)
             .animation(Motion.stamp, value: open)
@@ -87,7 +105,7 @@ struct DrawerLabel: View {
             .fill(LinearGradient(stops: [
                 .init(color: Color(hex: 0xE6CD93), location: 0),
                 .init(color: Color(hex: 0xC9A15C), location: 0.38),
-                .init(color: Color(hex: 0xA77E3F), location: 0.72),
+                .init(color: Color(hex: 0xB08745), location: 0.72),
                 .init(color: Color(hex: 0xC59D58), location: 1),
             ], startPoint: .topLeading, endPoint: .bottomTrailing))
             // The sheen: a soft band of the lamp, where the light is.
@@ -127,86 +145,97 @@ struct DrawerLabel: View {
     /// The drawer of every stub: the total cut into the brass, large, and beside it what it is and what it spans. Engraved,
     /// so it reads as the cabinet's and not as a label someone slid in; the cuts are dark, their lower lips catch the light.
     private func engraving(films: Int, cinemas: Int, years: String?) -> some View {
-        HStack(alignment: .center, spacing: 12) {
+        // Side by side on the plate; the count above the words where the type is large (decision 005).
+        ViewThatFits(in: .horizontal) {
+            engraved(films: films, cinemas: cinemas, years: years, across: true)
+            engraved(films: films, cinemas: cinemas, years: years, across: false)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func engraved(films: Int, cinemas: Int, years: String?, across: Bool) -> some View {
+        let layout = across ? AnyLayout(HStackLayout(alignment: .center, spacing: 12)) : AnyLayout(VStackLayout(spacing: 2))
+        return layout {
             if films > 0 {
-                Engraved(Text("\(films)").font(Type.numbers(36)))
+                Engraved(Text("\(films)").font(Type.numbers(scaled: totalSize)))
                     .lineLimit(1)
                     .fixedSize()
             }
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: across ? .leading : .center, spacing: 3) {
                 Engraved(Text("Every stub").font(Type.display(16)).tracking(Type.displayTracking(16)))
                 Group {
                     if films > 0 {
-                        let count = Text("\(cinemas)").font(Type.numbers(11))
-                        let span = years.map { Text("  ·  \(Text($0).font(Type.numbers(11)))") } ?? Text("")
+                        let count = Text("\(cinemas)").font(Type.numbers(12))
+                        let span = years.map { Text("  ·  \(Text($0).font(Type.numbers(12)))") } ?? Text("")
                         Engraved(Text("\(count) \(cinemas == 1 ? "cinema" : "cinemas")\(span)"), depth: 0.7)
                     } else {
                         Engraved(Text("Nothing kept yet"), depth: 0.7)
                     }
                 }
-                .font(Type.words(11))
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+                .font(Type.words(12))
+                .multilineTextAlignment(across ? .leading : .center)
+                .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .frame(maxWidth: .infinity)
     }
 
     // MARK: The card
 
     /// A slip of cream card, typed: the years in the mono, the counts under them. Shaded where the lips overhang it.
     private var card: some View {
-        RoundedRectangle(cornerRadius: 2, style: .continuous)
-            .fill(LinearGradient(colors: [Ink.cream, Color(hex: 0xEDE5D2)], startPoint: .top, endPoint: .bottom))
-            .overlay(alignment: .top) {
-                LinearGradient(colors: [.black.opacity(0.2), .black.opacity(0)], startPoint: .top, endPoint: .bottom)
-                    .frame(height: 5)
-            }
-            .overlay {
-                VStack(spacing: 2) {
-                    switch typed {
-                    case .every(let films, let cinemas, let years):
-                        Text(years ?? "Empty")
-                            .font(years == nil ? Type.words(19) : Type.numbers(19))
-                            .foregroundStyle(Ink.ink)
-                            .minimumScaleFactor(0.7)
-                            .lineLimit(1)
-                        if films > 0 {
-                            counts(films, unit: films == 1 ? "stub" : "stubs", then: "\(cinemas)", cinemas == 1 ? "cinema" : "cinemas")
-                        }
-                    case .made(let name, let films, let years):
-                        Text(name)
-                            .font(Type.display(18))
-                            .foregroundStyle(Ink.ink)
-                            .minimumScaleFactor(0.6)
-                            .lineLimit(1)
-                        if films > 0, let years {
-                            counts(films, unit: films == 1 ? "stub" : "stubs", then: years, nil)
-                        } else {
-                            Text("Nothing filed yet").font(Type.words(11)).foregroundStyle(Ink.grey)
-                        }
-                    case .blank:
-                        HStack(spacing: 6) {
-                            Image(systemName: "plus").font(.system(size: 13, weight: .medium))
-                            Text("New drawer").font(Type.words(16))
-                        }
-                        .foregroundStyle(Ink.ink.opacity(0.55))
-                    }
+        // The words make the card, and the card is drawn behind them, so a large size makes a taller card, never a cut word.
+        VStack(spacing: 2) {
+            switch typed {
+            case .every(let films, let cinemas, let years):
+                Text(years ?? "Empty")
+                    .font(years == nil ? Type.words(19) : Type.numbers(19))
+                    .foregroundStyle(Ink.ink)
+                    .lineLimit(2)
+                if films > 0 {
+                    counts(films, unit: films == 1 ? "stub" : "stubs", then: "\(cinemas)", cinemas == 1 ? "cinema" : "cinemas")
                 }
-                .padding(.horizontal, 8)
+            case .made(let name, let films, let years):
+                Text(name)
+                    .font(Type.display(18))
+                    .foregroundStyle(Ink.ink)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(typeSize.isAccessibilitySize ? nil : 2)
+                if films > 0, let years {
+                    counts(films, unit: films == 1 ? "stub" : "stubs", then: years, nil)
+                } else {
+                    Text("Nothing filed yet").font(Type.words(12)).foregroundStyle(Ink.grey)
+                }
+            case .blank:
+                HStack(spacing: 6) {
+                    Image(systemName: "plus").font(.system(size: 13, weight: .medium))
+                    Text("New drawer").font(Type.words(16))
+                }
+                .foregroundStyle(Ink.soft(0.62))
             }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background {
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                .fill(LinearGradient(colors: [Ink.cream, Color(hex: 0xEDE5D2)], startPoint: .top, endPoint: .bottom))
+                .overlay(alignment: .top) {
+                    LinearGradient(colors: [.black.opacity(0.2), .black.opacity(0)], startPoint: .top, endPoint: .bottom)
+                        .frame(height: 5)
+                }
+        }
     }
 
     /// "11 stubs · 9 cinemas", the numbers in the mono.
     private func counts(_ films: Int, unit: String, then figure: String, _ unit2: String?) -> some View {
-        let first = Text("\(films)").font(Type.numbers(11))
-        let second = Text(figure).font(Type.numbers(11))
+        let first = Text("\(films)").font(Type.numbers(12))
+        let second = Text(figure).font(Type.numbers(12))
         let line = unit2.map { Text("\(first) \(unit)  ·  \(second) \($0)") } ?? Text("\(first) \(unit)  ·  \(second)")
         return line
-            .font(Type.words(11))
+            .font(Type.words(12))
             .foregroundStyle(Ink.grey)
-            .lineLimit(1)
-            .minimumScaleFactor(0.7)
+            .multilineTextAlignment(.center)
+            .lineLimit(2)
     }
 
     private var spoken: String {
@@ -248,8 +277,10 @@ private struct Engraved: View {
     init(_ text: Text, depth: Double = 1) { self.text = text; self.depth = depth }
     var body: some View {
         text
-            .foregroundStyle(Color(hex: 0x4A3416).opacity(0.62 + 0.26 * depth))
-            .shadow(color: Color(hex: 0xF6E3AE).opacity(0.85 * depth), radius: 0, x: 0, y: 0.9)
+            // Cut deep enough to read on the darkest of the brass: 5.5:1 there (decision 005). The smaller line is
+            // as dark; only its lit lip is softer.
+            .foregroundStyle(Color(hex: 0x1E1406))
+            .shadow(color: Color(hex: 0xF6E3AE).opacity(0.5 * depth), radius: 0, x: 0, y: 0.9)
             .shadow(color: Color.black.opacity(0.22 * depth), radius: 0, x: 0, y: -0.5)
     }
 }

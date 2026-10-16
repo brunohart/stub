@@ -412,3 +412,57 @@ Every button is a `StubButtonStyle` (`Stub/Design/Buttons.swift`): a capsule in 
 **Why.** On a card-catalogue cabinet the maker's plate is engraved and permanent while the drawer labels are cards you slide in and change. That difference is the real one here: every stub is not a drawer anyone made or can rename, and its number is the total everything else is a part of. Leading with the count says "total" at a glance; leading with years said "a period", which a made drawer can also be.
 
 **Consequences.** Engraving is a material that answers the light, so it sits within the no-fake-grain rule: dark cuts, a lit lower lip, a shaded upper one, no texture. VoiceOver reads "Every stub: 11 stubs, 9 cinemas, 2024 to 2026." The plate keeps the holders' size, so the shelf pages the same.
+
+## ADR-037 — The rules' draft is keepable at once; the model has eight seconds and improves it in place
+
+**Date:** 2026-10-16 · **Status:** decided; built, tested (`MomentTests`) and measured on the SE 2 simulator. Product decision: docs/decisions/001.
+
+**What changed.** `StubReader.understand` used to compute the rules' draft as the model's hint and then wait for the model's first streamed title before the form had anything to keep. Now the rules' draft goes to the screen the moment it has a title; the model streams with it as its hint for at most `StubReader.patience` (8 s), and its answer is laid over the rules' field by field (`StubDraft.over`), so a cinema, date or price the model leaves empty keeps what the rules read. The import screen offers each draft with `adopting(_:unchangedFrom:)`: a field the person has changed since the reader offered it stays theirs. A stub kept before the model finishes takes the model's answer only into its empty fields. The deadline is `Deadline.race`, which returns when the time is up instead of waiting for the stream to wind down as a task group does (measured: 14.1 s against an 8 s patience before, 9.7 s after). Keep saves at once (`context.save()`), the plate already encoded while the person read the draft.
+
+**Why.** A person at the cinema door should never wait for a second opinion; the rules read every synthetic fixture right on their own (`docs/evals.md`).
+
+**Consequences.** `Keepable` on the model path is the time Vision takes. The model's launch probe now waits eight seconds after launch, because loading the model beside Vision slowed the first read (4.2 s to 1.5 s). The deep eval's "streamed, as filed" column merges as the app does.
+
+## ADR-038 — Budgets in Apple's own metrics, judged from the result bundle, per lane
+
+**Date:** 2026-10-16 · **Status:** decided; the simulator lane passes; the device lane waits for a phone (BEDIP-217). Product decision: docs/decisions/004.
+
+**What changed.** Signposts ship in the app (`Signposts.swift`: `Keepable`, `Understood`, `Kept`, `Pressed` for capture; `Reveal` and `Tilt` as animation intervals). A Performance build configuration is Release's optimiser with staging hooks (`PERF`: `-stage-drawer N`, `-stage-rules`, `-stage-tilt`, `-stage-scroll`, `-stage-keep`; the Debug hooks under `#if DEBUG || PERF`). `StubUITests` measures launch, the drawer's fling, the reveal, capture, Keep and the tilt-light view with `XCTApplicationLaunchMetric`, `XCTOSSignpostMetric`, `XCTHitchMetric`, `XCTMemoryMetric`, `XCTCPUMetric` and `XCTClockMetric`. `perf/budgets.json` holds a ceiling per lane (device, simulator, ci) and `scripts/budgets.py` fails a run that is over, or that did not measure a budgeted metric. `scripts/perf.sh` runs it; `.github/workflows/ci.yml` runs it on every push.
+
+**Why.** Xcode's own baselines live in the generated project and a reported bug ignores them for `measure(metrics:)`; and one machine's numbers are not another's ceilings.
+
+**Consequences.** The fixes it found are ADR-039. The simulator records no hitches, so hitch budgets are the device lane's alone.
+
+## ADR-039 — What the measurements fixed
+
+**Date:** 2026-10-16 · **Status:** decided; measured before and after on the SE 2 simulator (docs/decisions/004, the table).
+
+**What changed.** Rows are laid out from each photograph's shape read from its header and remembered in Caches (`PlateAspects`), not by decoding every photograph at launch. The Aztec code on a card's back is made off the main thread, CoreImage is warmed at launch and its context shared (`Aztec.made`, `prewarm`). Each card's viewing is counted once per drawer change (`Copy.viewings(in:)`, `Viewings`), and the edition's date formatters are made once. One `MotionSource` owns the app's single `CMMotionManager`, started while anything listens.
+
+**Why.** In order of what a person feels: launch to responsive 5.29 s to 4.68 s; Keep to the press on screen 0.31 s to 0.10 s; the drawer's time in `Copy.init` 9.9% to 0.4% of the main thread; five motion managers to one.
+
+## ADR-040 — Reach: a control for the Lock Screen, a booking's words, Spotlight, and shares that say where they came from
+
+**Date:** 2026-10-16 · **Status:** decided; built; the control and Spotlight are device checks. Product decision: docs/decisions/002, 006.
+
+**What changed.** `KeepControl`, a `ControlWidget` in the widget extension, opens `stub://keep`, which goes straight to the viewfinder; it can sit on the Lock Screen, in Control Centre or on the Action button. The App Shortcut is "Keep a stub". The share extension takes `public.plain-text`, a booking's words selected in Mail; the app reads them through the same reader as a PDF's own text (`Booking.lines`, `Arrival.Content.text`). Stubs are `StubEntity` (App Entity, `IndexedEntity`) in Spotlight's on-device index, rebuilt two seconds after the drawer last changes, and `OpenStubIntent` opens one. Every share's link carries which share it was (`ShareLinkText.link(via:)`). The inline Lock Screen widget and the room (ADR-018) are cut.
+
+## ADR-041 — Field reports and ticket shapes, both kept by the person
+
+**Date:** 2026-10-16 · **Status:** decided; built. Product decision: docs/decisions/004, 006.
+
+**What changed.** `FieldMetrics` subscribes to MetricKit and keeps the last thirty reports on the phone; Your card says they are there and shares them only by hand. The capture's `Keepable` interval is also an `mxSignpost`, so it appears in those reports. When the person corrects a read, the press offers the ticket's shape (`TicketFormat`): every value replaced by its field, every other word blanked unless it is a ticket label, opened in Mail for them to send or not. The privacy manifest declares the App Group's defaults (`1C8F.1`); the widget has its own.
+
+**Why.** Field data and better reads without collecting anything: the App Store's optional-disclosure case, and DPLA §3.2(h)(2) honoured by never building a shape from the model's answer.
+
+## ADR-042 — The audit is judged by evidence; words are set level; nothing under 12 points
+
+**Date:** 2026-10-16 · **Status:** decided; built; the audit runs in CI (`scripts/a11y.sh`). Product decision: docs/decisions/005.
+
+**What changed.** `StubUITests/AccessibilityTests` audits ten screens at the default size and the largest accessibility size, with Increase Contrast off and on, and judges every issue Apple's `performAccessibilityAudit` reports instead of failing on the first. Four kinds are settled by evidence, narrowly, as Apple's session on audits shows (WWDC23 10035): printed artwork (`accessibilityIdentifier("artwork")` on an edition's two faces, a ticket's photograph and the camera's picture: hidden from VoiceOver, said by the card's label, and exempt from WCAG's contrast rule as text in a picture); contrast, which the test measures on the screen in WCAG's way and fails under 4.5:1; Dynamic Type, where a flagged label must stand at least 1.4 times as tall at the largest size, and a navigation bar's own buttons keep their size and show the Large Content Viewer; and text Vision reads in the pixels, which must each be an element's words, on a picture, or behind a half-height sheet. Everything else fails the run.
+
+The audit found real faults, all fixed. The import form stayed reachable behind the camera; it is now removed while the camera is up. The press's part chips sat inside a status line that hid its children, so VoiceOver could not reach them. The press's "kept" line was an empty, unlabelled element when it had nothing to say, and it shrank its words. "Constructivist" broke mid-word on a small phone at the default size. The plates and the press cut words at the largest sizes. The season's year rows were too small to touch, and Your card squeezed its labels into a 58-point column at the largest sizes. The press now scrolls at the accessibility sizes, and its choices change shape rather than break a word. The plates grow as tall as their words need. Your card stacks its labels. The calendar is one element.
+
+**Why.** Apple's contrast check failed text at 14:1 inside a sheet and passed a grey at 3.2:1 on its own: it misjudges text grouped with a background under any rotation, even 0°. The `-a11y-lab` sample sheet (`ContrastLab.swift`, Debug and Performance only) showed it. The type itself was never the fault.
+
+**Consequences.** Words are set level (DESIGN.md rule 3): a stub's picture keeps its tilt, its caption does not, and Your card lies level. No interface words under 12 points (DESIGN.md rule 8). The season's figures are placed in turn with a render effect (`visualEffect`), not a layout one.

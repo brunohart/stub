@@ -67,6 +67,10 @@ struct StubApp: App {
             TableView()
                 .modelContainer(container)
                 .preferredColorScheme(.light) // Day 0: parchment only. Dark drawer is a later decision.
+                #if DEBUG || PERF
+                .fullScreenCover(isPresented: .constant(ProcessInfo.processInfo.arguments.contains("-a11y-lab"))) { ContrastLab() }
+                .sheet(isPresented: .constant(ProcessInfo.processInfo.arguments.contains("-a11y-lab-sheet"))) { ContrastLab() }
+                #endif
                 // Another phone's stubs and proofs arriving from iCloud: one copy of each stub, and the press made to match.
                 .onReceive(NotificationCenter.default.publisher(for: .NSPersistentStoreRemoteChange).receive(on: RunLoop.main)) { _ in
                     Drawer.dedupe(container.mainContext)

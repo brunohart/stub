@@ -14,6 +14,7 @@ struct YourCard: View {
     @Query(filter: #Predicate<PressRecord> { $0.kind == "owner" }) private var owner: [PressRecord]
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var typeSize
     @AppStorage("drawer.face") private var face: DrawerFace = .ticket
     @AppStorage(Drawer.syncKey) private var keepsInICloud = true
     @State private var icons = IconDrawer.shared
@@ -100,10 +101,25 @@ struct YourCard: View {
 
     private var iconSection: some View {
         CardSection("The icon") {
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: 5), spacing: 16) {
-                ForEach(IconDrawer.icons) { icon in
-                    IconChoice(icon: icon, chosen: icons.currentIcon == icon, open: icons.owned || icon.alternate == nil) {
-                        Task { await icons.choose(icon) }
+            // Four to a row, two at the accessibility sizes so their names have room (decision 005). Ten icons: rows made
+            // all at once, rather than a lazy grid.
+            let all = IconDrawer.icons
+            let across = typeSize.isAccessibilitySize ? 2 : 4
+            VStack(spacing: 16) {
+                ForEach(Array(stride(from: 0, to: all.count, by: across)), id: \.self) { start in
+                    HStack(alignment: .top, spacing: 14) {
+                        ForEach(all[start..<min(start + across, all.count)]) { icon in
+                            let open = icons.owned || icon.alternate == nil
+                            // A locked icon opens the icon drawer's purchase: the tap is the way in, not a dead end.
+                            IconChoice(icon: icon, chosen: icons.currentIcon == icon, open: open) {
+                                Task { if open { await icons.choose(icon) } else { await icons.buy() } }
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                        // The last row's empty places, so its icons are the size of the rest.
+                        ForEach(0..<(across - min(across, all.count - start)), id: \.self) { _ in
+                            Color.clear.frame(maxWidth: .infinity, maxHeight: 0)
+                        }
                     }
                 }
             }
@@ -113,7 +129,7 @@ struct YourCard: View {
             } else {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Torn is Stub's own. The other nine come with the icon drawer: one payment, kept for good, no subscription.")
-                        .font(Type.words(15)).foregroundStyle(Ink.ink.opacity(0.75))
+                        .font(Type.words(15)).foregroundStyle(Ink.soft(0.75))
                         .fixedSize(horizontal: false, vertical: true)
                     HStack(spacing: 14) {
                         Button {
@@ -165,7 +181,7 @@ struct YourCard: View {
     private var aboutSection: some View {
         CardSection("Stub") {
             Text("Nothing you keep leaves your phone, except to your own iCloud. There is no account, no server of ours, and nothing tracked.")
-                .font(Type.reading(17)).foregroundStyle(Ink.ink.opacity(0.85))
+                .font(Type.reading(17)).foregroundStyle(Ink.soft(0.85))
                 .fixedSize(horizontal: false, vertical: true)
             Link(destination: ShareLinkText.link) {
                 HStack(spacing: 6) {
@@ -174,7 +190,7 @@ struct YourCard: View {
                 }
                 .font(Type.words(15)).foregroundStyle(Ink.ink)
             }
-            Text("Version \(Self.version)").font(Type.numbers(11)).foregroundStyle(Ink.grey)
+            Text("Version \(Self.version)").font(Type.numbers(12)).foregroundStyle(Ink.grey)
             fieldReports
         }
     }
@@ -190,7 +206,7 @@ struct YourCard: View {
                     Text("How Stub runs on this phone: \(reports.count) \(reports.count == 1 ? "report" : "reports"), kept here")
                     Image(systemName: "square.and.arrow.up").font(.system(size: 12, weight: .medium))
                 }
-                .font(Type.words(13)).foregroundStyle(Ink.ink.opacity(0.75))
+                .font(Type.words(13)).foregroundStyle(Ink.soft(0.75))
             }
             .accessibilityHint("Shares the system's performance reports for Stub, which are kept on this phone. You choose where they go.")
         }
@@ -256,19 +272,20 @@ private struct IconChoice: View {
                                 .font(.system(size: 9, weight: .semibold))
                                 .foregroundStyle(Ink.paper)
                                 .frame(width: 18, height: 18)
-                                .background(Circle().fill(Ink.ink.opacity(0.75)))
+                                .background(Circle().fill(Ink.soft(0.75)))
                                 .offset(x: 4, y: 4)
                         }
                     }
                     .opacity(open ? 1 : 0.55)
                     .shadow(color: .black.opacity(0.12), radius: 3, x: 1, y: 2)
-                Text(icon.name).font(Type.words(11)).foregroundStyle(chosen ? Ink.ink : Ink.grey).lineLimit(1).minimumScaleFactor(0.8)
+                Text(icon.name).font(Type.words(12)).foregroundStyle(chosen ? Ink.ink : Ink.grey)
+                    .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
             }
         }
         .buttonStyle(.plain)
-        .disabled(!open)
         .sensoryFeedback(.selection, trigger: chosen) { _, now in now }
         .accessibilityLabel("\(icon.name) icon\(chosen ? ", on the home screen" : "")\(open ? "" : ", in the icon drawer")")
+        .accessibilityHint(open ? "Puts it on the home screen." : "Opens the icon drawer's purchase.")
         .accessibilityAddTraits(chosen ? .isSelected : [])
     }
 }
@@ -283,6 +300,7 @@ struct ReadersCard: View {
     let drawers: Int
     let signature: UIImage?
     let typeName: () -> Void
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     init(name: String?, since: Date?, stubs: Int, cinemas: Int, drawers: Int, signature: UIImage?, typeName: @escaping () -> Void) {
         self.name = name; self.since = since; self.stubs = stubs; self.cinemas = cinemas; self.drawers = drawers
@@ -292,8 +310,13 @@ struct ReadersCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Stub").font(Type.display(26)).tracking(Type.displayTracking(26)).foregroundStyle(Ink.ink)
-                Text("Reader's card").font(Type.words(13)).foregroundStyle(Ink.grey)
+                // At the accessibility sizes each label stands over what it labels, never squeezed beside it (decision 005).
+                let masthead = AnyLayout(typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2))
+                                                                      : AnyLayout(HStackLayout(alignment: .firstTextBaseline)))
+                masthead {
+                    Text("Stub").font(Type.display(26)).tracking(Type.displayTracking(26)).foregroundStyle(Ink.ink)
+                    Text("Reader's card").font(Type.words(13)).foregroundStyle(Ink.grey)
+                }
                 Spacer()
                 Circle()
                     .fill(RadialGradient(colors: [Color(hex: 0xFBE9BE), Color(hex: 0xC09450), Color(hex: 0x6E4F22)],
@@ -316,7 +339,9 @@ struct ReadersCard: View {
                 Text(since.map { $0.formatted(.dateTime.day(.twoDigits).month(.abbreviated).year()).uppercased() } ?? "—")
                     .font(Type.numbers(15)).foregroundStyle(Ink.ink)
             }
-            HStack(spacing: 0) {
+            let figures = AnyLayout(typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10))
+                                                                 : AnyLayout(HStackLayout(spacing: 0)))
+            figures {
                 figure(stubs, stubs == 1 ? "stub" : "stubs")
                 figure(cinemas, cinemas == 1 ? "cinema" : "cinemas")
                 figure(drawers + 1, drawers == 0 ? "drawer" : "drawers")
@@ -341,17 +366,20 @@ struct ReadersCard: View {
                 .overlay(alignment: .trailing) { perforation }
                 .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Ink.navy.opacity(0.12)).offset(x: 5, y: 6))
         }
-        .rotationEffect(.degrees(-0.6))
         .accessibilityElement(children: .contain)
     }
 
     private var rule: some View { Rectangle().fill(Ink.ink.opacity(0.14)).frame(height: 1) }
 
     private func line<V: View>(_ label: String, @ViewBuilder value: () -> V) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 14) {
-            Text(label).font(Type.words(12)).foregroundStyle(Ink.grey).frame(width: 58, alignment: .leading)
+        let layout = AnyLayout(typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
+                                                            : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 14)))
+        return layout {
+            Text(label).font(Type.words(12)).foregroundStyle(Ink.grey)
+                .frame(width: typeSize.isAccessibilitySize ? nil : 58, alignment: .leading)
             value()
-            Spacer(minLength: 0)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.vertical, 11)
         .frame(minHeight: 44)
@@ -370,7 +398,7 @@ struct ReadersCard: View {
 
     private var perforation: some View {
         VStack(spacing: 6) {
-            ForEach(0..<22, id: \.self) { _ in Circle().fill(Ink.grey.opacity(0.3)).frame(width: 3.5, height: 3.5) }
+            ForEach(0..<22, id: \.self) { _ in Circle().fill(Ink.greyMark.opacity(0.5)).frame(width: 3.5, height: 3.5) }
         }
         .padding(.trailing, 16)
         .accessibilityHidden(true)

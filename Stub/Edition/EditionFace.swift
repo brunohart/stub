@@ -54,6 +54,13 @@ struct EditionFace: View {
     var wet: Double = 0
 
     var body: some View {
+        // Printed artwork: whoever shows the card says what is on it (decision 005).
+        Group { art }
+            .accessibilityHidden(true)
+            .accessibilityIdentifier("artwork")
+    }
+
+    @ViewBuilder private var art: some View {
         if separation > 0 || asSheets {
             // The layers, each a sheet on its own, lifted apart and seen from above. Each keeps its shaders, so the foil
             // still catches the light.

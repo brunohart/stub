@@ -53,8 +53,11 @@ struct ImportView: View {
 
     var body: some View {
         ZStack {
-            form
-                .opacity(onCamera ? 0 : 1)
+            // Gone while the viewfinder is up, not faded under it: no controls behind the camera, for VoiceOver or the
+            // audit (decision 005). Everything the form shows lives here, so nothing is lost when it comes back.
+            if !onCamera {
+                form.transition(.opacity)
+            }
             if onCamera {
                 Viewfinder { photo in
                     image = UIImage(cgImage: photo)
@@ -97,12 +100,13 @@ struct ImportView: View {
                                     .clipShape(RoundedRectangle(cornerRadius: 3))
                                     .animation(reduceMotion ? Motion.plain : Motion.settle, value: stage)
                                     .accessibilityLabel(stage == .done ? "The stub, printed on parchment." : "The photograph of the stub, being read.")
+                                    .accessibilityIdentifier("artwork")
                             } else if arrival == nil {
                                 picker
                             }
                             if let arrival {
                                 Label(arrival.sentence, systemImage: arrival.symbol)
-                                    .font(Type.words(15)).foregroundStyle(Ink.ink.opacity(0.75))
+                                    .font(Type.words(15)).foregroundStyle(Ink.soft(0.75))
                                     .fixedSize(horizontal: false, vertical: true)
                             }
 
@@ -124,7 +128,7 @@ struct ImportView: View {
                                 DisclosureGroup(isExpanded: $showRaw) {
                                     Text(reading.text)
                                         .font(Type.numbers(12))
-                                        .foregroundStyle(Ink.ink.opacity(0.7))
+                                        .foregroundStyle(Ink.soft(0.7))
                                         .padding(.top, 8)
                                 } label: {
                                     Text("What the reader saw")
@@ -251,7 +255,7 @@ struct ImportView: View {
             .tint(Ink.orange)
             if draft.readBy != "manual", draft.isUsable {
                 Text("Read by \(ReadBy.words(draft.readBy)) · confidence \(Int(draft.confidence * 100))%")
-                    .font(Type.numbers(11)).foregroundStyle(Ink.grey)
+                    .font(Type.numbers(12)).foregroundStyle(Ink.grey)
                     .accessibilityLabel("Read by \(ReadBy.words(draft.readBy)), \(Int(draft.confidence * 100)) percent confident.")
             }
         }
@@ -440,12 +444,17 @@ struct Field: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(label).font(Type.words(12)).foregroundStyle(Ink.grey)
                 .accessibilityHidden(true)
-            TextField("", text: $text)
+            // Wraps rather than scrolling sideways, so a long cinema's name is all there at any size (decision 005). One
+            // line of words all the same: a return is not part of a ticket.
+            TextField("", text: $text, axis: .vertical)
                 .font(font)
                 .foregroundStyle(Ink.ink)
                 .textInputAutocapitalization(.words)
                 .frame(minHeight: 44)
                 .accessibilityLabel(label)
+                .onChange(of: text) { _, now in
+                    if now.contains("\n") { text = now.replacingOccurrences(of: "\n", with: "") }
+                }
             Rectangle().fill(Ink.ink.opacity(0.18)).frame(height: 1)
         }
     }
@@ -456,7 +465,7 @@ struct StageLine: View {
     var body: some View {
         HStack(spacing: 10) {
             ProgressView().tint(Ink.orange)
-            Text(label).font(Type.words(15)).foregroundStyle(Ink.ink.opacity(0.75))
+            Text(label).font(Type.words(15)).foregroundStyle(Ink.soft(0.75))
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(label)
@@ -487,7 +496,7 @@ private struct ShapeOffer: View {
                     Text("Stub misread this cinema's ticket. Send its shape, never what it says, so the next one reads right.")
                         .multilineTextAlignment(.leading)
                 }
-                .font(Type.words(13)).foregroundStyle(Ink.ink.opacity(0.7))
+                .font(Type.words(13)).foregroundStyle(Ink.soft(0.7))
                 .fixedSize(horizontal: false, vertical: true)
             }
             .accessibilityHint("Opens Mail with the ticket's shape written out. Nothing is sent unless you send it.")

@@ -100,7 +100,7 @@ private struct StubButtonBody: View {
         switch kind {
         case .ink: isEnabled ? Ink.paper : Ink.grey
         case .paper: isEnabled ? Ink.ink : Ink.grey
-        case .quiet: isEnabled ? Ink.ink.opacity(0.8) : Ink.grey
+        case .quiet: isEnabled ? Ink.soft(0.8) : Ink.grey
         }
     }
 }
@@ -153,7 +153,18 @@ struct Segmented<Value: Hashable>: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        HStack(spacing: 0) {
+        // In a row with its symbols; in a row of words alone where that will not fit; one over the other at the largest
+        // sizes. Never a word cut at the screen's edge (decision 005).
+        ViewThatFits(in: .horizontal) {
+            track(AnyLayout(HStackLayout(spacing: 0)), symbols: true, stacked: false)
+            track(AnyLayout(HStackLayout(spacing: 0)), symbols: false, stacked: false)
+            track(AnyLayout(VStackLayout(alignment: .leading, spacing: 0)), symbols: true, stacked: true)
+        }
+        .sensoryFeedback(.selection, trigger: selection)
+    }
+
+    private func track(_ layout: AnyLayout, symbols: Bool, stacked: Bool) -> some View {
+        layout {
             ForEach(options, id: \.self) { option in
                 let chosen = option == selection
                 let words = label(option)
@@ -161,31 +172,31 @@ struct Segmented<Value: Hashable>: View {
                     withAnimation(reduceMotion ? Motion.plain : .spring(response: 0.34, dampingFraction: 0.78)) { selection = option }
                 } label: {
                     HStack(spacing: 6) {
-                        if let symbol = words.symbol { Image(systemName: symbol).font(.system(size: 13, weight: .medium)) }
+                        if symbols, let symbol = words.symbol { Image(systemName: symbol).font(Type.display(13)) }
                         Text(words.title).font(Type.display(14))
                     }
                     .fixedSize()
-                    .foregroundStyle(chosen ? Ink.paper : Ink.ink.opacity(0.7))
+                    .foregroundStyle(chosen ? Ink.paper : Ink.soft(0.7))
                     .padding(.horizontal, 14)
                     .frame(minHeight: 38)
+                    .frame(maxWidth: stacked ? .infinity : nil, alignment: .leading)
                     .background {
                         if chosen {
-                            Capsule(style: .continuous)
+                            RoundedRectangle(cornerRadius: 19, style: .continuous)
                                 .fill(Ink.ink)
                                 .shadow(color: Ink.ink.opacity(0.18), radius: 4, x: 0, y: 2)
                                 .matchedGeometryEffect(id: "thumb", in: thumb)
                         }
                     }
-                    .contentShape(Capsule())
+                    .contentShape(RoundedRectangle(cornerRadius: 19, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .accessibilityAddTraits(chosen ? .isSelected : [])
             }
         }
         .padding(3)
-        .background(Capsule(style: .continuous).fill(Ink.cream))
-        .overlay(Capsule(style: .continuous).strokeBorder(Ink.ink.opacity(0.1), lineWidth: 0.75))
-        .sensoryFeedback(.selection, trigger: selection)
+        .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Ink.cream))
+        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Ink.ink.opacity(0.1), lineWidth: 0.75))
     }
 }
 
@@ -197,10 +208,13 @@ struct PlacedInTurn: ViewModifier {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
+        let down = placed || reduceMotion
         content
-            .opacity(placed || reduceMotion ? 1 : 0)
-            .offset(y: placed || reduceMotion ? 0 : -8)
-            .scaleEffect(placed || reduceMotion ? 1 : 1.03, anchor: .leading)
+            .opacity(down ? 1 : 0)
+            // A render effect, not a layout one: what VoiceOver and the audit measure is where the thing comes to rest.
+            .visualEffect { view, _ in
+                view.offset(y: down ? 0 : -8).scaleEffect(down ? 1 : 1.03, anchor: .leading)
+            }
             .animation(reduceMotion ? nil : Motion.stamp.delay(0.12 + Double(order) * 0.07), value: placed)
     }
 }

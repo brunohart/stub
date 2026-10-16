@@ -44,9 +44,8 @@ struct SeasonView: View {
                     .placedInTurn(0, placed: placed)
 
                     if !summary.nights.isEmpty {
-                        // A picture of twelve columns: it grows with the type only so far, and VoiceOver reads it month by month.
+                        // Twelve columns where they fit; a ruled list of months at the accessibility sizes (decision 005).
                         Nights(summary: summary)
-                            .dynamicTypeSize(...DynamicTypeSize.xLarge)
                             .padding(.top, 34)
                             .placedInTurn(1, placed: placed)
                     }
@@ -91,6 +90,8 @@ struct SeasonView: View {
             }
         }
         .onAppear { placed = true }
+        // The sheet's own ground: what shows above it at half height is the drawer, dimmed and out of reach (decision 005).
+        .accessibilityIdentifier("sheet")
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.hidden)
     }
@@ -138,16 +139,40 @@ private struct Nights: View {
     let summary: SeasonSummary
     @ScaledMetric(relativeTo: .caption) private var yearWidth: CGFloat = 44
     @ScaledMetric(relativeTo: .caption) private var dot: CGFloat = 6
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     /// More nights than this in one month are written as a number rather than drawn.
     private let most = 8
 
     var body: some View {
+        if typeSize.isAccessibilitySize { months } else { calendar }
+    }
+
+    /// At the accessibility sizes: the months that had nights, one to a ruled line, at the person's own size.
+    private var months: some View {
+        VStack(spacing: 0) {
+            ForEach(years, id: \.self) { year in
+                ForEach(Array((summary.nights[year] ?? []).enumerated()).filter { $0.element > 0 }, id: \.offset) { month, count in
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(verbatim: "\(Calendar.current.monthSymbols[month]) \(year)").font(Type.words(15)).foregroundStyle(Ink.ink)
+                        Spacer(minLength: 12)
+                        Text(count == 1 ? "One night" : "\(SeasonSummary.spelled(count).capitalized) nights")
+                            .font(Type.words(15)).foregroundStyle(isBusiest(year, month) ? Ink.orange : Ink.grey)
+                    }
+                    .padding(.vertical, 10)
+                    .overlay(alignment: .bottom) { Rectangle().fill(Ink.ink.opacity(0.14)).frame(height: 0.5) }
+                    .accessibilityElement(children: .combine)
+                }
+            }
+        }
+    }
+
+    private var calendar: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 0) {
                 Color.clear.frame(width: yearWidth, height: 1)
                 ForEach(Array(Calendar.current.veryShortMonthSymbols.enumerated()), id: \.offset) { _, initial in
-                    Text(initial).font(Type.words(11)).foregroundStyle(Ink.grey).frame(maxWidth: .infinity)
+                    Text(initial).font(Type.words(12)).foregroundStyle(Ink.grey).frame(maxWidth: .infinity)
                 }
             }
             ForEach(years, id: \.self) { year in
@@ -167,15 +192,17 @@ private struct Nights: View {
                 }
             }
         }
+        // One element, read year by year as its months: "2024: February, one night; March, four nights". Each year's row
+        // was its own element once, and too small to touch (decision 005).
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Nights by month")
-        .accessibilityValue(spoken)
+        .accessibilityValue(years.map { "\($0): \(spoken($0))" }.joined(separator: ". "))
     }
 
     @ViewBuilder private func column(_ count: Int, busiest: Bool) -> some View {
-        let ink = busiest ? Ink.orange : Ink.ink.opacity(0.78)
+        let ink = busiest ? Ink.orange : Ink.soft(0.78)
         if count > most {
-            Text("\(count)").font(Type.numbers(11)).foregroundStyle(ink)
+            Text("\(count)").font(Type.numbers(12)).foregroundStyle(ink)
         } else {
             VStack(spacing: 2) {
                 ForEach(0..<count, id: \.self) { _ in Circle().fill(ink).frame(width: dot, height: dot) }
@@ -194,13 +221,11 @@ private struct Nights: View {
         return busiest.name == "\(Calendar.current.monthSymbols[month]) \(year)"
     }
 
-    private var spoken: String {
-        years.flatMap { year in
-            (summary.nights[year] ?? []).enumerated().compactMap { month, count in
-                count == 0 ? nil : "\(Calendar.current.monthSymbols[month]) \(year), \(count)"
-            }
+    private func spoken(_ year: Int) -> String {
+        let months = (summary.nights[year] ?? []).enumerated().compactMap { month, count -> String? in
+            count == 0 ? nil : "\(Calendar.current.monthSymbols[month]), \(count == 1 ? "one night" : "\(count) nights")"
         }
-        .joined(separator: "; ")
+        return months.isEmpty ? "No nights" : months.joined(separator: "; ")
     }
 }
 

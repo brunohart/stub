@@ -1,0 +1,100 @@
+# Stub's CI (docs/decisions/004-budgets.md). A regression fails the build:
+#   build      a Release build for a phone with no warnings, then the unit tests
+#   budgets    the performance budgets on a simulator, judged by scripts/budgets.py against perf/budgets.json's ci lane
+#   a11y       the accessibility audit at the default and largest text sizes, with and without Increase Contrast
+#   device     the budgets on the oldest phone Stub supports, on a self-hosted runner with the phone plugged in; runs only
+#              when the repository variable DEVICE_LANE is "on" (docs/decisions/004 says how to set it up)
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+
+jobs:
+  build:
+    runs-on: xcode-27
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tools
+        run: brew install xcodegen && xcodebuild -version
+      - name: Release build for a phone, no warnings
+        run: |
+          xcodegen generate --quiet
+          xcodebuild -project Stub.xcodeproj -scheme Stub -configuration Release -destination 'generic/platform=iOS' \
+            -derivedDataPath build/dd-release build CODE_SIGNING_ALLOWED=NO 2>&1 | tee build-release.log | tail -3
+          grep -q "BUILD SUCCEEDED" build-release.log
+          if grep "warning: " build-release.log | grep -v "appintentsmetadataprocessor\|Metadata extraction skipped"; then
+            echo "::error::the Release build has warnings"; exit 1
+          fi
+      - name: Unit tests
+        run: |
+          UDID=$(xcrun simctl create "Stub CI" com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro \
+            "$(xcrun simctl list runtimes -j | python3 -c 'import json,sys; print([x["identifier"] for x in json.load(sys.stdin)["runtimes"] if x["platform"]=="iOS" and x["isAvailable"]][-1])')")
+          xcodebuild -project Stub.xcodeproj -scheme Stub -destination "id=$UDID" -derivedDataPath build/dd-test test 2>&1 \
+            | tee test.log | grep -E "✘|Test run with|TEST (SUCCEEDED|FAILED)"
+          grep -q "TEST SUCCEEDED" test.log
+
+  budgets:
+    runs-on: xcode-27
+    timeout-minutes: 60
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tools
+        run: brew install xcodegen
+      - name: Performance budgets, simulator
+        run: scripts/perf.sh --ci
+      - name: Keep the numbers
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf
+          path: |
+            build/perf.xcresult
+            build/budgets.md
+            build/last-perf.log
+
+  a11y:
+    runs-on: xcode-27
+    timeout-minutes: 60
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tools
+        run: brew install xcodegen
+      - name: Accessibility audit
+        run: scripts/a11y.sh
+      - name: Keep the issues
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a11y
+          path: build/a11y.txt
+
+  device:
+    if: vars.DEVICE_LANE == 'on'
+    runs-on: [self-hosted, macOS, stub-device]
+    timeout-minutes: 60
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - name: Performance budgets, the oldest phone
+        run: scripts/perf.sh --device "${{ vars.DEVICE_UDID }}"
+      - name: Keep the numbers
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-device
+          path: |
+            build/perf.xcresult
+            build/budgets.md

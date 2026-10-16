@@ -72,6 +72,8 @@ final class Reach {
 
     /// Set by `LogStubIntent`; the table presents the import sheet and clears it.
     var wantsImport = false
+    /// Set by `OpenStubIntent` (Spotlight, Siri, Shortcuts); the table opens that stub and clears it.
+    var wantsStub: UUID?
     /// A ticket handed over from outside (ADR-021), the first of any waiting. The table opens the import sheet on it and
     /// takes it with `take()`, which brings the next one forward.
     private(set) var arrival: Arrival?
