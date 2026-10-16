@@ -61,6 +61,7 @@ struct Keepsake: View {
                 let scale = proxy.size.width / Card.width
                 // Printed artwork: the card's spoken label (below) says what it shows (decision 005).
                 card(edition)
+                    .environment(\.stubPhoto, photo)
                     .accessibilityHidden(true)
                     .accessibilityIdentifier("artwork")
                     .scaleEffect(scale, anchor: .topLeading)

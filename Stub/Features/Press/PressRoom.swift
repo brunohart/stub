@@ -12,6 +12,8 @@ struct PressRoom: View {
     @State private var attitude = Attitude()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var typeSize
+    /// A stroke being drawn across the card with the screens out: where it began and where the finger is, in card points.
+    @State private var stroke: (from: CGPoint, to: CGPoint)?
     /// How tall the edition's three choices stand: one row when their words fit across, more when they do not. The bench
     /// grows by what is over one row, so a word never breaks and the bed still never moves when an object opens.
     @State private var choicesHeight: CGFloat = PressRoom.oneRow
@@ -148,32 +150,15 @@ struct PressRoom: View {
         }
     }
 
-    /// A part in hand reads as its name and its take, the number in the mono; anything else is the session's sentence.
-    @ViewBuilder
+    /// What the press is doing, or what to do next, in words (ADR-022).
     private var status: some View {
-        if let focus = session.focus, !session.turned, session.explaining == nil {
-            let move = Treatment(rawValue: Int(min(max(session.position, 0), Double(Treatment.range.upperBound)).rounded())) ?? .asDrawn
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(PressSession.capitalised(focus.name)).font(Type.display(20)).foregroundStyle(Ink.ink)
-                Text(move.name).font(Type.words(17)).foregroundStyle(move == .asDrawn ? Ink.grey : Ink.orange)
-                    .contentTransition(.identity)
-                    .transaction { $0.animation = nil }
-            }
+        // The words change the moment the press does, never cross-fading under the plates' spring.
+        Text(session.sentence(at: session.position))
+            .font(Type.words(16))
+            .foregroundStyle(Ink.soft(0.75))
+            .contentTransition(.identity)
+            .transaction { $0.animation = nil }
             .modifier(Spoken(sentence: session.sentence(at: session.position)))
-        } else if session.focus == nil, session.bench == .rest, !session.turned, session.separation == 0, session.explaining == nil {
-            // The chips are buttons, each reached on its own; the line above them is their heading.
-            PartChips(session: session) { part in
-                withAnimation(reduceMotion ? Motion.plain : Motion.settle) { session.pickUp(part) }
-            }
-        } else {
-            // The words change the moment the press does, never cross-fading under the plates' spring.
-            Text(session.sentence(at: session.position))
-                .font(Type.words(16))
-                .foregroundStyle(Ink.soft(0.75))
-                .contentTransition(.identity)
-                .transaction { $0.animation = nil }
-                .modifier(Spoken(sentence: session.sentence(at: session.position)))
-        }
     }
 
     /// The status line as VoiceOver hears it: the session's whole sentence, which changes as the dial turns.
@@ -216,6 +201,7 @@ struct PressRoom: View {
                                 ZStack(alignment: .topLeading) {
                                     OnTheBed(session: session, position: session.position, separation: session.separation,
                                              light: light, reduceMotion: reduceMotion, impression: platen.impression, wet: wet)
+                                        .environment(\.stubPhoto, photo)
                                     if let flood = session.flood {
                                         Flooding(session: session, flood: flood, progress: flood.progress, light: light,
                                                  reduceMotion: reduceMotion)
@@ -244,10 +230,32 @@ struct PressRoom: View {
                     .shadow(color: .black.opacity(0.18 * (1 - session.separation)), radius: 14, x: 6 - tilt.x * 8, y: 12 - tilt.y * 8)
                     .shadow(color: .black.opacity(0.14), radius: 2, x: 1, y: 2)
                     .contentShape(Rectangle())
+                    // The studio (ADR-046): with the stamps out, a tap stamps; with the screens out, a stroke overprints.
                     .gesture(SpatialTapGesture().onEnded { value in
+                        guard session.bench == .stamp else { return }
                         let point = CGPoint(x: value.location.x / scale, y: value.location.y / scale)
-                        withAnimation(reduceMotion ? Motion.plain : Motion.settle) { session.touch(at: point) }
+                        withAnimation(reduceMotion ? Motion.plain : Motion.place) { session.stamp(at: point) }
+                        wetSince = .now
                     })
+                    .simultaneousGesture(DragGesture(minimumDistance: 8).onChanged { value in
+                        guard session.bench == .pull else { return }
+                        stroke = (CGPoint(x: value.startLocation.x / scale, y: value.startLocation.y / scale),
+                                  CGPoint(x: value.location.x / scale, y: value.location.y / scale))
+                    }.onEnded { value in
+                        guard session.bench == .pull, let drawn = stroke else { return }
+                        stroke = nil
+                        withAnimation(reduceMotion ? Motion.plain : Motion.place) { session.pull(from: drawn.from, to: drawn.to) }
+                        wetSince = .now
+                    })
+                    .overlay(alignment: .topLeading) {
+                        if let stroke {
+                            StrokePreview(composition: session.composition,
+                                          act: .pull(session.screen, in: session.inking, from: stroke.from, to: stroke.to))
+                                .frame(width: Card.width, height: Card.height)
+                                .scaleEffect(scale, anchor: .topLeading)
+                                .frame(width: size.width, height: size.height, alignment: .topLeading)
+                        }
+                    }
                     // A draw-down dropped on the card floods it from where it landed.
                     .dropDestination(for: String.self) { items, location in
                         guard let palette = items.first.flatMap(Palette.init(rawValue:)) else { return false }
@@ -268,23 +276,19 @@ struct PressRoom: View {
                 }
             }
             .simultaneousGesture(pinch)
-            // Where the press can take hold: registration marks at the corners of every part that turns, put down one after
-            // another as the room opens, then resting faint. Gone while a part is in hand, the plates are apart, the card is
-            // over or a choice is open (ADR-022: it was not clear the poster could be touched).
-            .overlay(alignment: .topLeading) {
-                RegistrationMarks(session: session, scale: scale,
-                                  showing: session.focus == nil && session.separation == 0 && !session.turned
-                                    && session.bench == .rest && flying == nil)
-                    .allowsHitTesting(false)
-            }
-            .overlay(alignment: .topLeading) { parts(scale: scale) }
             .accessibilityElement(children: .contain)
             .accessibilityLabel(session.turned
                 ? "The back of the card: the stub as it was scanned. " + (Pencil(edition: session.edition)?.spoken(signed: signatures.isSigned) ?? "")
                 : "The card on the press: \(session.edition.colophon)")
-            .accessibilityRotor("Parts") {
-                ForEach(session.turnable) { part in
-                    AccessibilityRotorEntry(Text(session.spoken(part)), id: part.id, in: rotor)
+            // The studio's acts without a finger: a pass across the middle, a stamp in the corner.
+            .accessibilityActions {
+                if session.bench == .pull {
+                    Button("Overprint across the card") {
+                        session.pull(from: CGPoint(x: 44, y: 150), to: CGPoint(x: Card.width - 44, y: 250))
+                    }
+                }
+                if session.bench == .stamp {
+                    Button("Stamp the card") { session.stamp(at: CGPoint(x: Card.width - 92, y: 96)) }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -354,24 +358,6 @@ struct PressRoom: View {
         }
     }
 
-    /// One VoiceOver element over each part the press can turn, where it lies on the card, so the rotor can reach it.
-    private func parts(scale: CGFloat) -> some View {
-        ForEach(session.turnable) { part in
-            // Where the part is drawn: on its sheet when the card is apart.
-            if let r = session.composition.bounds(of: part.id, separation: session.separation) {
-                Color.clear
-                    .frame(width: r.width * scale, height: r.height * scale)
-                    .offset(x: r.minX * scale, y: r.minY * scale)
-                    .accessibilityElement()
-                    .accessibilityLabel(session.spoken(part))
-                    .accessibilityHint("Picks it up, so the wheel turns it.")
-                    .accessibilityAddTraits(session.focus?.id == part.id ? [.isButton, .isSelected] : .isButton)
-                    .accessibilityAction { session.pickUp(part) }
-                    .accessibilityRotorEntry(id: part.id, in: rotor)
-            }
-        }
-    }
-
     /// Pinch outward and the card comes apart into its sheets; pinch in and they press back together.
     private var pinch: some Gesture {
         MagnifyGesture()
@@ -388,15 +374,6 @@ struct PressRoom: View {
                 // The fingers' speed goes on into the spring: the sheets keep the momentum the pinch gave them.
                 separate(apart, velocity: value.velocity * 1.25)
             }
-    }
-
-    private func benchButton(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Label(title, systemImage: symbol).font(Type.words(15))
-                .contentTransition(.identity)
-                .transaction { $0.animation = nil }
-        }
-        .buttonStyle(.stub(.paper))
     }
 
     /// New inks spreading across the card from `origin`, about half a second to its far corner (a fifth of a second's
@@ -481,51 +458,75 @@ struct PressRoom: View {
     /// What you are holding decides the bench: the wheel for a part, the edition's three choices at rest.
     @ViewBuilder
     private var bench: some View {
-        if let focus = session.focus {
-            Wheel(position: $session.position, stock: session.edition.stock) { take in session.settle(on: take) }
-                .id(focus.id)
-                .transition(Self.benchChange)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
-            VStack(spacing: 18) {
-                // The genome's three choices are the front's; on the back there is only the margin.
-                if !session.turned {
-                    choices
-                }
-                switch session.bench {
-                case .movement:
-                    Fan(session: session, light: light, namespace: fan) { take($0) }
-                        .frame(height: 176)
-                        .transition(Self.benchChange)
-                case .inks:
-                    DrawDowns(session: session) { palette in flood(palette, from: CGPoint(x: Card.width / 2, y: Card.height / 2)) }
-                        .frame(height: 130)
-                        .transition(Self.benchChange)
-                case .stock:
-                    SwatchBook(session: session, light: light) { printAgain(on: $0) }
-                        .frame(height: 130)
-                        .transition(Self.benchChange)
-                case .rest:
-                    HStack(spacing: 12) {
-                        // Separations are a pinch on the card, and a button for anyone who does not pinch.
-                        if !session.turned {
-                            benchButton(session.separation > 0 ? "Press them together" : "See the plates",
-                                        symbol: session.separation > 0 ? "square.stack.3d.down.forward" : "square.stack.3d.up") {
-                                separate(session.separation == 0)
-                            }
-                        }
-                        benchButton(session.turned ? "Turn it back" : "Turn it over", symbol: "rectangle.portrait.rotate") { turn() }
-                    }
-                    .padding(.top, 12)
-                    .transition(Self.benchChange)
-                }
+        VStack(spacing: 18) {
+            // The genome's three choices are the front's; on the back there is only the margin. A tool, while it is out,
+            // has the bench to itself.
+            if !session.turned, session.bench != .pull, session.bench != .stamp {
+                choices
             }
-            // The three words stay where they are whatever is open, so opening and closing moves nothing but the object.
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .padding(.top, 22)
-            .padding(.horizontal, 20)
-            .transition(Self.benchChange)
+            switch session.bench {
+            case .movement:
+                Fan(session: session, light: light, namespace: fan) { take($0) }
+                    .frame(height: 176)
+                    .transition(Self.benchChange)
+            case .inks:
+                DrawDowns(session: session) { palette in flood(palette, from: CGPoint(x: Card.width / 2, y: Card.height / 2)) }
+                    .frame(height: 130)
+                    .transition(Self.benchChange)
+            case .stock:
+                SwatchBook(session: session, light: light) { printAgain(on: $0) }
+                    .frame(height: 130)
+                    .transition(Self.benchChange)
+            case .pull, .stamp:
+                StudioTray(session: session, photo: photo) {
+                    withAnimation(reduceMotion ? Motion.plain : Motion.settle) { session.bench = .rest }
+                }
+                .transition(Self.benchChange)
+            case .rest:
+                VStack(spacing: 10) {
+                    // The studio's two tools (ADR-046); the back has only the margin to sign.
+                    if !session.turned {
+                        StudioTools(composition: session.composition) { tool in
+                            if session.separation > 0 { separate(false) }
+                            withAnimation(reduceMotion ? Motion.plain : Motion.settle) { session.bench = tool }
+                        }
+                    }
+                    // Side by side where they fit, one over the other at the large sizes (decision 005).
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 22) { quietActs }
+                        VStack(spacing: 4) { quietActs }
+                    }
+                }
+                .padding(.top, 4)
+                .transition(Self.benchChange)
+            }
         }
+        // The three words stay where they are whatever is open, so opening and closing moves nothing but the object.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .padding(.top, 22)
+        .padding(.horizontal, 20)
+        .transition(Self.benchChange)
+        // A stamp lands with a thud; a pass, with the softer drag of a blade.
+        .sensoryFeedback(trigger: session.acted) { _, _ in
+            session.acts.last?.kind == .stamp ? .impact(weight: .heavy, intensity: 0.85) : .impact(weight: .light, intensity: 0.6)
+        }
+    }
+
+    /// The plates, and turning the card over: separations are a pinch on the card, and a word for anyone who does not pinch.
+    @ViewBuilder private var quietActs: some View {
+        if !session.turned {
+            quiet(session.separation > 0 ? "Press them together" : "See the plates") { separate(session.separation == 0) }
+        }
+        quiet(session.turned ? "Turn it back" : "Turn it over") { turn() }
+    }
+
+    /// A word for what should not be shouted: the plates, and turning the card over.
+    private func quiet(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(title, action: action)
+            .font(Type.words(15))
+            .buttonStyle(.stub(.quiet))
+            .contentTransition(.identity)
+            .transaction { $0.animation = nil }
     }
 
     /// The bench changes hands: what was on it leaves quickly, then what replaces it arrives, so the words and the
@@ -703,123 +704,6 @@ extension Stock {
         case .foil: "Foil"
         case .holographic: "Holographic"
         }
-    }
-}
-
-/// The parts the press can turn, named, as a row of chips under the card (ADR-031): a chip for each, a dot of the ink it is
-/// printed in, and a note of the move it carries if it is not as drawn. Tap one and the press takes hold of it, as a tap
-/// on the card does. Shown whenever nothing is in hand, so what can be changed is never a thing to guess.
-private struct PartChips: View {
-    let session: PressSession
-    let pick: (Part) -> Void
-
-    var body: some View {
-        VStack(spacing: 8) {
-            Text("Tap a part of the poster, or choose one").font(Type.words(13)).foregroundStyle(Ink.grey)
-                .accessibilityAddTraits(.isHeader)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(session.turnable) { part in
-                        let move = Treatment(rawValue: session.take(of: part)) ?? .asDrawn
-                        Button { pick(part) } label: {
-                            HStack(spacing: 7) {
-                                Circle().fill(ink(of: part)).frame(width: 9, height: 9)
-                                    .overlay(Circle().strokeBorder(Ink.ink.opacity(0.15), lineWidth: 0.5))
-                                Text(Self.short(part.name))
-                                    .font(Type.display(14)).foregroundStyle(Ink.ink)
-                                if move != .asDrawn {
-                                    Text(move.name).font(Type.words(12)).foregroundStyle(Ink.orange)
-                                }
-                            }
-                            .padding(.horizontal, 13)
-                            .frame(minHeight: 36)
-                            .background(Capsule(style: .continuous).fill(Ink.cream))
-                            .overlay(Capsule(style: .continuous).strokeBorder(Ink.ink.opacity(0.12), lineWidth: 0.75))
-                            // Drawn 36 points tall, touched 44: Apple's smallest target (decision 005).
-                            .padding(.vertical, 4)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(session.spoken(part))
-                        .accessibilityHint("Takes hold of it, so the dial turns it.")
-                    }
-                }
-                .padding(.horizontal, 20)
-            }
-            .scrollClipDisabled()
-        }
-    }
-
-    /// "the torn strip" as a chip says it: "Torn strip".
-    static func short(_ name: String) -> String {
-        let bare = name.hasPrefix("the ") ? String(name.dropFirst(4)) : name
-        return bare.prefix(1).uppercased() + bare.dropFirst()
-    }
-
-    /// The ink the part's first mark is printed in.
-    private func ink(of part: Part) -> Color {
-        let c = session.composition
-        guard let mark = c.poster.first(where: { $0.part == part.id }) else { return Ink.grey }
-        if mark.foil, c.isMetallic { return Color(hex: c.inks.foilBase) }
-        return c.inks.color(mark.role)
-    }
-}
-
-/// Printer's registration marks at the corners of each part the press can turn: the card saying where it can be taken hold
-/// of. Put down one part after another when they appear, from the top of the poster down, at full strength, then resting
-/// a little fainter, so they are there for whoever looks without shouting at whoever does not.
-private struct RegistrationMarks: View {
-    let session: PressSession
-    let scale: CGFloat
-    var showing: Bool
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var placed = false
-    @State private var rested = false
-
-    var body: some View {
-        let parts = session.turnable.compactMap { part in session.composition.bounds(of: part.id, separation: 0).map { (part, $0) } }
-            .sorted { $0.1.minY < $1.1.minY }
-        ZStack(alignment: .topLeading) {
-            ForEach(Array(parts.enumerated()), id: \.element.0.id) { index, item in
-                let brackets = Brackets(rect: item.1.insetBy(dx: -5, dy: -5).intersection(Card.posterRect.insetBy(dx: 2, dy: 2)), scale: scale)
-                // In "registration", as a printer's marks are: ink over a halo of paper, so they read on any palette.
-                ZStack {
-                    brackets.stroke(Ink.cream.opacity(0.9), style: StrokeStyle(lineWidth: 3.6, lineCap: .round, lineJoin: .round))
-                    brackets.stroke(Ink.ink, style: StrokeStyle(lineWidth: 1.3, lineCap: .round, lineJoin: .round))
-                }
-                    .opacity(showing ? (rested ? 0.6 : 1) : 0)
-                    .scaleEffect(placed || reduceMotion ? 1 : 1.06)
-                    .animation(reduceMotion ? nil : Motion.stamp.delay(0.25 + Double(index) * 0.09), value: placed)
-                    .animation(.easeOut(duration: 0.18), value: showing)
-            }
-        }
-        .animation(.easeInOut(duration: 0.9), value: rested)
-        .task {
-            placed = true
-            try? await Task.sleep(for: .seconds(1.6))
-            rested = true
-        }
-        .accessibilityHidden(true)
-    }
-}
-
-/// Four corner marks round a rectangle, each a short L, the way a printer marks where a sheet is to be cut.
-private struct Brackets: Shape {
-    let rect: CGRect
-    let scale: CGFloat
-
-    func path(in _: CGRect) -> Path {
-        let r = CGRect(x: rect.minX * scale, y: rect.minY * scale, width: rect.width * scale, height: rect.height * scale)
-        guard r.width > 4, r.height > 4 else { return Path() }
-        let arm = min(10, r.width / 3, r.height / 3)
-        var p = Path()
-        for (corner, dx, dy) in [(CGPoint(x: r.minX, y: r.minY), 1.0, 1.0), (CGPoint(x: r.maxX, y: r.minY), -1.0, 1.0),
-                                  (CGPoint(x: r.minX, y: r.maxY), 1.0, -1.0), (CGPoint(x: r.maxX, y: r.maxY), -1.0, -1.0)] {
-            p.move(to: CGPoint(x: corner.x + dx * arm, y: corner.y))
-            p.addLine(to: corner)
-            p.addLine(to: CGPoint(x: corner.x, y: corner.y + dy * arm))
-        }
-        return p
     }
 }
 

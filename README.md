@@ -95,7 +95,7 @@ The card is lit by one light, and it is the phone's. Tilt the phone and the ligh
 
 ### The press
 
-The press gives you the power the model has, and one more. Touch any part of the poster and the rest knocks back to a ghost. Turn the dial, a lit, knurled knob with nine named moves round it (As drawn, Larger, Smaller, Turned, Echo, Outline, Mirrored, Swapped, Redrawn), and that part redraws while everything else holds still. **You choose between drawings. You never move a mark.**
+The press gives you the power the model has, and one more: the card can be acted on, the way ephemera are made. Choose its movement, inks or stock from the same lists the model chooses from. Then **overprint** it: drag a finger across the card and a pass is pulled through a screen (the stub's own photograph as a silkscreen transfer, discs, dots, bands, the title's own letter) in one of its inks, multiplied into the paper. Or **stamp** it: tap and a rubber stamp of the night lands a few degrees crooked, the date, Admit one, the seat, the viewing, the cinema's postmark. Every act is the card's own ink through a form the edition already speaks, so nothing can break the design; "Take it off" lifts the last one, and the lever keeps it.
 
 <p>
 <img src="docs/screenshots/day-24-take-13.png" width="32%" alt="The disc at take 13">
@@ -155,7 +155,7 @@ Every number here was set on purpose, and most were tuned by eye and thumb. The 
 | Reduce Motion | response 0.26, damping 1 | Critically damped, no overshoot, no tilt |
 | The card's lean | up to 11° from the phone's attitude | Smoothed at 0.22 so the light follows the hand, not its tremor |
 | The stock under a finger | sharpness 0.15 cotton → 0.85 holographic | Paper feels dull, metal bright *(device)* |
-| The dial | nine named moves, a detent at the stock's sharpness | The dial feels like the paper it prints on *(device)* |
+| The studio | four screens, five stamps, three inks; a stamp a few degrees crooked, a pass multiplied into the card | Acting on the card feels like a print studio, never like editing *(device)* |
 | A flick | coasts at 0.93 per 16 ms above 0.25°/ms | Then settles on the nearest take with one overshoot |
 | Detents | a ratchet when they come faster than one per 28 ms | Single clicks at that speed blur into mush *(device)* |
 | A ghosted part | 18% of its ink, drawn toward the stock | Only the part in hand reads |

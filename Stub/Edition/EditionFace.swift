@@ -79,6 +79,8 @@ struct EditionFace: View {
             ZStack(alignment: .topLeading) {
                 ForEach(Separation.layers(metallic: composition.isMetallic), id: \.self) { layer in
                     layerArt(layer)
+                    // The stub's photograph pulled through a screen: the image layer, over the plates, under the type.
+                    if layer == .second { PhotoPasses(composition: composition) }
                 }
             }
             .frame(width: Card.width, height: Card.height)
@@ -90,7 +92,11 @@ struct EditionFace: View {
     /// One layer of the card as a sheet of film: its own ink on a clear ground, cut to the ticket, and a hairline edge
     /// in its ink at a fifth so the film reads as film. The stock is the card itself, opaque.
     func sheet(_ layer: Separation.Layer) -> some View {
-        layerArt(layer)
+        ZStack(alignment: .topLeading) {
+            layerArt(layer)
+            // The stub's photograph rides on the second plate's sheet, as a screen it was pulled through would.
+            if layer == .second { PhotoPasses(composition: composition) }
+        }
             .frame(width: Card.width, height: Card.height)
             .clipShape(TicketShape(punches: composition.punches))
             .overlay {

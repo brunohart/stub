@@ -85,6 +85,8 @@ struct Edition: Hashable, Codable, Sendable {
     var inksChosen = false
     /// The viewing these inks are the variant for (`pulled(viewing:)`); 0 for the release's own inks. Never stored.
     var variant = 0
+    /// The studio's acts laid over the drawing, from the proof (ADR-046). Never stored with the edition.
+    var acts: [Act] = []
 
     init(release: String, movement: Movement, palette: Palette, stock: Stock, seed: UInt64, directedBy: Director,
          version: Int = Genome.version, takes: [Part.ID: Int] = [:]) {

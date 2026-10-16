@@ -46,7 +46,13 @@ struct Composition: Sendable, Equatable {
             mark.part = edition.movement.hand.id
             return mark
         }
-        poster = Hand.laid(hand, into: drawn)
+        // Over it all, what was pulled and stamped at the press, in the order it was done (ADR-046).
+        let acts = Studio.marks(edition.acts, copy: copy, inks: inks, field: posterField, title: copy.title).map { mark in
+            var mark = mark
+            mark.part = edition.movement.studio.id
+            return mark
+        }
+        poster = Hand.laid(hand, into: drawn) + acts
         stripField = edition.movement == .noir ? .dark : .ground
         strip = composer.strip(on: stripField)
         inBetween = nil

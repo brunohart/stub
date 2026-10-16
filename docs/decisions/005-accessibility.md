@@ -68,7 +68,7 @@ evidence, and each verdict is printed, so the record says why (`build/a11y-settl
 Anything else fails the run. A11Y lines in `build/a11y.txt` are the failures; the job in CI fails on one.
 
 **The result, 2026-10-16.** Ten screens, each at the default size and the largest accessibility size, with Increase
-Contrast off and on: **0 issues** on this Mac. In the last run Apple's audit raised 218, and each was settled by
+Contrast off and on: **0 issues**, on this Mac and in CI (GitHub's `xcode-27` image, 2026-10-16). In the last run Apple's audit raised 218, and each was settled by
 its evidence:
 - 62 printed artwork;
 - 45 contrast flags with no element named, where every word on the screen measured 4.5:1 or more;

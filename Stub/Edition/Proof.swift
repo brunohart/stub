@@ -14,6 +14,9 @@ struct Proof: Codable, Equatable, Sendable {
     /// Part id to take; absent means take 0. Keyed by the namespaced id, so switching from constructivist to riso and
     /// back keeps the constructivist takes.
     var takes: [Part.ID: Int] = [:]
+    /// The studio's acts, in order: passes pulled and stamps pressed (ADR-046). Optional, so proofs kept before there was a
+    /// studio still read.
+    var acts: [Act]?
     /// `nil` while it is still on the press.
     var pulledAt: Date?
     /// The `Genome.version` it was pulled against.
@@ -58,12 +61,14 @@ extension Edition {
         applied.movement = proof.movement ?? movement
         applied.palette = proof.palette ?? palette
         applied.inksChosen = proof.palette != nil
+        applied.acts = proof.acts ?? []
         applied.stock = proof.stock ?? stock
         let turnable = Set(applied.movement.parts.filter(\.turns).map(\.id))
         applied.takes = proof.takes
             .filter { turnable.contains($0.key) && $0.value != 0 }
             .mapValues { min(max($0, Proof.takeRange.lowerBound), Proof.takeRange.upperBound) }
-        if applied.movement != movement || applied.palette != palette || applied.stock != stock || applied.takes != takes {
+        if applied.movement != movement || applied.palette != palette || applied.stock != stock || applied.takes != takes
+            || !applied.acts.isEmpty {
             applied.directedBy = .you
         }
         return applied

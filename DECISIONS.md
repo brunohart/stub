@@ -538,3 +538,37 @@ monogram from a five-by-seven alphabet in the clear place nearest a seeded corne
 
 **Consequences.** `docs/editions/edition.js` draws the movements, not the hand; the goldens compare the movement's marks.
 The masters are named here and in DESIGN.md, never on a card.
+
+## ADR-046 — The press's studio: overprint and stamp the card; the dial is cut
+
+**Date:** 2026-10-16 · **Status:** decided; built; tested (`StudioTests`). DESIGN.md › The press, rules 1, 2, 3, 5, 6. Supersedes ADR-031's dial.
+
+**What changed.** Bruno: the turn wheel was a poor execution of what customising could be: it sent single parts to
+individual options that ruined the design. Think out of the box; take the cues from his taste (his reference board:
+Rauschenberg's silkscreen layers, Karel Martens's overprints, risograph halftones, vintage luggage tags, rubber date
+stamps, postmarks and cancellations) with universal product appeal. The dial, its registration marks and the part chips
+are gone. In their place the bench holds the studio's two tools:
+
+- **Overprint.** Drag a finger across the card and a pass is pulled through the screen on the tray: three discs along
+  the stroke overprinting one another (Martens), a dot screen swelling where the stroke ends, bands stepping toward the
+  ground (Aicher), or the title's first letter enormous (Corita Kent). The first screen on the tray, wherever there is
+  a photograph, is **the stub itself**: the ticket's own photograph pulled through as a silkscreen transfer, its darks
+  printing in the ink, its paper left as card, in the image layer over the plates and under the type (Rauschenberg). It
+  makes every card carry the one thing no other card has. The live pass and a squeegee blade follow the finger before it
+  lands.
+- **Stamp.** Tap and a rubber stamp of the night lands where the finger was: the date, Admit one, the seat in a ring,
+  the viewing between rules, the cinema's postmark with its cancellation. Each is pressed a few degrees crooked (the
+  same each time for the same place) and kisses the card a second, fainter time.
+
+Every act prints in one of the card's three inks, chosen from pots on the tray, multiplied into a light card and screened
+onto a dark one, over the drawing, in the order it was done. Stamps print the copy's own facts, so a second viewing's
+card stamps its own date. Acts are kept in the proof (`Proof.acts`, optional so older proofs read), laid over the
+composition as the movement's `studio` part, and named for VoiceOver ("Overprint across the card", "Stamp the card").
+"Take it off" lifts the last act; every act can be undone. A stamp lands with a heavy knock, a pass with a lighter one.
+
+**Why.** Customising a designed thing by changing its parts makes it worse in proportion to how much it was designed.
+Acting on it the way printed ephemera are acted on (overprinted, stamped, cancelled) makes it more itself, and makes it
+the person's. Every form is the edition's own grammar and every ink its own, so there is no wrong answer.
+
+**Consequences.** `Proof.takes` and the part moves (`Treatment`) stay in the model: proofs pulled with them still print
+and their pencil still reads. Nothing in the app sets them now.

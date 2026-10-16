@@ -49,9 +49,49 @@ final class PressSession {
     var letGo: Movement?
     #endif
 
-    /// The three choices the genome offers, each with its object on the bench (brief §5.5, §5.6).
+    /// The three choices the genome offers, each with its object on the bench (brief §5.5, §5.6), and the studio's two
+    /// tools, each with its tray (ADR-046).
     enum Bench: String, CaseIterable, Sendable {
-        case rest, movement, inks, stock
+        case rest, movement, inks, stock, pull, stamp
+    }
+
+    /// The screen on the pulling tray, the stamp in hand, and the ink either prints in.
+    var screen: Act.Screen = .discs
+    var stamp: Act.Stamp = .date
+    var inking: Act.Inking = .primary
+    /// Counts the acts, for the thud of a stamp and the drag of a pull.
+    private(set) var acted = 0
+
+    /// The acts on the press, in order.
+    var acts: [Act] { proof.acts ?? [] }
+
+    /// Pulls a pass through the screen on the tray, from where the stroke began to where it ended (ADR-046).
+    func pull(from start: CGPoint, to end: CGPoint) {
+        guard !turned, hypot(end.x - start.x, end.y - start.y) > 12 else { return }
+        act(.pull(screen, in: inking, from: start, to: end), named: "Pull a Pass")
+    }
+
+    /// Presses the stamp in hand at `point`.
+    func stamp(at point: CGPoint) {
+        guard !turned else { return }
+        act(.stamp(stamp, in: inking, at: point), named: "Stamp")
+    }
+
+    /// Takes the last act off the card: going back is one step (DESIGN.md › The press, rule 3).
+    func takeOffLast() {
+        guard !acts.isEmpty else { return }
+        remember("Take It Off")
+        var acts = self.acts
+        acts.removeLast()
+        proof.acts = acts.isEmpty ? nil : acts
+        keep("took the last act off")
+    }
+
+    private func act(_ act: Act, named name: String) {
+        remember(name)
+        proof.acts = acts + [act]
+        acted += 1
+        keep(act.spoken)
     }
 
     /// A palette flooding the card from where it was dropped, `progress` of the way across.
@@ -328,6 +368,8 @@ final class PressSession {
             case .movement: return "One film in eight movements. Let go on one to print it; try as many as you like."
             case .inks: return "Twelve inks. Drag one onto the card, or tap it."
             case .stock: return "Hold a swatch and rub it to feel it. Tap it to print on it."
+            case .pull: return "Drag across the card to overprint it."
+            case .stamp: return "Tap the card where it goes."
             case .rest: break
             }
         }
@@ -341,9 +383,13 @@ final class PressSession {
             return composition.isMetallic ? "Five sheets: the stock, two plates, the foil and the type."
                 : "Four sheets: the stock, two plates and the type."
         }
-        // With nothing in hand the press's one move is the thing to say, every time: the marks on the card show where,
-        // and the lever says Pull on its own once there is something to pull (ADR-022).
-        return "Tap a part of the poster, or choose one."
+        // The studio's two tools are the thing to say, every time; the lever says Pull on its own once there is
+        // something to keep (ADR-022, ADR-046).
+        switch acts.count {
+        case 0: return "Overprint it, or stamp it."
+        case 1: return acts[0].kind == .stamp ? "Stamped. Another, or keep it?" : "One pass on it. Another, or keep it?"
+        default: return "\(acts.count) on it now. Keep going, or keep it."
+        }
     }
 
     /// VoiceOver's name for a part in the rotor: "The disc, second ink, take three."

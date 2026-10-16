@@ -199,6 +199,9 @@ struct EditionThumbnail: View {
                 if let edition = editions.edition(for: stub.title) {
                     let composition = Compositions.of(edition, copy)
                     EditionFace(composition: composition)
+                        // A pass pulled through the stub's own photograph needs it; nothing else on the card does.
+                        .environment(\.stubPhoto, composition.edition.acts.contains { $0.screen == .stub }
+                            ? PlateImage.image(for: stub.id, in: .card, data: stub.imageData) : nil)
                         // The card's edge: a sliver of darker stock on the side away from the lamp.
                         .background(
                             TicketShape(punches: composition.punches)

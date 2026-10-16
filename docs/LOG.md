@@ -56,6 +56,26 @@ should be a given that every stub is unique.
 `VariantTests` render Dune Part Two's two viewings and require that more than half the card differs. Screenshot:
 `2026-10-16-variant.png`.
 
+**Each year turns over on its own** (ADR-044). The drawer-wide Tickets and Editions picker is gone. Each year folder
+carries a second tab at its right end, Tickets and Editions under an ink thumb, each side a 44-point target; a flick
+across the year turns it too, its stubs turning one after another. Bruno asked for a larger, more obvious, still elegant
+target: the first try (two small glyphs beside the year) was too small and is gone.
+
+**Every edition has a hand** (ADR-045, DESIGN.md Editions rule 9). A contact sheet of every movement showed every film in
+a movement coming out nearly the same. Each release now carries one master's move under its drawing, chosen by its seed
+among those its movement admits: overprinted (Karel Martens), on the grid (Wim Crouwel, the title's initial built from
+grid cells), in sequence (Otl Aicher's bands), at scale (Corita Kent, Paula Scher). Two passes over contact sheets, by
+eye: the first overprinted into stray frames and hid under full-bleed fields; the second admits a device only where it
+survives the movement. Screenshot: `2026-10-16-hands.png`.
+
+**The press's studio** (ADR-046). Bruno: the dial was a poor execution of customising; it sent parts to options that
+ruined the design. It is cut, with its registration marks and part chips. In their place: Overprint (drag across the card
+to pull a pass through a screen: the stub's own photograph as a silkscreen transfer, discs, dots, bands, the title's
+letter) and Stamp (tap to press a rubber stamp of the night: the date, Admit one, the seat, the viewing, the cinema's
+postmark), each in one of the card's three inks, over the drawing in order, "Take it off" for the last. Taken from his
+reference board: Rauschenberg's transfers, Martens's overprints, risograph halftones, luggage tags, date stamps and
+postmarks. Screenshot: `2026-10-16-studio-stub.png`.
+
 **CI** runs green on GitHub's `xcode-27` image. The first runs failed for two reasons, both fixed: the image lacks the
 Metal compiler, which CI now downloads, and a date test assumed New Zealand's order on a US-locale runner. The ci lane's
 ceilings come from that machine's first full run: it is about twice this Mac's times, and its model path is the rules

@@ -48,7 +48,12 @@ enum Parts {}
 extension Movement {
     /// The parts this movement draws, in order.
     var parts: [Part] {
-        drawn + [hand]
+        drawn + [hand, studio]
+    }
+
+    /// The studio's acts, pulled and stamped over the drawing at the press (ADR-046).
+    var studio: Part {
+        Part.set("\(rawValue)/studio", "the pulls and stamps", note: "Pulled and stamped at the press, over the drawing.")
     }
 
     /// The edition's own pass, laid by its hand (ADR-045): the release's, drawn under the rest, and never turned.

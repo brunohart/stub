@@ -15,6 +15,8 @@ import OSLog
 struct EditionClip: Transferable, Sendable {
     let composition: Composition
     var format: Format = .vertical
+    /// The stub's photograph, for any pass pulled through it (ADR-046).
+    var photo: UIImage? = nil
 
     enum Format: String, Sendable, CaseIterable {
         /// 9:16, 1080 by 1920: the card centred with room above and below, clear of the bands a Story draws its own
@@ -105,14 +107,15 @@ struct EditionClip: Transferable, Sendable {
     /// light, and the watermark pressed into the parchment under it.
     @MainActor
     func frame(at t: Double) -> CGImage? {
-        Self.page(composition, tilt: Self.tilt(at: t), format: format, watermark: true)
+        Self.page(composition, tilt: Self.tilt(at: t), format: format, watermark: true, photo: photo)
     }
 
     /// The page at a tilt. `watermark` is false only for the tests, which measure what lies under it.
     @MainActor
-    static func page(_ composition: Composition, tilt: CGPoint, format: Format, watermark: Bool) -> CGImage? {
+    static func page(_ composition: Composition, tilt: CGPoint, format: Format, watermark: Bool, photo: UIImage? = nil) -> CGImage? {
         let canvas = format.canvas
         let card = EditionFace(composition: composition, light: Light(tilt: tilt))
+            .environment(\.stubPhoto, photo)
             .rotation3DEffect(.degrees(Double(tilt.x) * 11), axis: (x: 0, y: 1, z: 0), perspective: 0.45)
             .rotation3DEffect(.degrees(Double(-tilt.y) * 11), axis: (x: 1, y: 0, z: 0), perspective: 0.45)
             .shadow(color: .black.opacity(0.18), radius: 12, x: 6 - tilt.x * 8, y: 10 - tilt.y * 8)

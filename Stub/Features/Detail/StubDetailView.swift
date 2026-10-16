@@ -38,6 +38,9 @@ struct StubDetailView: View {
         #endif
     }
 
+    /// The stub's photograph, for a pass pulled through it on the card and in its shares (ADR-046).
+    private var photo: UIImage? { PlateImage.image(for: stub.id, in: .detail, data: stub.imageData) }
+
     var body: some View {
         ZStack {
             Paper()
@@ -181,7 +184,7 @@ struct StubDetailView: View {
         // The share is the front, whole, rendered once the edition is printed, at three times the card.
         .onChange(of: editions.edition(for: stub.title), initial: true) { _, edition in
             guard let edition else { return }
-            shareable = Self.render(Composition(edition: edition, copy: copy))
+            shareable = Self.render(Composition(edition: edition, copy: copy), photo: photo)
         }
         #if DEBUG || PERF
         .onChange(of: DebugDrive.shared.turned) { _, now in turned = now }
@@ -274,11 +277,11 @@ struct StubDetailView: View {
             let invitation = { (via: ShareLinkText.Via) in Text(ShareLinkText.link(via: via).absoluteString) }
             let named = "\(composition.edition.variant > 0 ? "A variant" : "An edition") of \(stub.title)"
             Menu {
-                ShareLink(item: EditionClip(composition: composition, format: .vertical), message: invitation(.clip),
+                ShareLink(item: EditionClip(composition: composition, format: .vertical, photo: photo), message: invitation(.clip),
                           preview: SharePreview("\(named), turning in the light", image: shareable)) {
                     Label("Share it turning in the light", systemImage: "film")
                 }
-                ShareLink(item: EditionClip(composition: composition, format: .card), message: invitation(.card),
+                ShareLink(item: EditionClip(composition: composition, format: .card, photo: photo), message: invitation(.card),
                           preview: SharePreview("\(named), turning in the light", image: shareable)) {
                     Label("Share it turning, close up", systemImage: "rectangle.portrait")
                 }
@@ -327,13 +330,14 @@ struct StubDetailView: View {
 
     /// The edition's front on a margin of parchment, lit a little from the side, with the watermark under it, as an image to
     /// share: the card-sized clip's first frame, held still, at three times the card.
-    private static func render(_ composition: Composition) -> Image? {
+    private static func render(_ composition: Composition, photo: UIImage?) -> Image? {
         let light = CGPoint(x: 0.3, y: -0.2)
         let format = EditionClip.Format.card
         let canvas = format.canvas
         let page = ZStack {
             Ink.paper
-            EditionFace(composition: composition, light: Light(tilt: light)).position(format.cardCentre(in: canvas))
+            EditionFace(composition: composition, light: Light(tilt: light)).environment(\.stubPhoto, photo)
+                .position(format.cardCentre(in: canvas))
             Watermark(size: format.markSize, light: light).position(format.markCentre(in: canvas))
         }
         .frame(width: canvas.width, height: canvas.height)

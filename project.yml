@@ -123,6 +123,7 @@ targets:
       - path: Stub/Edition/Edition.swift
       - path: Stub/Edition/Composition.swift
       - path: Stub/Edition/Hand.swift
+      - path: Stub/Edition/Studio.swift
       - path: Stub/Edition/Marks.swift
       - path: Stub/Edition/Part.swift
       - path: Stub/Edition/PaletteInks.swift

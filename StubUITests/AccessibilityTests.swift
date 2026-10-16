@@ -93,10 +93,11 @@ final class AccessibilityTests: XCTestCase {
                 for child in node.children { walk(child, inBar: bar) }
             }
             if let tree = try? app.snapshot() { walk(tree, inBar: false) }
+            // The doors' fade begins 44 points above their buttons (`Dock`): the region where the drawer fades on purpose.
+            doors = doors.map { CGRect(x: 0, y: $0.minY - 52, width: max($0.maxX, shot.size.width), height: $0.height + 52) }
             // The system's status bar is the phone's, not the app's.
             let statusBar = XCUIApplication(bundleIdentifier: "com.apple.springboard").statusBars.firstMatch
             let system = statusBar.exists ? statusBar.frame : CGRect(x: 0, y: 0, width: shot.size.width, height: 24)
-            heights[size] = tall
             // The words Vision reads on the screen that nothing accounts for, read once, only if the audit found any.
             let unread: [String]? = issues.contains { $0.auditType == .elementDetection && $0.element == nil }
                 ? Self.read(shot).filter { found in
@@ -144,6 +145,23 @@ final class AccessibilityTests: XCTestCase {
                     unread: issue.auditType == .elementDetection && element == nil ? unread : nil,
                     dim: issue.auditType == .contrast && element == nil ? dim : nil))
             }
+            // After every issue's evidence is taken from the screen as the audit saw it.
+            // At the largest size less of a drawer fits: scroll on and measure what comes into view, so a label seen at the
+            // default size can be found here too.
+            if size == Self.largest, app.scrollViews.firstMatch.exists {
+                for _ in 0..<4 {
+                    app.scrollViews.firstMatch.swipeUp(velocity: .slow)
+                    guard let more = try? app.snapshot() else { break }
+                    func heights(_ node: any XCUIElementSnapshot) {
+                        if node.elementType == .staticText, !node.label.isEmpty {
+                            tall[node.label] = max(tall[node.label] ?? 0, node.frame.height)
+                        }
+                        node.children.forEach(heights)
+                    }
+                    heights(more)
+                }
+            }
+            heights[size] = tall
             app.terminate()
         }
         for issue in found {

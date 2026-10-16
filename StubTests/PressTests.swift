@@ -306,7 +306,7 @@ struct PressRoomTests {
     @MainActor @Test func theSentenceNamesTheMove() {
         #expect(PressSession.spelled(14) == "fourteen")
         let session = PressSession(title: "The Brutalist", copy: copy, editions: Editions(defaults: UserDefaults(suiteName: "press-room-\(UUID().uuidString)")!))
-        #expect(session.sentence(at: 0) == "Tap a part of the poster, or choose one.")
+        #expect(session.sentence(at: 0) == "Overprint it, or stamp it.")
         let disc = Parts.Constructivist.disc
         session.pickUp(disc)
         #expect(session.sentence(at: 0) == "The disc, as the title drew it.")
@@ -483,7 +483,7 @@ struct PullTests {
         #expect(session.sentence(at: 4) == "The disc, echoed.")
         session.putDown()
         // Put down, the line says the press's one move again; the lever says Pull on its own (ADR-022).
-        #expect(session.sentence(at: 0) == "Tap a part of the poster, or choose one.")
+        #expect(session.sentence(at: 0) == "Overprint it, or stamp it.")
         #expect(session.somethingToPull, "the lever is ready")
 
         undo.beginUndoGrouping()
