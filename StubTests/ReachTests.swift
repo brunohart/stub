@@ -53,7 +53,10 @@ struct ReachTests {
         let anora = try #require(all.first { $0.title == "Anora" })
         let printed = LastStub(anora)
         #expect(printed.title == "Anora" && printed.cinema == "Academy Cinemas" && printed.seat == "C8")
-        #expect(printed.date == "19 FEB \(String(Calendar.current.component(.year, from: .now)).suffix(2))")
+        // The card's printed date, in the person's own order: "19 FEB 26" in New Zealand, "FEB 19, 26" in the US (CI).
+        #expect(printed.date == anora.displayDate)
+        let date = try #require(printed.date)
+        #expect(date.contains("19") && date.contains("FEB") && date.contains(String(Calendar.current.component(.year, from: .now)).suffix(2)))
         #expect(printed.numbers == "\(printed.date!) · C8")
         #expect(LastStub(title: "Aftersun", seat: "E11").numbers == "E11")
 
