@@ -1,0 +1,5 @@
+// The app's build settings that are not in project.yml. The TMDB token for official posters (ADR-049) lives in
+// Secrets.xcconfig beside this file, which git never sees; copy Secrets.example.xcconfig to it and paste the token in.
+// With no token the app makes no network request at all and the editions are drawn as before.
+TMDB_TOKEN =
+#include? "Secrets.xcconfig"

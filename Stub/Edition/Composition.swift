@@ -19,6 +19,9 @@ struct Composition: Sendable, Equatable {
     let punches: [Punch]
     /// The surface the card has earned since the night it was seen (brief §6.2).
     let patina: Patina
+    /// Where the film's key art is printed once its poster is here: the movement's hero, a clear band, or the whole poster
+    /// pressed blind (ADR-049).
+    let keyArt: KeyArtWindow
     /// This copy's pull: where each plate landed (first, second, type, foil), and its sheet of stock. Rolled once.
     private let pull: [CGSize]
     let paper: UInt64
@@ -56,6 +59,7 @@ struct Composition: Sendable, Equatable {
             return mark
         }
         poster = Hand.laid(hand, into: drawn) + acts
+        keyArt = KeyArtWindow.find(in: drawn, hand: hand, field: posterField, metallic: edition.stock == .foil || edition.stock == .holographic)
         stripField = edition.movement == .noir ? .dark : .ground
         strip = composer.strip(on: stripField)
         inBetween = nil
@@ -70,7 +74,7 @@ struct Composition: Sendable, Equatable {
         edition = c.edition; inks = c.inks; copy = c.copy; strip = c.strip
         posterField = c.posterField; stripField = c.stripField
         punches = c.punches; patina = c.patina
-        pull = c.pull; paper = c.paper
+        pull = c.pull; paper = c.paper; keyArt = c.keyArt
         self.poster = poster
         self.inBetween = inBetween
     }

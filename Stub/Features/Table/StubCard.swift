@@ -229,6 +229,8 @@ struct EditionThumbnail: View {
             .frame(width: proxy.size.width, height: Card.height * scale, alignment: .topLeading)
         }
         .aspectRatio(Card.width / Card.height, contentMode: .fit)
+        // The film's poster, for its key art: from the phone, or from TMDB once (ADR-049).
+        .task(id: stub.title) { Posters.shared.want(title: stub.title, year: copy.year) }
     }
 }
 

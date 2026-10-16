@@ -31,6 +31,7 @@ the rules for the look, [`docs/LOG.md`](docs/LOG.md) what happened each day, fai
 | [006](docs/decisions/006-network-without-data.md) | Network effects without collecting data, and the business model |
 | [007](docs/decisions/007-proof.md) | Proof outside us: [the kits](docs/proof/) |
 | [008](docs/decisions/008-corpus.md) | The corpus: real tickets, measured by kind |
+| [009](docs/decisions/009-posters.md) | The film's own poster, and what it costs the label |
 
 ## Measured
 
@@ -90,6 +91,8 @@ Every release gets one design, and every stub of that release prints its own cop
 <p><img src="docs/editions/specimen-movements-v2.png" width="100%" alt="The eight movements: swiss, constructivist, deco, cutout, riso, letterpress, blueprint, noir"></p>
 
 <sub>All eight movements, drawn in a browser by <a href="docs/editions/edition.js"><code>edition.js</code></a>, which rolls the same dice in the same order as the Swift. It is a design tool and a specimen; the proof is the simulator.</sub>
+
+When the build has TMDB's token and the person has not turned it off, the film's own poster is printed into the edition: its subject found by Vision, set inside the movement's hero, and printed the movement's way, as a Swiss halftone, a constructivist line screen, deco's rings or Saul Bass's cut paper, in the edition's inks. The design stays the movement's; the picture is the film's ([ADR-049](DECISIONS.md), [decision 009](docs/decisions/009-posters.md)).
 
 The card is lit by one light, and it is the phone's. Tilt the phone and the light moves across the ink pressed into the stock, the foil, and the stock's own fibre and sheen: three Metal shaders sharing one light vector. Drag a finger across the card and you feel the stock: cotton drags, foil is slick, and the perforation clicks once. Turn it over and the stub you were handed is on the back, in four photo corners, above an Aztec code that encodes exactly what the strip prints.
 

@@ -18,6 +18,8 @@ struct YourCard: View {
     @AppStorage("drawer.face") private var face: DrawerFace = .ticket
     @AppStorage(Drawer.syncKey) private var keepsInICloud = true
     @State private var icons = IconDrawer.shared
+    @State private var posters = Posters.shared
+    @State private var forgotPosters = false
     @State private var naming = false
     @State private var name = ""
     @FocusState private var typing: Bool
@@ -173,6 +175,33 @@ struct YourCard: View {
             }
             .buttonStyle(.stub(.paper))
             .disabled(stubs.isEmpty)
+            if Posters.available { postersChoice }
+        }
+    }
+
+    /// The films' own posters (ADR-049): on or off, what goes where for them, and TMDB's notice, which their terms ask for
+    /// wherever their data is used.
+    private var postersChoice: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Toggle(isOn: $posters.on) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Print each film's poster").font(Type.words(16)).foregroundStyle(Ink.ink)
+                    Text("Every edition prints its film's own poster, in its inks. The film's title goes to The Movie Database to find it, and nothing else does.")
+                        .font(Type.words(12)).foregroundStyle(Ink.grey)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .tint(Ink.orange)
+            Button(forgotPosters ? "Posters forgotten" : "Forget the posters") {
+                posters.forgetAll()
+                forgotPosters = true
+            }
+            .buttonStyle(.stub(.paper))
+            .disabled(forgotPosters)
+            .accessibilityHint("Removes the posters kept on this phone. They are fetched again as the editions are seen.")
+            Text("Posters from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.")
+                .font(Type.words(12)).foregroundStyle(Ink.grey)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -180,7 +209,9 @@ struct YourCard: View {
 
     private var aboutSection: some View {
         CardSection("Stub") {
-            Text("Nothing you keep leaves your phone, except to your own iCloud. There is no account, no server of ours, and nothing tracked.")
+            Text(Posters.available && posters.on
+                 ? "Nothing you keep leaves your phone, except to your own iCloud, and each film's title to The Movie Database for its poster. There is no account, no server of ours, and nothing tracked."
+                 : "Nothing you keep leaves your phone, except to your own iCloud. There is no account, no server of ours, and nothing tracked.")
                 .font(Type.reading(17)).foregroundStyle(Ink.soft(0.85))
                 .fixedSize(horizontal: false, vertical: true)
             Link(destination: ShareLinkText.link) {

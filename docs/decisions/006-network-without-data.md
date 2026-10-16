@@ -118,3 +118,6 @@ one-time purchases, because the network effects above all start from installs.
 - A server for formats: the shapes come back in app updates, so Stub stays a phone-only app.
 - Selling audience insight to cinemas.
 - Contacts upload, a friend graph, or a feed inside Stub: the network lives in people's own Stories and inboxes.
+
+**Later.** [009](009-posters.md) asks for the first exception: the film's title to TMDB for its poster. It is built and
+dormant, and the label stays Data Not Collected until Bruno decides.

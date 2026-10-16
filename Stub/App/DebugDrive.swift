@@ -39,6 +39,8 @@ final class DebugDrive {
     /// `-press`: with `-edition`, carry the card on into the press room once it is printed (ADR-016).
     static var wantsPress: Bool { ProcessInfo.processInfo.arguments.contains("-press") }
     /// `-overprint stub|discs|dots|bands|letter`: in the press room, pull a pass through that screen across the card (ADR-046).
+    /// `-poster poster-orchard.jpg`: a stand-in poster from the bundle as every film's key art (ADR-049).
+    static let posterFile: String? = value(after: "-poster")
     static let overprint: Act.Screen? = value(after: "-overprint").flatMap(Act.Screen.init(rawValue:))
     /// `-stamp date|admit|seat|viewing|postmark`: in the press room, press that stamp on the card.
     static let stamp: Act.Stamp? = value(after: "-stamp").flatMap(Act.Stamp.init(rawValue:))

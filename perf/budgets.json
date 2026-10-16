@@ -74,6 +74,29 @@
       "ci": 1.5
     },
     {
+      "name": "Drawer fling, editions with posters: hitch time ratio",
+      "test": "PerformanceTests/testDrawerScrollEditionsWithPosters()",
+      "metric": "hitch-ratio",
+      "match": "(?i)Scroll_DraggingAndDeceleration.*hitch.*ratio",
+      "unit": "ms/s",
+      "device": 5,
+      "required": {
+        "device": true,
+        "simulator": false,
+        "ci": false
+      },
+      "why": "The posters are printed off the main thread, once a card: the fling keeps the editions' budget."
+    },
+    {
+      "name": "Drawer fling, editions with posters: CPU time",
+      "test": "PerformanceTests/testDrawerScrollEditionsWithPosters()",
+      "metric": "com.apple.dt.XCTMetric_CPU-com.designedbybruno.stub.time",
+      "unit": "s",
+      "simulator": 0.9,
+      "why": "The editions' own ceiling: printing the posters must not make the fling heavier than the editions were allowed to be.",
+      "ci": 1.5
+    },
+    {
       "name": "Reveal: hitch time ratio",
       "test": "PerformanceTests/testReveal()",
       "metric": "hitch-ratio",

@@ -79,6 +79,7 @@ struct PressRoom: View {
                 : new > old && new > 0 ? .impact(weight: .light, intensity: 0.6) : nil
         }
         .onAppear {
+            Posters.shared.want(title: stub.title, year: session.copy.year)
             if !reduceMotion { attitude.start() }
             session.undoManager = undoManager
             photo = PlateImage.image(for: stub.id, in: .detail, data: stub.imageData)

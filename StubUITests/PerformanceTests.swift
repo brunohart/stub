@@ -62,8 +62,11 @@ final class PerformanceTests: XCTestCase {
     /// The same fling with the drawer showing editions, the heavier face: shaders on every card.
     func testDrawerScrollEditions() { scroll(face: "edition") }
 
-    private func scroll(face: String) {
-        let app = app(["-stage-drawer", "60", "-stage-rules", "-face", face])
+    /// The editions again, every card printing its film's poster (ADR-049): sixty prints made as the cards come in.
+    func testDrawerScrollEditionsWithPosters() { scroll(face: "edition", posters: true) }
+
+    private func scroll(face: String, posters: Bool = false) {
+        let app = app(["-stage-drawer", "60", "-stage-rules", "-face", face] + (posters ? ["-poster", "poster-orchard.jpg"] : []))
         app.launch()
         let drawer = app.scrollViews["drawer.scroll"]
         XCTAssertTrue(drawer.waitForExistence(timeout: 30))

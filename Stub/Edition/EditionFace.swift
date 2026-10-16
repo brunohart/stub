@@ -101,6 +101,8 @@ struct EditionFace: View {
             ZStack(alignment: .topLeading) {
                 ForEach(Separation.layers(metallic: composition.isMetallic), id: \.self) { layer in
                     layerArt(layer)
+                    // The film's key art, printed into the movement's hero, in the hero's own pass (ADR-049).
+                    if layer.rawValue == composition.keyArt.layer.rawValue { keyArt }
                     // The stub's photograph pulled through a screen: the image layer, over the plates, under the type.
                     if layer == .second { PhotoPasses(composition: composition) }
                 }
@@ -111,11 +113,22 @@ struct EditionFace: View {
         }
     }
 
+    /// The film's key art, landing with its hero's plate in the print run and where this copy's pull put that plate.
+    private var keyArt: some View {
+        let window = composition.keyArt
+        let pass = window.plate.map(\.rawValue) ?? Plate.foil
+        return KeyArt(composition: composition)
+            .offset(window.layer == .stock ? .zero : composition.registration(window.plate))
+            .opacity(printed >= pass ? 1 : 0)
+    }
+
     /// One layer of the card as a sheet of film: its own ink on a clear ground, cut to the ticket, and a hairline edge
     /// in its ink at a fifth so the film reads as film. The stock is the card itself, opaque.
     func sheet(_ layer: Separation.Layer) -> some View {
         ZStack(alignment: .topLeading) {
             layerArt(layer)
+            // The key art rides on its hero's sheet, as it was printed with it.
+            if layer.rawValue == composition.keyArt.layer.rawValue { keyArt }
             // The stub's photograph rides on the second plate's sheet, as a screen it was pulled through would.
             if layer == .second { PhotoPasses(composition: composition) }
         }

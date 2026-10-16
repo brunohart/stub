@@ -51,8 +51,11 @@ targets:
           - FragmentMono-Italic.ttf
         NSCameraUsageDescription: Stub photographs your ticket stub to read it. Nothing from the camera leaves this device.
         NSPhotoLibraryUsageDescription: Stub reads ticket stubs from your library. Nothing is uploaded.
-        # No network, no crypto of our own (ADR-005): answers App Store Connect's export question for every upload.
+        # No crypto of our own (ADR-005): the one network request, a film's poster from TMDB (ADR-049), is HTTPS through
+        # the system, which is exempt. Answers App Store Connect's export question for every upload.
         ITSAppUsesNonExemptEncryption: false
+        # TMDB's read token for official posters, from Config/Secrets.xcconfig (ignored by git). Empty: no posters, no network.
+        TMDBToken: $(TMDB_TOKEN)
         # ProMotion at its full 120 Hz, so the press wheel's in-betweens are not capped at 60 (ADR-016).
         CADisableMinimumFrameDurationOnPhone: true
         # CloudKit's silent pushes say another phone changed the drawer (ADR-024).
@@ -82,6 +85,10 @@ targets:
     dependencies:
       - target: StubWidget
       - target: StubShare
+    configFiles:
+      Debug: Config/Stub.xcconfig
+      Release: Config/Stub.xcconfig
+      Performance: Config/Stub.xcconfig
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.designedbybruno.stub
@@ -100,7 +107,7 @@ targets:
           STUB_APPLINKS_MODE: "?mode=developer"
         # The fixtures are for the seed and the tests, both Debug only; a phone's Release build does not carry them.
         Release:
-          EXCLUDED_SOURCE_FILE_NAMES: "stub-*.png stub-*.pdf"
+          EXCLUDED_SOURCE_FILE_NAMES: "stub-*.png stub-*.pdf poster-*.jpg"
           STUB_APPLINKS_MODE: ""
         # The fixtures stay in: the staged drawer and the staged camera are drawn from them.
         Performance:

@@ -623,3 +623,50 @@ impact:
   wrapped mono. It is now a colophon set as the season's ledger is (`LedgerLine`): Read by, Edition or Variant, Printed,
   Chosen, History, one fact to a ruled line. The rules are named "Stub's reader", not "heuristics". What scrolls under
   the bar's buttons softens into the system's scroll edge, so the card's words never run into Back and Share.
+
+## ADR-049 — The film's own poster, printed in the movement's process
+
+**Date:** 2026-10-17 · **Status:** decided; built; tested (`KeyArtTests`); dormant until a TMDB token is in the build
+and Bruno has decided the privacy label (decision 009). DESIGN.md › Editions rule 10.
+
+**What changed.** Bruno: the edition should use elements from the film's poster, so each card holds up as its own
+artefact, without losing the app's point of view. The official poster comes from The Movie Database (Bruno chose TMDB,
+licensed). It is never pasted on. It is printed into the edition the way the movement prints:
+- **Where:** the movement's own hero. `KeyArtWindow.find` takes the disc, block or torn shape that shows most once
+  everything printed after it is down, shaped to hold a picture (no longer than about twice its width), never on the
+  type plate and never holding words. A hero that holds words (deco's sun, with the year in it) becomes the picture's
+  centre: the poster fills the field behind the sunburst. With no hero, the scale hand's enormous initial holds it, cut
+  to the glyph's own outline (`KeyArtWindow.outline`). Then the tallest band of the field no type crosses; then, for a
+  letterpress under a long title, the whole poster pressed blind into the cotton.
+- **When in the run:** in the hero's own layer (`KeyArtWindow.layer`), so whatever the movement prints after the hero
+  prints over the picture too, and with that plate's registration.
+- **How:** the movement's screen (`KeyArtScreen`), made once a card by Core Image at three pixels to the point
+  (`KeyArtPrints`). Swiss gets an enlarged 45° halftone; constructivist a line screen up its own diagonal; deco rings
+  radiating from its sun; cutout a hard cut, as Saul Bass cut paper; riso a coarse 15° dot; letterpress and blueprint
+  hatching; noir a horizontal line screen, its venetian blind.
+- **In what ink:** the edition's own. The darks go in the darker ink on a light hero and the lights in the lighter ink
+  on a dark one, with a second pull in the second ink 1.4 pt off register. A field takes the movement's colour at
+  three fifths, so the type stays the strongest thing on the card. A letter takes its own ink, under itself.
+- **Which picture:** Vision's attention saliency finds the poster's subject (`Posters.focus`), and the poster is scaled
+  so the subject fills the window. The billing block never prints.
+
+**The data.** `Posters` sends TMDB the title the ticket printed (formats stripped) and the year it was seen, once per
+release, over an ephemeral session (no cookies, no identifier). It keeps the poster and its focus in Application Support,
+and a release TMDB has no poster for is not asked about again for 30 days. Your card has the choice ("Print each film's
+poster", on by default), "Forget the posters", and TMDB's notice. The Stub section's privacy line says the titles go to
+TMDB whenever they can. With no token in `Config/Secrets.xcconfig` (gitignored; `Secrets.example.xcconfig` is
+committed), `Posters.available` is false, no request is ever made, and none of this shows.
+
+**Tried and dropped.**
+- The poster's darks as a plain tonal mask in every movement: it read as a photo filter, the same on every card.
+- Bands as windows: a 840 × 90 pt band showed 3% of the poster, a flat gradient.
+- The picture above every plate: it covered the movement's own later shapes (the constructivist discs).
+
+**Cost.** Only the last four posters are held decoded; the rest wait on the phone until a card prints them. The prints
+are kept up to 48 MB, least recently seen let go first. `PerformanceTests/testDrawerScrollEditionsWithPosters` flings 60
+editions each printing its poster under the editions' own ceilings: 0.403 s of CPU against the plain editions' 0.370 s
+(≤ 0.9 s), on the simulator lane. The accessibility audit runs with the stand-in poster on every staged screen: clean.
+
+**Debug.** `-poster poster-orchard.jpg` stands a fictional poster (`scripts/make-posters.py`) in for every film, so the key
+art is built and screenshotted without TMDB or anyone's artwork in the repo. `-proof "movement=…"` shows it in each
+movement.

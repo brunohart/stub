@@ -313,7 +313,8 @@ final class AccessibilityTests: XCTestCase {
         _ = XCTWaiter().wait(for: [XCTestExpectation(description: "settle")], timeout: seconds)
     }
 
-    private let drawer = ["-stage-drawer", "12", "-stage-rules"]
+    /// A staged drawer, its editions printing the fictional stand-in poster (ADR-049) so the key art is audited too.
+    private let drawer = ["-stage-drawer", "12", "-stage-rules", "-poster", "poster-orchard.jpg"]
 
     func testDrawerTickets() throws {
         try audit("the drawer, tickets", drawer + ["-face", "ticket"]) { app in

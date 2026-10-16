@@ -324,3 +324,215 @@ enum Hand: String, CaseIterable, Sendable {
         }
     }
 }
+
+/// Where an edition prints its film's key art (ADR-049). First the movement's own hero, a disc, a block or a torn shape, so
+/// the poster lives inside the design rather than over it. A hero that holds words (deco's sun, with the year in it) is
+/// the picture's centre instead of its frame: the poster fills the field round it, under everything, its screen radiating
+/// from it. With neither, the tallest band of the field no type crosses; with no such band, the whole poster pressed
+/// blind. `role` is the ink the window is filled with, so the key art prints in the ink that reads on it.
+struct KeyArtWindow: Equatable, Sendable {
+    enum Form: Equatable, Sendable {
+        case disc(CGPoint, radius: CGFloat)
+        case panel(CGRect, turn: Mark.Turn?)
+        /// A torn or cut shape: its corners, turned as the movement turned it.
+        case shape([CGPoint], turn: Mark.Turn?)
+        /// A letter's own outline, in card points, turned: the scale hand's enormous initial.
+        case letter(Path)
+    }
+
+    /// A hero carries the picture at full strength; a field carries it quieter, so the type stays the strongest thing on
+    /// the card; a letter carries it in the letter's own ink; blind carries it in the relief alone.
+    enum Kind: Equatable, Sendable { case hero, field, letter, blind }
+
+    /// The card's layers in the order they are printed, as `Separation.Layer` stacks them (the widget has no separation).
+    enum Layer: Int, Sendable { case stock, first, second, foil, type }
+
+    var form: Form
+    var role: Role
+    /// The layer the picture is printed in: its hero's, so whatever the movement prints after the hero prints over the
+    /// picture too, as it would on the press. For a field, the field's own layer, so the field never covers it.
+    var layer: Layer
+    var kind: Kind = .hero
+    /// Where the screen is centred, if not the window's middle: deco's rings radiate from its sun.
+    var centre: CGPoint? = nil
+
+    /// Pressed blind: no ink, the picture only in the relief of the stock, as a printer of playbills would have carried
+    /// it under a title that filled the sheet.
+    var blind: Bool { kind == .blind }
+
+    var bounds: CGRect {
+        switch form {
+        case .disc(let c, let r): CGRect(x: c.x - r, y: c.y - r, width: 2 * r, height: 2 * r)
+        case .panel(let rect, let turn): Self.turned(Path(rect), turn).boundingRect
+        case .shape(let points, let turn): Self.turned(Path { $0.addLines(points); $0.closeSubpath() }, turn).boundingRect
+        case .letter(let outline): outline.boundingRect
+        }
+    }
+
+    /// The window as a path in card points, cut to the poster: the disc, or the block or shape turned as the movement
+    /// turned it.
+    var path: Path {
+        let whole: Path = switch form {
+        case .disc(let c, let r): Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: 2 * r, height: 2 * r))
+        case .panel(let rect, let turn): Self.turned(Path(rect), turn)
+        case .shape(let points, let turn): Self.turned(Path { $0.addLines(points); $0.closeSubpath() }, turn)
+        case .letter(let outline): outline
+        }
+        return whole.intersection(Path(Card.posterRect))
+    }
+
+    private static func turned(_ path: Path, _ turn: Mark.Turn?) -> Path {
+        guard let turn, turn.degrees != 0 else { return path }
+        let t = CGAffineTransform(translationX: turn.around.x, y: turn.around.y)
+            .rotated(by: turn.degrees * .pi / 180)
+            .translatedBy(x: -turn.around.x, y: -turn.around.y)
+        return path.applying(t)
+    }
+
+    /// The plate the picture lands with, for its registration and its pass in the print run; `nil` for the foil's.
+    var plate: Plate? {
+        switch layer {
+        case .stock, .first: .first
+        case .second: .second
+        case .foil: nil
+        case .type: .type
+        }
+    }
+
+    /// The window in `poster`, the movement's drawing; `hand`, the hand's marks laid under it, offers its letter.
+    static func find(in poster: [Mark], hand: [Mark] = [], field: Role, metallic: Bool) -> KeyArtWindow {
+        func layer(_ mark: Mark) -> Layer {
+            if metallic, mark.foil { return .foil }
+            return switch mark.plate {
+            case .first: .first
+            case .second: .second
+            case .type: .type
+            }
+        }
+        // What hides a picture printed under it: a solid shape. Lines, rules, rings, dots and words leave it seen.
+        func solid(_ mark: Mark) -> Bool {
+            guard mark.opacity >= 0.6 else { return false }
+            switch mark.shape {
+            case .rect, .circle, .polygon: return true
+            default: return false
+            }
+        }
+        let posterArea = Card.width * Card.poster
+        let words = poster.compactMap { mark -> CGPoint? in
+            if case .words(let w) = mark.shape { let b = w.box; return CGPoint(x: b.midX, y: b.midY) }
+            return nil
+        }
+        // The field: a solid mark over most of the poster (noir's night, cut paper's ground). A picture in the field is
+        // printed after it, or the field would cover it.
+        let fieldLayer = poster.filter { solid($0) && layer($0) != .type }
+            .first { $0.bounds.intersection(Card.posterRect).area >= 0.6 * posterArea }.map(layer) ?? .stock
+        var best: (window: KeyArtWindow, seen: CGFloat)?
+        var medallion: (centre: CGPoint, radius: CGFloat)?
+        for (index, mark) in poster.enumerated() where mark.part != nil && layer(mark) != .type {
+            let window: KeyArtWindow? = switch mark.shape {
+            case .circle(let c, let r) where r >= 40:
+                KeyArtWindow(form: .disc(c, radius: r), role: mark.role, layer: layer(mark))
+            case .rect(let rect) where min(rect.width, rect.height) >= 70 && max(rect.width, rect.height) <= 2.2 * min(rect.width, rect.height)
+                && rect.width * rect.height < 0.6 * posterArea:
+                KeyArtWindow(form: .panel(rect, turn: mark.turn), role: mark.role, layer: layer(mark))
+            case .polygon(let points) where points.count >= 4:
+                KeyArtWindow(form: .shape(points, turn: mark.turn), role: mark.role, layer: layer(mark))
+            default: nil
+            }
+            guard let window else { continue }
+            let b = window.bounds
+            guard min(b.width, b.height) >= 70, max(b.width, b.height) <= 2.2 * min(b.width, b.height),
+                  b.width * b.height < 0.6 * posterArea else { continue }
+            // A hero that holds words is the picture's centre, not its frame.
+            if words.contains(where: { mark.contains($0, slop: 0) }) {
+                if case .circle(let c, let r) = mark.shape, r > (medallion?.radius ?? 0) { medallion = (c, r) }
+                continue
+            }
+            // How much of it is seen, sampled every six points: inside it, on the poster, and under nothing solid
+            // printed after it.
+            let over = poster.enumerated().filter { other in
+                other.offset != index && solid(other.element) && layer(other.element) != .type
+                    && (layer(other.element).rawValue, other.offset) > (layer(mark).rawValue, index)
+                    && other.element.bounds.intersects(b)
+            }.map(\.element)
+            let area = b.intersection(Card.posterRect)
+            guard !area.isNull, !area.isEmpty else { continue }
+            var inside = 0, seen = 0
+            for y in stride(from: area.minY + 3, to: area.maxY, by: 6) {
+                for x in stride(from: area.minX + 3, to: area.maxX, by: 6) {
+                    let p = CGPoint(x: x, y: y)
+                    guard mark.contains(p, slop: 0) else { continue }
+                    inside += 1
+                    if !over.contains(where: { $0.contains(p, slop: 0) }) { seen += 1 }
+                }
+            }
+            // Most of it in sight, and enough of it to read as a picture.
+            let seenArea = CGFloat(seen) * 36
+            guard inside > 0, Double(seen) / Double(inside) >= 0.55, seenArea >= 70 * 70 * 0.8 else { continue }
+            if seenArea > (best?.seen ?? 0) { best = (window, seenArea) }
+        }
+        if let best { return best.window }
+        let inside = CGRect(x: Card.pad, y: Card.pad, width: Card.width - 2 * Card.pad, height: Card.poster - 1.5 * Card.pad)
+        // The picture round the medallion, under everything.
+        if let medallion {
+            return KeyArtWindow(form: .panel(inside, turn: nil), role: field, layer: fieldLayer, kind: .field,
+                                centre: medallion.centre)
+        }
+        // The scale hand's enormous letter: the picture inside the letterform, printed under it in its ink, as a wood
+        // letter cut with an engraving.
+        if let letter = hand.first(where: { if case .words = $0.shape { true } else { false } }),
+           case .words(let w) = letter.shape, let outline = Self.outline(of: w, turn: letter.turn),
+           outline.boundingRect.intersection(Card.posterRect).area >= 0.15 * posterArea {
+            return KeyArtWindow(form: .letter(outline), role: letter.role, layer: fieldLayer, kind: .letter)
+        }
+        // No hero: the tallest band of the poster that no line of type crosses, between the margins.
+        let type = Hand.typeBounds(poster)
+        let edges = ([Card.pad, Card.poster - Card.pad] + type.flatMap { [$0.minY - 8, $0.maxY + 8] })
+            .map { min(max($0, Card.pad), Card.poster - Card.pad) }.sorted()
+        var band = (from: CGFloat(0), to: CGFloat(0))
+        for (a, b) in zip(edges, edges.dropFirst()) where b - a > band.to - band.from {
+            if !type.contains(where: { $0.minY - 8 < b && $0.maxY + 8 > a }) { band = (a, b) }
+        }
+        if band.to - band.from >= 110 {
+            return KeyArtWindow(form: .panel(CGRect(x: Card.pad, y: band.from, width: Card.width - 2 * Card.pad,
+                                                    height: band.to - band.from), turn: nil), role: field, layer: fieldLayer,
+                                kind: .field)
+        }
+        // No room for a picture in ink: the whole poster, inside its margins, pressed blind under everything.
+        return KeyArtWindow(form: .panel(inside, turn: nil), role: field, layer: .stock, kind: .blind)
+    }
+}
+
+extension KeyArtWindow {
+    /// A line of type's outline in card points, set as `Printer.set` sets it: centred, leading or trailing on its advance,
+    /// sitting on its baseline, and turned.
+    static func outline(of words: Mark.Words, turn: Mark.Turn?) -> Path? {
+        let font = Measure.font(words.face, size: words.size) as CTFont
+        let line = CTLineCreateWithAttributedString(NSAttributedString(string: words.text, attributes: [.font: font]))
+        let width = CTLineGetTypographicBounds(line, nil, nil, nil)
+        guard width > 0 else { return nil }
+        let x: CGFloat = switch words.anchor {
+        case .leading: words.at.x
+        case .center: words.at.x - width / 2
+        case .trailing: words.at.x - width
+        }
+        let glyphs = CGMutablePath()
+        for run in (CTLineGetGlyphRuns(line) as? [CTRun]) ?? [] {
+            let count = CTRunGetGlyphCount(run)
+            var ids = [CGGlyph](repeating: 0, count: count), positions = [CGPoint](repeating: .zero, count: count)
+            CTRunGetGlyphs(run, CFRange(location: 0, length: count), &ids)
+            CTRunGetPositions(run, CFRange(location: 0, length: count), &positions)
+            for (id, at) in zip(ids, positions) {
+                guard let glyph = CTFontCreatePathForGlyph(font, id, nil) else { continue }
+                // CoreText draws up from the baseline; the card counts down from the top.
+                glyphs.addPath(glyph, transform: CGAffineTransform(a: 1, b: 0, c: 0, d: -1, tx: x + at.x, ty: words.at.y - at.y))
+            }
+        }
+        guard !glyphs.isEmpty else { return nil }
+        return turned(Path(glyphs), turn)
+    }
+}
+
+private extension CGRect {
+    var area: CGFloat { isNull ? 0 : width * height }
+}

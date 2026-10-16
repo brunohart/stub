@@ -163,6 +163,8 @@ struct StubDetailView: View {
                 .navigationTransition(.zoom(sourceID: "press", in: press))
         }
         .onAppear {
+            // The film's poster, for its key art (ADR-049).
+            Posters.shared.want(title: stub.title, year: copy.year)
             // Taken out of the drawer and held once more: hands wear a card (ADR-032).
             Handling.touch(stub.id)
             // Sits up straight as it grows. The zoom is the system's; the straightening is ours, on the same clock.

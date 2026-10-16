@@ -2,6 +2,37 @@
 
 Newest at the top. One entry per slot. What shipped, what broke, what the reader did.
 
+## 2026-10-17 — The film's own poster
+
+Bruno: the stub should use elements from the film's poster so each one holds up as an artefact, without cheap design
+and without losing the app's point of view; the source is TMDB, licensed. Shipped (ADR-049, decision 009):
+- `Posters`: TMDB search by the ticket's title and the year seen, the best match chosen by title and year, the poster kept
+  on the phone with its subject from Vision's saliency;
+- `KeyArtWindow`: the movement's hero, chosen by how much of it shows once everything printed after it is down; a
+  medallion that holds words becomes the picture's centre; the scale hand's letter cut to its glyph; a band; blind;
+- `KeyArt` and `KeyArtPrints`: the poster through the movement's own screen (Core Image, once a card), in the edition's
+  inks, in the hero's own pass of the run;
+- Your card: the choice, "Forget the posters", and TMDB's notice; the privacy line says where titles go when they do.
+
+**Broke and fixed.** The first hero for constructivist was its diagonal band: 840 × 90 pt shows 3% of a poster, which
+read as a flat gradient. Windows must be shaped to hold a picture now, and the hero is chosen by what is seen, so the
+gold disc won. Printed above every plate, the picture covered the discs printed after it; it now prints in its hero's
+layer. Deco's title panel was taken as a hero and its title went under the picture; a hero holding words is now never a
+frame. Noir's band printed under its own night; a field picture prints after the field. The prints never appeared at
+first: a `.task` on a view with nothing in it never runs. Every poster was held decoded (3 MB each: 600 MB for two
+hundred films); now only the last four are, and the prints are capped at 48 MB.
+
+**Measured.** 197 unit tests pass. The audit is clean with the stand-in poster on every staged screen (0 issues, 276
+settled by evidence). Budgets all pass on the simulator lane; the new fling with posters is 0.403 s of CPU against 0.370 s
+without (ceiling 0.9 s). CI's last audit job died when GitHub's hosted runner lost its connection, not on an issue.
+
+**For Bruno.** It is dormant: no token, no request, the label untouched. To turn it on, decide the label (decision 009
+recommends *Data Not Linked to You: Search History*), get TMDB's commercial licence and their logo, and put the read
+token in `Config/Secrets.xcconfig`. Take advice on reworking posters into shared prints before release.
+
+**Still rough.** The widget does not print the key art (it draws editions from marks alone). The deco field's picture
+stops at a rectangle inside the stepped border rather than following it.
+
 ## 2026-10-17 — The press as one instrument, the drawer as a gallery
 
 Bruno: not yet world class; keep going until it is. Every screen was captured on a large phone and reviewed. Shipped,
